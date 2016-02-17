@@ -4,24 +4,24 @@ import numpy
 import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
-import GelDosimetryAnalysisLogic
+import FilmDosimetryAnalysisLogic
 import DataProbeLib
 from slicer.util import VTKObservationMixin
 
 #
-# Gel dosimetry analysis slicelet
+# Film dosimetry analysis slicelet
 #
 # Streamlined workflow end-user application based on 3D Slicer and SlicerRT to support
-# 3D gel-based radiation dosimetry.
+# 3D film-based radiation dosimetry.
 #
-# The all-caps terms correspond to data objects in the gel dosimetry data flow diagram
-# https://subversion.assembla.com/svn/slicerrt/trunk/GelDosimetryAnalysis/doc/GelDosimetryAnalysis_DataFlow.png
+# The all-caps terms correspond to data objects in the film dosimetry data flow diagram
+# https://subversion.assembla.com/svn/slicerrt/trunk/FilmDosimetryAnalysis/doc/FilmDosimetryFlowchart.pdf
 #
 
 #
-# GelDosimetryAnalysisSliceletWidget
+# FilmDosimetryAnalysisSliceletWidget
 #
-class GelDosimetryAnalysisSliceletWidget:
+class FilmDosimetryAnalysisSliceletWidget:
   def __init__(self, parent=None):
     try:
       parent
@@ -30,7 +30,7 @@ class GelDosimetryAnalysisSliceletWidget:
     except Exception, e:
       import traceback
       traceback.print_exc()
-      logging.error("There is no parent to GelDosimetryAnalysisSliceletWidget!")
+      logging.error("There is no parent to FilmDosimetryAnalysisSliceletWidget!")
 
 #
 # SliceletMainFrame
@@ -49,14 +49,14 @@ class SliceletMainFrame(qt.QDialog):
       # logging.debug('Stuck slicelet references (' + repr(len(refs)) + '):\n' + repr(refs))
       pass
 
-    slicer.gelDosimetrySliceletInstance = None
+    slicer.filmDosimetrySliceletInstance = None
     self.slicelet = None
     self.deleteLater()
 
 #
-# GelDosimetryAnalysisSlicelet
+# FilmDosimetryAnalysisSlicelet
 #
-class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
+class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   def __init__(self, parent, developerMode=False, widgetClass=None):
     VTKObservationMixin.__init__(self)
     # Set up main frame
@@ -99,7 +99,9 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step0_layoutSelectionCollapsibleButton.setProperty('collapsed', False)
     
     # Create module logic
-    self.logic = GelDosimetryAnalysisLogic.GelDosimetryAnalysisLogic()
+    print('ZZZ 1')#TODO:
+    self.logic = FilmDosimetryAnalysisLogic.FilmDosimetryAnalysisLogic()
+    print('ZZZ 2')#TODO:
 
     # Set up constants
     self.obiMarkupsFiducialNodeName = "OBI fiducials"
@@ -1653,7 +1655,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.gammaLineProfileArrayNode = slicer.vtkMRMLDoubleArrayNode()
       slicer.mrmlScene.AddNode(self.gammaLineProfileArrayNode)
 
-    lineProfileLogic = GelDosimetryAnalysisLogic.LineProfileLogic()
+    lineProfileLogic = FilmDosimetryAnalysisLogic.LineProfileLogic()
     lineResolutionMm = float(self.stepT1_lineResolutionMmSliderWidget.value)
     selectedRuler = self.stepT1_inputRulerSelector.currentNode()
     rulerLengthMm = lineProfileLogic.computeRulerLength(selectedRuler)
@@ -1674,7 +1676,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     import csv
     import os
 
-    self.outputDir = slicer.app.temporaryPath + '/GelDosimetry'
+    self.outputDir = slicer.app.temporaryPath + '/FilmDosimetry'
     if not os.access(self.outputDir, os.F_OK):
       os.mkdir(self.outputDir)
     if not hasattr(self, 'planDoseLineProfileArrayNode') and not hasattr(self, 'calibratedMeasuredDoseLineProfileArrayNode'):
@@ -1740,8 +1742,8 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.logic.delayDisplay('Wait for the slicelet to catch up', 300)
 
     # Load non-DICOM data
-    slicer.util.loadNodeFromFile('d:/devel/_Images/RT/20140123_GelDosimetry_StructureSetIncluded/VFFs/LCV01_HR_plan.vff', 'VffFile', {})
-    slicer.util.loadNodeFromFile('d:/devel/_Images/RT/20140123_GelDosimetry_StructureSetIncluded/VFFs/LCV02_HR_calib.vff', 'VffFile', {})
+    slicer.util.loadNodeFromFile('d:/devel/_Images/RT/20140123_FilmDosimetry_StructureSetIncluded/VFFs/LCV01_HR_plan.vff', 'VffFile', {})
+    slicer.util.loadNodeFromFile('d:/devel/_Images/RT/20140123_FilmDosimetry_StructureSetIncluded/VFFs/LCV02_HR_calib.vff', 'VffFile', {})
 
     # Assign roles
     planCTVolumeName = '47: ARIA RadOnc Images - Verification Plan Phantom'
@@ -1794,7 +1796,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     ### 4. Calibration
     self.step3_doseCalibrationCollapsibleButton.setChecked(True)
-    self.logic.loadPdd('d:/devel/_Images/RT/20140123_GelDosimetry_StructureSetIncluded/12MeV.csv')
+    self.logic.loadPdd('d:/devel/_Images/RT/20140123_FilmDosimetry_StructureSetIncluded/12MeV.csv')
 
     # Parse calibration volume
     self.step3_1_radiusMmFromCentrePixelLineEdit.setText('5')
@@ -1833,7 +1835,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     #TODO: Update saved scene to one with segmentations
     return
     # Set variables. Only this section needs to be changed when testing new dataset
-    scenePath = 'c:/Slicer_Data/20140820_GelDosimetry_StructureSetIncluded/2014-08-20-Scene.mrml'
+    scenePath = 'c:/Slicer_Data/20140820_FilmDosimetry_StructureSetIncluded/2014-08-20-Scene.mrml'
     planCtVolumeNodeName = '*ARIA RadOnc Images - Verification Plan Phantom'
     obiVolumeNodeName = '0: Unknown'
     planDoseVolumeNodeName = '53: RTDOSE: Eclipse Doses: '
@@ -1841,7 +1843,7 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     measuredVolumeNodeName = 'lcv01_hr.vff'
     calibrationVolumeNodeName = 'lcv02_hr.vff'
     radiusMmFromCentrePixelMm = '5'
-    pddFileName = 'd:/devel/_Images/RT/20140123_GelDosimetry_StructureSetIncluded/12MeV.csv'
+    pddFileName = 'd:/devel/_Images/RT/20140123_FilmDosimetry_StructureSetIncluded/12MeV.csv'
     rdf = '0.989'
     monitorUnits = '1850'
     maskSegmentationNodeID = 'vtkMRMLSegmentationNode1'
@@ -1899,30 +1901,30 @@ class GelDosimetryAnalysisSlicelet(VTKObservationMixin):
     qt.QApplication.restoreOverrideCursor()
 
 #
-# GelDosimetryAnalysis
+# FilmDosimetryAnalysis
 #
-class GelDosimetryAnalysis(ScriptedLoadableModule):
+class FilmDosimetryAnalysis(ScriptedLoadableModule):
   """Uses ScriptedLoadableModule base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """ 
 
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent) 
-    parent.title = "Gel Dosimetry Analysis"
+    parent.title = "Film Dosimetry Analysis"
     parent.categories = ["Slicelets"]
-    parent.dependencies = ["GelDosimetryAnalysisAlgo", "DicomRtImportExport", "BRAINSFit", "BRAINSResample", "Markups", "DataProbe", "DoseComparison"]
-    parent.contributors = ["Csaba Pinter (Queen's University), Mattea Welch (Queen's University), Jennifer Andrea (Queen's University), Kevin Alexander (Kingston General Hospital)"] # replace with "Firstname Lastname (Org)"
-    parent.helpText = "Slicelet for gel dosimetry analysis"
+    parent.dependencies = ["DicomRtImportExport", "BRAINSFit", "BRAINSResample", "Markups", "DataProbe", "DoseComparison"]
+    parent.contributors = ["Kevin Alexander (KGH, Queen's University), Csaba Pinter (Queen's University)"] # replace with "Firstname Lastname (Org)"
+    parent.helpText = "Slicelet for film dosimetry analysis"
     parent.acknowledgementText = """
-    This file was originally developed by Mattea Welch, Jennifer Andrea, and Csaba Pinter (Queen's University). Funding was provided by NSERC-USRA, OCAIRO, Cancer Care Ontario and Queen's University
+    This file was originally developed by Kevin Alexander (KGH, Queen's University). Funding was provided by CIHR
     """
     iconPath = os.path.join(os.path.dirname(self.parent.path), 'Resources/Icons', self.moduleName+'.png')
     parent.icon = qt.QIcon(iconPath)
 
 #
-# GelDosimetryAnalysisWidget
+# FilmDosimetryAnalysisWidget
 #
-class GelDosimetryAnalysisWidget(ScriptedLoadableModuleWidget):
+class FilmDosimetryAnalysisWidget(ScriptedLoadableModuleWidget):
   """Uses ScriptedLoadableModuleWidget base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
@@ -1943,23 +1945,23 @@ class GelDosimetryAnalysisWidget(ScriptedLoadableModuleWidget):
   def onShowSliceletButtonClicked(self):
     mainFrame = SliceletMainFrame()
     mainFrame.minimumWidth = 1200
-    mainFrame.windowTitle = "Gel dosimetry analysis"
+    mainFrame.windowTitle = "Film dosimetry analysis"
     mainFrame.setWindowFlags(qt.Qt.WindowCloseButtonHint | qt.Qt.WindowMaximizeButtonHint | qt.Qt.WindowTitleHint)
-    iconPath = os.path.join(os.path.dirname(slicer.modules.geldosimetryanalysis.path), 'Resources/Icons', self.moduleName+'.png')
+    iconPath = os.path.join(os.path.dirname(slicer.modules.filmdosimetryanalysis.path), 'Resources/Icons', self.moduleName+'.png')
     mainFrame.windowIcon = qt.QIcon(iconPath)
     mainFrame.connect('destroyed()', self.onSliceletClosed)
     
-    slicelet = GelDosimetryAnalysisSlicelet(mainFrame, self.developerMode)
+    slicelet = FilmDosimetryAnalysisSlicelet(mainFrame, self.developerMode)
     mainFrame.setSlicelet(slicelet)
 
     # Make the slicelet reachable from the Slicer python interactor for testing
-    slicer.gelDosimetrySliceletInstance = slicelet
+    slicer.filmDosimetrySliceletInstance = slicelet
 
   def onSliceletClosed(self):
     logging.debug('Slicelet closed')
 
 # ---------------------------------------------------------------------------
-class GelDosimetryAnalysisTest(ScriptedLoadableModuleTest):
+class FilmDosimetryAnalysisTest(ScriptedLoadableModuleTest):
   """
   This is the test case for your scripted module.
   Uses ScriptedLoadableModuleTest base class, available at:
@@ -1988,4 +1990,4 @@ if __name__ == "__main__":
   logging.debug( sys.argv )
 
   mainFrame = qt.QFrame()
-  slicelet = GelDosimetryAnalysisSlicelet(mainFrame)
+  slicelet = FilmDosimetryAnalysisSlicelet(mainFrame)

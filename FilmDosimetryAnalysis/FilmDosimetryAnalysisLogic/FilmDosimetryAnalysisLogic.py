@@ -6,11 +6,12 @@ import logging
 from math import *
 import numpy
 from vtk.util import numpy_support
+import SimpleITK as sitk
 
 #
-# GelDosimetryAnalysisLogic
+# FilmDosimetryAnalysisLogic
 #
-class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
+class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
   """This class should implement all the actual
   computation done by your module.  The interface
   should be such that other python code can import
@@ -21,6 +22,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
   """ 
 
   def __init__(self):
+    # print('ZZZ ' + repr(self) + ', ' + repr(second)) #TODO:
     # Define constants
     self.obiToPlanTransformName = 'obiToPlanTransform'
     self.obiToMeasuredTransformName = "obiToMeasuredTransform"
@@ -35,8 +37,8 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     self.calibrationPolynomialCoefficients = None # Calibration polynomial coefficients, highest power first
 
     # Set logic instance to the global variable that supplies it to the calibration curve alignment minimizer function
-    global gelDosimetryLogicInstanceGlobal
-    gelDosimetryLogicInstanceGlobal = self
+    global filmDosimetryLogicInstanceGlobal
+    filmDosimetryLogicInstanceGlobal = self
 
   # ---------------------------------------------------------------------------
   # Show and select DICOM browser
@@ -106,44 +108,6 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     except Exception, e:
       import traceback
       traceback.print_exc()
-    
-  # ---------------------------------------------------------------------------
-  def registerObiToMeasured(self, obiFiducialListID, measuredFiducialListID):
-    try:
-      qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
-      parametersFiducial = {}
-      parametersFiducial["fixedLandmarks"] = obiFiducialListID
-      parametersFiducial["movingLandmarks"] = measuredFiducialListID
-      
-      # Create linear transform which will store the registration transform
-      obiToMeasuredTransformNode = slicer.util.getNode(self.obiToMeasuredTransformName)
-      if obiToMeasuredTransformNode == None:
-        obiToMeasuredTransformNode = slicer.vtkMRMLLinearTransformNode()
-        slicer.mrmlScene.AddNode(obiToMeasuredTransformNode)
-        obiToMeasuredTransformNode.SetName(self.obiToMeasuredTransformName)
-      parametersFiducial["saveTransform"] = obiToMeasuredTransformNode.GetID()
-      parametersFiducial["transformType"] = "Rigid"
-
-      # Run fiducial registration
-      fiducialRegistration = slicer.modules.fiducialregistration
-      cliFiducialRegistrationRigidNode = None
-      cliFiducialRegistrationRigidNode = slicer.cli.run(fiducialRegistration, None, parametersFiducial)
-
-      waitCount = 0
-      while cliFiducialRegistrationRigidNode.GetStatusString() != 'Completed' and waitCount < 200:
-        self.delayDisplay( "Register MEASURED to OBI using fiducial registration... %d" % waitCount )
-        waitCount += 1
-      self.delayDisplay("Register MEASURED to OBI using fiducial registration finished")
-      qt.QApplication.restoreOverrideCursor()
-      
-      # Apply transform to MEASURED fiducials
-      measuredFiducialsNode = slicer.mrmlScene.GetNodeByID(measuredFiducialListID)
-      measuredFiducialsNode.SetAndObserveTransformNodeID(obiToMeasuredTransformNode.GetID())
-
-      return cliFiducialRegistrationRigidNode.GetParameterAsString('rms')
-    except Exception, e:
-      import traceback
-      traceback.print_exc()
 
   # ---------------------------------------------------------------------------
   def loadPdd(self, fileName):
@@ -174,72 +138,6 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
     logging.info("Pdd data successfully loaded from file '" + fileName + "'")
     self.pddDataArray = doseTable
-    return True
-
-  # ---------------------------------------------------------------------------
-  def getMeanOpticalAttenuationOfCentralCylinder(self, calibrationVolumeNodeID, centralRadiusMm):
-    # Format of output array: the following values are provided for each slice:
-    #   depth (cm), mean optical attenuation on the slice at depth, std.dev. of optical attenuation
-    qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
-
-    calibrationVolume = slicer.util.getNode(calibrationVolumeNodeID)
-    calibrationVolumeImageData = calibrationVolume.GetImageData()
-    
-    # Get image properties needed for the calculation
-    calibrationVolumeSliceThicknessCm = calibrationVolume.GetSpacing()[2] / 10.0
-    if calibrationVolume.GetSpacing()[0] != calibrationVolume.GetSpacing()[1]:
-      logging.warning('Image data X and Y spacing differ! This is not supported, the mean optical attenuation data may be skewed!')
-    calibrationVolumeInPlaneSpacing = calibrationVolume.GetSpacing()[0]
-
-    centralRadiusPixel = int(numpy.ceil(centralRadiusMm / calibrationVolumeInPlaneSpacing))
-    if centralRadiusPixel != centralRadiusMm / calibrationVolumeInPlaneSpacing:
-      logging.info('Central radius has been rounded up to {0} (original radius is {1}mm = {2}px)'.format(centralRadiusPixel, centralRadiusMm, centralRadiusMm / calibrationVolumeInPlaneSpacing))
-
-    numberOfSlices = calibrationVolumeImageData.GetExtent()[5] - calibrationVolumeImageData.GetExtent()[4] + 1
-    centerXCoordinate = (calibrationVolumeImageData.GetExtent()[1] - calibrationVolumeImageData.GetExtent()[0])/2
-    centerYCoordinate = (calibrationVolumeImageData.GetExtent()[3] - calibrationVolumeImageData.GetExtent()[2])/2
-
-    # Get image data in numpy array
-    calibrationVolumeImageDataAsScalars = calibrationVolumeImageData.GetPointData().GetScalars()
-    numpyImageDataArray = numpy_support.vtk_to_numpy(calibrationVolumeImageDataAsScalars)
-    numpyImageDataArray = numpy.reshape(numpyImageDataArray, (calibrationVolumeImageData.GetExtent()[1]+1, calibrationVolumeImageData.GetExtent()[3]+1, calibrationVolumeImageData.GetExtent()[5]+1), 'F')
-    
-    opticalAttenuationOfCentralCylinderTable = numpy.zeros((numberOfSlices, 3))
-    sliceNumber = 0
-    z = calibrationVolumeImageData.GetExtent()[5]
-    zMin = calibrationVolumeImageData.GetExtent()[4]
-    while z  >= zMin:
-      totalPixels = 0
-      totalOpticalAttenuation = 0
-      listOfOpticalDensities = []
-      meanOpticalAttenuation = 0
-
-      for y in xrange(centerYCoordinate - centralRadiusPixel, centerYCoordinate + centralRadiusPixel):
-        for x in xrange(centerXCoordinate - centralRadiusPixel, centerXCoordinate + centralRadiusPixel):
-          distanceOfX = abs(x - centerXCoordinate)
-          distanceOfY = abs(y - centerYCoordinate)
-          if ((distanceOfX + distanceOfY) <= centralRadiusPixel) or ((pow(distanceOfX, 2) + pow(distanceOfY, 2)) <= pow(centralRadiusPixel, 2)):
-            currentOpticalAttenuation = numpyImageDataArray[x, y, z]
-            listOfOpticalDensities.append(currentOpticalAttenuation)
-            totalOpticalAttenuation = totalOpticalAttenuation + currentOpticalAttenuation
-            totalPixels+=1
-      
-      meanOpticalAttenuation = totalOpticalAttenuation / totalPixels
-      standardDeviationOpticalAttenuation	= 0
-      for currentOpticalAttenuationValue in xrange(totalPixels):
-        standardDeviationOpticalAttenuation += pow((listOfOpticalDensities[currentOpticalAttenuationValue] - meanOpticalAttenuation), 2)
-      standardDeviationOpticalAttenuation = sqrt(standardDeviationOpticalAttenuation / totalPixels)
-      opticalAttenuationOfCentralCylinderTable[sliceNumber, 0] = sliceNumber * calibrationVolumeSliceThicknessCm
-      opticalAttenuationOfCentralCylinderTable[sliceNumber, 1] = meanOpticalAttenuation
-      opticalAttenuationOfCentralCylinderTable[sliceNumber, 2] = standardDeviationOpticalAttenuation
-      # logging.debug('Slice (cm): ' + repr(sliceNumber*calibrationVolumeSliceThicknessCm))
-      # logging.debug('  Mean: ' + repr(meanOpticalAttenuation) + '  StdDev: ' + repr(standardDeviationOpticalAttenuation))
-      sliceNumber += 1
-      z -= 1
-
-    qt.QApplication.restoreOverrideCursor()
-    logging.info('CALIBRATION data has been successfully parsed with averaging radius {0}mm ({1}px)'.format(centralRadiusMm, centralRadiusPixel))
-    self.calibrationDataArray = opticalAttenuationOfCentralCylinderTable
     return True
 
   # ---------------------------------------------------------------------------
@@ -457,7 +355,7 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     import csv
     import os
 
-    self.outputDir = slicer.app.temporaryPath + '/GelDosimetry'
+    self.outputDir = slicer.app.temporaryPath + '/FilmDosimetry'
     if not os.access(self.outputDir, os.F_OK):
       os.mkdir(self.outputDir)
 
@@ -517,12 +415,8 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       calibratedVolume.SetAndObserveTransformNodeID(measuredVolume.GetParentTransformNode().GetID())
 
     coefficients = numpy_support.numpy_to_vtk(self.calibrationPolynomialCoefficients)
-
-    import vtkSlicerGelDosimetryAnalysisAlgoModuleLogic
-    if slicer.modules.geldosimetryanalysisalgo.logic().ApplyPolynomialFunctionOnVolume(calibratedVolume, coefficients) == False:
-      logging.error('Calibration failed!')
-      slicer.mrmlScene.RemoveNode(calibratedVolume)
-      return None
+	
+	#TODO:
 
     end = time.time()
     qt.QApplication.restoreOverrideCursor()
@@ -534,8 +428,8 @@ class GelDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 #
 def curveAlignmentCalibrationFunction():
   # Get logic instance
-  global gelDosimetryLogicInstanceGlobal
-  logic = gelDosimetryLogicInstanceGlobal
+  global filmDosimetryLogicInstanceGlobal
+  logic = filmDosimetryLogicInstanceGlobal
 
   # Transform experimental calibration curve with the current values provided by the minimizer and
   # create piecewise function from the transformed calibration curve to be able to compare with the Pdd
@@ -561,8 +455,8 @@ def curveAlignmentCalibrationFunction():
   logic.minimizer.SetFunctionValue(sumSquaredDifference)
 
 # Global variable holding the logic instance for the calibration curve minimizer function
-gelDosimetryLogicInstanceGlobal = None
+filmDosimetryLogicInstanceGlobal = None
 
 # Notes:
 # Code snippet to reload logic
-# GelDosimetryAnalysisLogic = reload(GelDosimetryAnalysisLogic)
+# FilmDosimetryAnalysisLogic = reload(FilmDosimetryAnalysisLogic)
