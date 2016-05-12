@@ -179,7 +179,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     #self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_MeasuredDoseToObiRegistrationSelected) 
     #self.step2_2_1_obiFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_1_ObiFiducialCollectionSelected) 
     #self.step2_2_2_measuredFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_2_MeasuredFiducialCollectionSelected) 
-    #self.step1_loadNonDicomDataButton.disconnect('clicked()', self.onLoadNonDicomData)
+    self.step1_loadNonDicomDataButton.disconnect('clicked()', self.onLoadNonDicomData)
     #self.step2_2_3_registerMeasuredToObiButton.disconnect('clicked()', self.onMeasuredToObiRegistration) 
     #self.step3_1_pddLoadDataButton.disconnect('clicked()', self.onLoadPddDataRead)    
     #self.step3_1_alignCalibrationCurvesButton.disconnect('clicked()', self.onAlignCalibrationCurves)  
@@ -254,9 +254,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_LoadDataLabel.wordWrap = True
     self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_LoadDataLabel)
 
-    # Load DICOM data button
-    self.step1_showDicomBrowserButton = qt.QPushButton("Load DICOM data")
-    self.step1_showDicomBrowserButton.toolTip = "Load planning data (CT, dose, structures)"
+    # Load png data button
+    self.step1_showDicomBrowserButton = qt.QPushButton("Load .png data")
+    self.step1_showDicomBrowserButton.toolTip = "Load irradiated films"
     self.step1_showDicomBrowserButton.name = "showDicomBrowserButton"
     self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_showDicomBrowserButton)
 
