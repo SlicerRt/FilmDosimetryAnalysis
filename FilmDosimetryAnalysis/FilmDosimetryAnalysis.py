@@ -158,9 +158,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Set up step panels
     self.setup_Step0_LayoutSelection()    
     self.setup_Step1_LoadData()
-    self.setup_Step2_Registration()
-    self.setup_step3_DoseCalibration()
-    self.setup_Step4_DoseComparison()
+    #self.setup_Step2_Registration()  
+    #self.setup_step3_DoseCalibration()  
+    #self.setup_Step4_DoseComparison()
     self.setup_StepT1_lineProfileCollapsibleButton()
 
     if widgetClass:
@@ -174,31 +174,31 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step0_clinicalModeRadioButton.disconnect('toggled(bool)', self.onClinicalModeSelect)
     self.step0_preclinicalModeRadioButton.disconnect('toggled(bool)', self.onPreclinicalModeSelect)
     self.step1_showDicomBrowserButton.disconnect('clicked()', self.logic.onDicomLoad)
-    self.step2_1_registerObiToPlanCtButton.disconnect('clicked()', self.onObiToPlanCTRegistration)
-    self.step2_1_translationSliders.disconnect('valuesChanged()', self.step2_1_rotationSliders.resetUnactiveSliders())
-    self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_MeasuredDoseToObiRegistrationSelected)
-    self.step2_2_1_obiFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_1_ObiFiducialCollectionSelected)
-    self.step2_2_2_measuredFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_2_MeasuredFiducialCollectionSelected)
-    self.step1_loadNonDicomDataButton.disconnect('clicked()', self.onLoadNonDicomData)
-    self.step2_2_3_registerMeasuredToObiButton.disconnect('clicked()', self.onMeasuredToObiRegistration)
-    self.step3_1_pddLoadDataButton.disconnect('clicked()', self.onLoadPddDataRead)
-    self.step3_1_alignCalibrationCurvesButton.disconnect('clicked()', self.onAlignCalibrationCurves)
-    self.step3_1_xTranslationSpinBox.disconnect('valueChanged(double)', self.onAdjustAlignmentValueChanged)
-    self.step3_1_yScaleSpinBox.disconnect('valueChanged(double)', self.onAdjustAlignmentValueChanged)
-    self.step3_1_yTranslationSpinBox.disconnect('valueChanged(double)', self.onAdjustAlignmentValueChanged)
-    self.step3_1_computeDoseFromPddButton.disconnect('clicked()', self.onComputeDoseFromPdd)
-    self.step3_1_calibrationRoutineCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep3_1_CalibrationRoutineSelected)
-    self.step3_1_showOpticalAttenuationVsDoseCurveButton.disconnect('clicked()', self.onShowOpticalAttenuationVsDoseCurve)
-    self.step3_1_removeSelectedPointsFromOpticalAttenuationVsDoseCurveButton.disconnect('clicked()', self.onRemoveSelectedPointsFromOpticalAttenuationVsDoseCurve)
-    self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton.disconnect('clicked()', self.onFitPolynomialToOpticalAttenuationVsDoseCurve)
-    self.step3_2_exportCalibrationToCSV.disconnect('clicked()', self.onExportCalibration)
-    self.step3_2_applyCalibrationButton.disconnect('clicked()', self.onApplyCalibration)
-    self.step4_doseComparisonCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep4_DoseComparisonSelected)
-    self.step4_maskSegmentationSelector.disconnect('currentNodeChanged(vtkMRMLNode*)', self.onStep4_MaskSegmentationSelectionChanged)
-    self.step4_maskSegmentationSelector.disconnect('currentSegmentChanged(QString)', self.onStep4_MaskSegmentSelectionChanged)
-    self.step4_1_referenceDoseUseMaximumDoseRadioButton.disconnect('toggled(bool)', self.onUseMaximumDoseRadioButtonToggled)
-    self.step4_1_computeGammaButton.disconnect('clicked()', self.onGammaDoseComparison)
-    self.step4_1_showGammaReportButton.disconnect('clicked()', self.onShowGammaReport)
+    #self.step2_1_registerObiToPlanCtButton.disconnect('clicked()', self.onObiToPlanCTRegistration) 
+    #self.step2_1_translationSliders.disconnect('valuesChanged()', self.step2_1_rotationSliders.resetUnactiveSliders()) 
+    #self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_MeasuredDoseToObiRegistrationSelected) 
+    #self.step2_2_1_obiFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_1_ObiFiducialCollectionSelected) 
+    #self.step2_2_2_measuredFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_2_MeasuredFiducialCollectionSelected) 
+    #self.step1_loadNonDicomDataButton.disconnect('clicked()', self.onLoadNonDicomData)
+    #self.step2_2_3_registerMeasuredToObiButton.disconnect('clicked()', self.onMeasuredToObiRegistration) 
+    #self.step3_1_pddLoadDataButton.disconnect('clicked()', self.onLoadPddDataRead)    
+    #self.step3_1_alignCalibrationCurvesButton.disconnect('clicked()', self.onAlignCalibrationCurves)  
+    #self.step3_1_xTranslationSpinBox.disconnect('valueChanged(double)', self.onAdjustAlignmentValueChanged)  
+    #self.step3_1_yScaleSpinBox.disconnect('valueChanged(double)', self.onAdjustAlignmentValueChanged) 
+    #self.step3_1_yTranslationSpinBox.disconnect('valueChanged(double)', self.onAdjustAlignmentValueChanged) 
+    #self.step3_1_computeDoseFromPddButton.disconnect('clicked()', self.onComputeDoseFromPdd) 
+    #self.step3_1_calibrationRoutineCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep3_1_CalibrationRoutineSelected) 
+    #self.step3_1_showOpticalAttenuationVsDoseCurveButton.disconnect('clicked()', self.onShowOpticalAttenuationVsDoseCurve) 
+    #self.step3_1_removeSelectedPointsFromOpticalAttenuationVsDoseCurveButton.disconnect('clicked()', self.onRemoveSelectedPointsFromOpticalAttenuationVsDoseCurve) 
+    #self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton.disconnect('clicked()', self.onFitPolynomialToOpticalAttenuationVsDoseCurve) 
+    #self.step3_2_exportCalibrationToCSV.disconnect('clicked()', self.onExportCalibration) 
+    #self.step3_2_applyCalibrationButton.disconnect('clicked()', self.onApplyCalibration) 
+    #self.step4_doseComparisonCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep4_DoseComparisonSelected) 
+    #self.step4_maskSegmentationSelector.disconnect('currentNodeChanged(vtkMRMLNode*)', self.onStep4_MaskSegmentationSelectionChanged) 
+    #self.step4_maskSegmentationSelector.disconnect('currentSegmentChanged(QString)', self.onStep4_MaskSegmentSelectionChanged)  
+    #self.step4_1_referenceDoseUseMaximumDoseRadioButton.disconnect('toggled(bool)', self.onUseMaximumDoseRadioButtonToggled)  
+    #self.step4_1_computeGammaButton.disconnect('clicked()', self.onGammaDoseComparison) 
+    #self.step4_1_showGammaReportButton.disconnect('clicked()', self.onShowGammaReport) 
     self.stepT1_lineProfileCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStepT1_LineProfileSelected)
     self.stepT1_createLineProfileButton.disconnect('clicked(bool)', self.onCreateLineProfileButton)
     self.stepT1_inputRulerSelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
@@ -242,7 +242,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   def setup_Step1_LoadData(self):
     # Step 1: Load data panel
-    self.step1_loadDataCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step1_loadDataCollapsibleButton.setProperty('collapsedHeight', 4)    
     self.step1_loadDataCollapsibleButton.text = "1. Load data"
     self.sliceletPanelLayout.addWidget(self.step1_loadDataCollapsibleButton)
     self.step1_loadDataCollapsibleButtonLayout = qt.QFormLayout(self.step1_loadDataCollapsibleButton)
@@ -335,541 +335,544 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_loadNonDicomDataButton.connect('clicked()', self.onLoadNonDicomData)
     self.step1_loadDataCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep1_LoadDataCollapsed)
 
-  def setup_Step2_Registration(self):
-    # Step 2: Registration step
-    self.step2_registrationCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step2_registrationCollapsibleButton.text = "2. Registration"
-    self.sliceletPanelLayout.addWidget(self.step2_registrationCollapsibleButton)
-    self.step2_registrationCollapsibleButtonLayout = qt.QFormLayout(self.step2_registrationCollapsibleButton)
-    self.step2_registrationCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
-    self.step2_registrationCollapsibleButtonLayout.setSpacing(4)
+  # def setup_Step2_Registration(self):
+    # # Step 2: Registration step
+    # self.step2_registrationCollapsibleButton.setProperty('collapsedHeight', 4)
+    # self.step2_registrationCollapsibleButton.text = "2. Registration"
+    # self.sliceletPanelLayout.addWidget(self.step2_registrationCollapsibleButton)
+    # self.step2_registrationCollapsibleButtonLayout = qt.QFormLayout(self.step2_registrationCollapsibleButton)
+    # self.step2_registrationCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
+    # self.step2_registrationCollapsibleButtonLayout.setSpacing(4)
 
-    # Step 2.1: OBI to PLANCT registration panel    
-    self.step2_1_obiToPlanCtRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step2_1_obiToPlanCtRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step2_1_obiToPlanCtRegistrationCollapsibleButton.text = "2.1. Register planning CT to OBI"
-    self.step2_registrationCollapsibleButtonLayout.addWidget(self.step2_1_obiToPlanCtRegistrationCollapsibleButton)
-    self.step2_1_obiToPlanCtRegistrationLayout = qt.QFormLayout(self.step2_1_obiToPlanCtRegistrationCollapsibleButton)
-    self.step2_1_obiToPlanCtRegistrationLayout.setContentsMargins(12,4,4,4)
-    self.step2_1_obiToPlanCtRegistrationLayout.setSpacing(4)
+    # # Step 2.1: OBI to PLANCT registration panel    
+    # self.step2_1_obiToPlanCtRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
+    # self.step2_1_obiToPlanCtRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
+    # self.step2_1_obiToPlanCtRegistrationCollapsibleButton.text = "2.1. Register planning CT to OBI"
+    # self.step2_registrationCollapsibleButtonLayout.addWidget(self.step2_1_obiToPlanCtRegistrationCollapsibleButton)
+    # self.step2_1_obiToPlanCtRegistrationLayout = qt.QFormLayout(self.step2_1_obiToPlanCtRegistrationCollapsibleButton)
+    # self.step2_1_obiToPlanCtRegistrationLayout.setContentsMargins(12,4,4,4)
+    # self.step2_1_obiToPlanCtRegistrationLayout.setSpacing(4)
 
-    # Registration label
-    self.step2_1_registrationLabel = qt.QLabel("Automatically register the OBI volume to the planning CT.\nIt should take several seconds.")
-    self.step2_1_registrationLabel.wordWrap = True
-    self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_registrationLabel)
+    # # Registration label
+    # self.step2_1_registrationLabel = qt.QLabel("Automatically register the OBI volume to the planning CT.\nIt should take several seconds.")
+    # self.step2_1_registrationLabel.wordWrap = True
+    # self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_registrationLabel)
 
-    # OBI to PLANCT registration button
-    self.step2_1_registerObiToPlanCtButton = qt.QPushButton("Perform registration")
-    self.step2_1_registerObiToPlanCtButton.toolTip = "Register planning CT volume to OBI volume"
-    self.step2_1_registerObiToPlanCtButton.name = "step2_1_registerObiToPlanCtButton"
-    self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_registerObiToPlanCtButton)
+    # # OBI to PLANCT registration button
+    # self.step2_1_registerObiToPlanCtButton = qt.QPushButton("Perform registration")
+    # self.step2_1_registerObiToPlanCtButton.toolTip = "Register planning CT volume to OBI volume"
+    # self.step2_1_registerObiToPlanCtButton.name = "step2_1_registerObiToPlanCtButton"
+    # self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_registerObiToPlanCtButton)
 
-    # Add empty row
-    self.step2_1_obiToPlanCtRegistrationLayout.addRow(' ', None)
+    # # Add empty row
+    # self.step2_1_obiToPlanCtRegistrationLayout.addRow(' ', None)
 
-    # Transform fine-tune controls
-    self.step2_1_transformSlidersInfoLabel = qt.QLabel("If registration result is not satisfactory, a simple re-run of the registration may solve it.\nOtherwise adjust result registration transform if needed:")
-    self.step2_1_transformSlidersInfoLabel.wordWrap = True
-    self.step2_1_translationSliders = slicer.qMRMLTransformSliders()
-    #self.step2_1_translationSliders.CoordinateReference = slicer.qMRMLTransformSliders.LOCAL # This would make the sliders always start form 0 (then min/max would also not be needed)
-    translationGroupBox = slicer.util.findChildren(widget=self.step2_1_translationSliders, className='ctkCollapsibleGroupBox')[0]
-    translationGroupBox.collapsed  = True # Collapse by default
-    self.step2_1_translationSliders.setMRMLScene(slicer.mrmlScene)
-    self.step2_1_rotationSliders = slicer.qMRMLTransformSliders()
-    self.step2_1_rotationSliders.minMaxVisible = False
-    self.step2_1_rotationSliders.TypeOfTransform = slicer.qMRMLTransformSliders.ROTATION
-    self.step2_1_rotationSliders.Title = "Rotation"
-    self.step2_1_rotationSliders.CoordinateReference = slicer.qMRMLTransformSliders.LOCAL
-    rotationGroupBox = slicer.util.findChildren(widget=self.step2_1_rotationSliders, className='ctkCollapsibleGroupBox')[0]
-    rotationGroupBox.collapsed  = True # Collapse by default
-    # self.step2_1_rotationSliders.setMRMLScene(slicer.mrmlScene) # If scene is set, then mm appears instead of degrees
-    self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_transformSlidersInfoLabel)
-    self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_translationSliders)
-    self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_rotationSliders)
+    # # Transform fine-tune controls
+    # self.step2_1_transformSlidersInfoLabel = qt.QLabel("If registration result is not satisfactory, a simple re-run of the registration may solve it.\nOtherwise adjust result registration transform if needed:")
+    # self.step2_1_transformSlidersInfoLabel.wordWrap = True
+    # self.step2_1_translationSliders = slicer.qMRMLTransformSliders()
+    # #self.step2_1_translationSliders.CoordinateReference = slicer.qMRMLTransformSliders.LOCAL # This would make the sliders always start form 0 (then min/max would also not be needed)
+    # translationGroupBox = slicer.util.findChildren(widget=self.step2_1_translationSliders, className='ctkCollapsibleGroupBox')[0]
+    # translationGroupBox.collapsed  = True # Collapse by default
+    # self.step2_1_translationSliders.setMRMLScene(slicer.mrmlScene)
+    # self.step2_1_rotationSliders = slicer.qMRMLTransformSliders()
+    # self.step2_1_rotationSliders.minMaxVisible = False
+    # self.step2_1_rotationSliders.TypeOfTransform = slicer.qMRMLTransformSliders.ROTATION
+    # self.step2_1_rotationSliders.Title = "Rotation"
+    # self.step2_1_rotationSliders.CoordinateReference = slicer.qMRMLTransformSliders.LOCAL
+    # rotationGroupBox = slicer.util.findChildren(widget=self.step2_1_rotationSliders, className='ctkCollapsibleGroupBox')[0]
+    # rotationGroupBox.collapsed  = True # Collapse by default
+    # # self.step2_1_rotationSliders.setMRMLScene(slicer.mrmlScene) # If scene is set, then mm appears instead of degrees
+    # self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_transformSlidersInfoLabel)
+    # self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_translationSliders)
+    # self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_rotationSliders)
 
-    # Step 2.2: Gel CT scan to cone beam CT registration panel
-    self.step2_2_measuredDoseToObiRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.text = "2.2. Register gel dosimeter volume to OBI"
-    self.step2_registrationCollapsibleButtonLayout.addWidget(self.step2_2_measuredDoseToObiRegistrationCollapsibleButton)
-    self.step2_2_measuredDoseToObiRegistrationLayout = qt.QVBoxLayout(self.step2_2_measuredDoseToObiRegistrationCollapsibleButton)
-    self.step2_2_measuredDoseToObiRegistrationLayout.setContentsMargins(12,4,4,4)
-    self.step2_2_measuredDoseToObiRegistrationLayout.setSpacing(4)
+    # # Step 2.2: Gel CT scan to cone beam CT registration panel
+    # self.step2_2_measuredDoseToObiRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
+    # self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
+    # self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.text = "2.2. Register gel dosimeter volume to OBI"
+    # self.step2_registrationCollapsibleButtonLayout.addWidget(self.step2_2_measuredDoseToObiRegistrationCollapsibleButton)
+    # self.step2_2_measuredDoseToObiRegistrationLayout = qt.QVBoxLayout(self.step2_2_measuredDoseToObiRegistrationCollapsibleButton)
+    # self.step2_2_measuredDoseToObiRegistrationLayout.setContentsMargins(12,4,4,4)
+    # self.step2_2_measuredDoseToObiRegistrationLayout.setSpacing(4)
 
-    # Step 2.2.1: Select OBI fiducials on OBI volume
-    self.step2_2_1_obiFiducialSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step2_2_1_obiFiducialSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step2_2_1_obiFiducialSelectionCollapsibleButton.text = "2.2.1 Select OBI fiducial points"
-    self.step2_2_measuredDoseToObiRegistrationLayout.addWidget(self.step2_2_1_obiFiducialSelectionCollapsibleButton)
-    self.step2_2_1_obiFiducialSelectionLayout = qt.QFormLayout(self.step2_2_1_obiFiducialSelectionCollapsibleButton)
-    self.step2_2_1_obiFiducialSelectionLayout.setContentsMargins(12,4,4,4)
-    self.step2_2_1_obiFiducialSelectionLayout.setSpacing(4)
+    # # Step 2.2.1: Select OBI fiducials on OBI volume
+    # self.step2_2_1_obiFiducialSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
+    # self.step2_2_1_obiFiducialSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
+    # self.step2_2_1_obiFiducialSelectionCollapsibleButton.text = "2.2.1 Select OBI fiducial points"
+    # self.step2_2_measuredDoseToObiRegistrationLayout.addWidget(self.step2_2_1_obiFiducialSelectionCollapsibleButton)
+    # self.step2_2_1_obiFiducialSelectionLayout = qt.QFormLayout(self.step2_2_1_obiFiducialSelectionCollapsibleButton)
+    # self.step2_2_1_obiFiducialSelectionLayout.setContentsMargins(12,4,4,4)
+    # self.step2_2_1_obiFiducialSelectionLayout.setSpacing(4)
 
-    # Create instructions label
-    self.step2_2_1_instructionsLayout = qt.QHBoxLayout(self.step2_2_1_obiFiducialSelectionCollapsibleButton)
-    self.step2_2_1_obiFiducialSelectionInfoLabel = qt.QLabel("Locate image plane of the OBI fiducials, then click the 'Place fiducials' button (blue arrow with red dot). Next, select the fiducial points in the displayed image plane.")
-    self.step2_2_1_obiFiducialSelectionInfoLabel.wordWrap = True
-    self.step2_2_1_helpLabel = qt.QLabel()
-    self.step2_2_1_helpLabel.pixmap = qt.QPixmap(':Icons/Help.png')
-    self.step2_2_1_helpLabel.maximumWidth = 24
-    self.step2_2_1_helpLabel.toolTip = "Hint: Use Shift key for '3D cursor' navigation."
-    self.step2_2_1_instructionsLayout.addWidget(self.step2_2_1_obiFiducialSelectionInfoLabel)
-    self.step2_2_1_instructionsLayout.addWidget(self.step2_2_1_helpLabel)
-    self.step2_2_1_obiFiducialSelectionLayout.addRow(self.step2_2_1_instructionsLayout)
+    # # Create instructions label
+    # self.step2_2_1_instructionsLayout = qt.QHBoxLayout(self.step2_2_1_obiFiducialSelectionCollapsibleButton)
+    # self.step2_2_1_obiFiducialSelectionInfoLabel = qt.QLabel("Locate image plane of the OBI fiducials, then click the 'Place fiducials' button (blue arrow with red dot). Next, select the fiducial points in the displayed image plane.")
+    # self.step2_2_1_obiFiducialSelectionInfoLabel.wordWrap = True
+    # self.step2_2_1_helpLabel = qt.QLabel()
+    # self.step2_2_1_helpLabel.pixmap = qt.QPixmap(':Icons/Help.png')
+    # self.step2_2_1_helpLabel.maximumWidth = 24
+    # self.step2_2_1_helpLabel.toolTip = "Hint: Use Shift key for '3D cursor' navigation."
+    # self.step2_2_1_instructionsLayout.addWidget(self.step2_2_1_obiFiducialSelectionInfoLabel)
+    # self.step2_2_1_instructionsLayout.addWidget(self.step2_2_1_helpLabel)
+    # self.step2_2_1_obiFiducialSelectionLayout.addRow(self.step2_2_1_instructionsLayout)
 
-    # OBI fiducial selector simple markups widget
-    self.step2_2_1_obiFiducialList = slicer.qSlicerSimpleMarkupsWidget()
-    self.step2_2_1_obiFiducialList.setMRMLScene(slicer.mrmlScene)
-    self.step2_2_1_obiFiducialSelectionLayout.addRow(self.step2_2_1_obiFiducialList)
+    # # OBI fiducial selector simple markups widget
+    # self.step2_2_1_obiFiducialList = slicer.qSlicerSimpleMarkupsWidget()
+    # self.step2_2_1_obiFiducialList.setMRMLScene(slicer.mrmlScene)
+    # self.step2_2_1_obiFiducialSelectionLayout.addRow(self.step2_2_1_obiFiducialList)
 
-    # Step 2.2.2: Select MEASURED fiducials on MEASURED dose volume
-    self.step2_2_2_measuredFiducialSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step2_2_2_measuredFiducialSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step2_2_2_measuredFiducialSelectionCollapsibleButton.text = "2.2.2 Select measured gel dosimeter fiducial points"
-    self.step2_2_measuredDoseToObiRegistrationLayout.addWidget(self.step2_2_2_measuredFiducialSelectionCollapsibleButton)
-    self.step2_2_2_measuredFiducialSelectionLayout = qt.QFormLayout(self.step2_2_2_measuredFiducialSelectionCollapsibleButton)
-    self.step2_2_2_measuredFiducialSelectionLayout.setContentsMargins(12,4,4,4)
-    self.step2_2_2_measuredFiducialSelectionLayout.setSpacing(4)
+    # # Step 2.2.2: Select MEASURED fiducials on MEASURED dose volume
+    # self.step2_2_2_measuredFiducialSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
+    # self.step2_2_2_measuredFiducialSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
+    # self.step2_2_2_measuredFiducialSelectionCollapsibleButton.text = "2.2.2 Select measured gel dosimeter fiducial points"
+    # self.step2_2_measuredDoseToObiRegistrationLayout.addWidget(self.step2_2_2_measuredFiducialSelectionCollapsibleButton)
+    # self.step2_2_2_measuredFiducialSelectionLayout = qt.QFormLayout(self.step2_2_2_measuredFiducialSelectionCollapsibleButton)
+    # self.step2_2_2_measuredFiducialSelectionLayout.setContentsMargins(12,4,4,4)
+    # self.step2_2_2_measuredFiducialSelectionLayout.setSpacing(4)
 
-    # Create instructions label
-    self.step2_2_2_instructionsLayout = qt.QHBoxLayout(self.step2_2_2_measuredFiducialSelectionCollapsibleButton)
-    self.step2_2_2_measuredFiducialSelectionInfoLabel = qt.QLabel("Select the fiducial points in the gel dosimeter volume in the same order as the OBI fiducials were selected.")
-    self.step2_2_2_measuredFiducialSelectionInfoLabel.wordWrap = True
-    self.step2_2_2_helpLabel = qt.QLabel()
-    self.step2_2_2_helpLabel.pixmap = qt.QPixmap(':Icons/Help.png')
-    self.step2_2_2_helpLabel.maximumWidth = 24
-    self.step2_2_2_helpLabel.toolTip = "Hint: Use Shift key for '3D cursor' navigation.\nHint: If gel dosimeter volume is too dark or low contrast, press left mouse button on the image and drag it to change window/level"
-    self.step2_2_2_instructionsLayout.addWidget(self.step2_2_2_measuredFiducialSelectionInfoLabel)
-    self.step2_2_2_instructionsLayout.addWidget(self.step2_2_2_helpLabel)
-    self.step2_2_2_measuredFiducialSelectionLayout.addRow(self.step2_2_2_instructionsLayout)
+    # # Create instructions label
+    # self.step2_2_2_instructionsLayout = qt.QHBoxLayout(self.step2_2_2_measuredFiducialSelectionCollapsibleButton)
+    # self.step2_2_2_measuredFiducialSelectionInfoLabel = qt.QLabel("Select the fiducial points in the gel dosimeter volume in the same order as the OBI fiducials were selected.")
+    # self.step2_2_2_measuredFiducialSelectionInfoLabel.wordWrap = True
+    # self.step2_2_2_helpLabel = qt.QLabel()
+    # self.step2_2_2_helpLabel.pixmap = qt.QPixmap(':Icons/Help.png')
+    # self.step2_2_2_helpLabel.maximumWidth = 24
+    # self.step2_2_2_helpLabel.toolTip = "Hint: Use Shift key for '3D cursor' navigation.\nHint: If gel dosimeter volume is too dark or low contrast, press left mouse button on the image and drag it to change window/level"
+    # self.step2_2_2_instructionsLayout.addWidget(self.step2_2_2_measuredFiducialSelectionInfoLabel)
+    # self.step2_2_2_instructionsLayout.addWidget(self.step2_2_2_helpLabel)
+    # self.step2_2_2_measuredFiducialSelectionLayout.addRow(self.step2_2_2_instructionsLayout)
 
-    # Measured fiducial selector simple markups widget
-    self.step2_2_2_measuredFiducialList = slicer.qSlicerSimpleMarkupsWidget()
-    self.step2_2_2_measuredFiducialList.setMRMLScene(slicer.mrmlScene)
-    self.step2_2_2_measuredFiducialSelectionLayout.addRow(self.step2_2_2_measuredFiducialList)
+    # # Measured fiducial selector simple markups widget
+    # self.step2_2_2_measuredFiducialList = slicer.qSlicerSimpleMarkupsWidget()
+    # self.step2_2_2_measuredFiducialList.setMRMLScene(slicer.mrmlScene)
+    # self.step2_2_2_measuredFiducialSelectionLayout.addRow(self.step2_2_2_measuredFiducialList)
 
-    # Step 2.2.3: Perform registration
-    self.step2_2_3_measuredToObiRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step2_2_3_measuredToObiRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step2_2_3_measuredToObiRegistrationCollapsibleButton.text = "2.2.3 Perform registration"
-    measuredToObiRegistrationCollapsibleButtonLayout = qt.QFormLayout(self.step2_2_3_measuredToObiRegistrationCollapsibleButton)
-    measuredToObiRegistrationCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
-    measuredToObiRegistrationCollapsibleButtonLayout.setSpacing(4)
-    self.step2_2_measuredDoseToObiRegistrationLayout.addWidget(self.step2_2_3_measuredToObiRegistrationCollapsibleButton)
+    # # Step 2.2.3: Perform registration
+    # self.step2_2_3_measuredToObiRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
+    # self.step2_2_3_measuredToObiRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
+    # self.step2_2_3_measuredToObiRegistrationCollapsibleButton.text = "2.2.3 Perform registration"
+    # measuredToObiRegistrationCollapsibleButtonLayout = qt.QFormLayout(self.step2_2_3_measuredToObiRegistrationCollapsibleButton)
+    # measuredToObiRegistrationCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
+    # measuredToObiRegistrationCollapsibleButtonLayout.setSpacing(4)
+    # self.step2_2_measuredDoseToObiRegistrationLayout.addWidget(self.step2_2_3_measuredToObiRegistrationCollapsibleButton)
 
-    # Registration button - register MEASURED to OBI with fiducial registration
-    self.step2_2_3_registerMeasuredToObiButton = qt.QPushButton("Register gel volume to OBI")
-    self.step2_2_3_registerMeasuredToObiButton.toolTip = "Perform fiducial registration between measured gel dosimeter volume and OBI"
-    self.step2_2_3_registerMeasuredToObiButton.name = "registerMeasuredToObiButton"
-    measuredToObiRegistrationCollapsibleButtonLayout.addRow(self.step2_2_3_registerMeasuredToObiButton)
+    # # Registration button - register MEASURED to OBI with fiducial registration
+    # self.step2_2_3_registerMeasuredToObiButton = qt.QPushButton("Register gel volume to OBI")
+    # self.step2_2_3_registerMeasuredToObiButton.toolTip = "Perform fiducial registration between measured gel dosimeter volume and OBI"
+    # self.step2_2_3_registerMeasuredToObiButton.name = "registerMeasuredToObiButton"
+    # measuredToObiRegistrationCollapsibleButtonLayout.addRow(self.step2_2_3_registerMeasuredToObiButton)
 
-    # Fiducial error label
-    self.step2_2_3_measuredToObiFiducialRegistrationErrorLabel = qt.QLabel('[Not yet performed]')
-    measuredToObiRegistrationCollapsibleButtonLayout.addRow('Fiducial registration error: ', self.step2_2_3_measuredToObiFiducialRegistrationErrorLabel)
+    # # Fiducial error label
+    # self.step2_2_3_measuredToObiFiducialRegistrationErrorLabel = qt.QLabel('[Not yet performed]')
+    # measuredToObiRegistrationCollapsibleButtonLayout.addRow('Fiducial registration error: ', self.step2_2_3_measuredToObiFiducialRegistrationErrorLabel)
 
-    # Add empty row
-    measuredToObiRegistrationCollapsibleButtonLayout.addRow(' ', None)
+    # # Add empty row
+    # measuredToObiRegistrationCollapsibleButtonLayout.addRow(' ', None)
 
-    # Note label about fiducial error
-    self.step2_2_3_NoteLabel = qt.QLabel("Note: Typical registration error is < 3mm")
-    measuredToObiRegistrationCollapsibleButtonLayout.addRow(self.step2_2_3_NoteLabel)
+    # # Note label about fiducial error
+    # self.step2_2_3_NoteLabel = qt.QLabel("Note: Typical registration error is < 3mm")
+    # measuredToObiRegistrationCollapsibleButtonLayout.addRow(self.step2_2_3_NoteLabel)
     
-    # Add substeps in button groups
-    self.step2_2_registrationCollapsibleButtonGroup = qt.QButtonGroup()
-    self.step2_2_registrationCollapsibleButtonGroup.addButton(self.step2_1_obiToPlanCtRegistrationCollapsibleButton)
-    self.step2_2_registrationCollapsibleButtonGroup.addButton(self.step2_2_measuredDoseToObiRegistrationCollapsibleButton)
+    # # Add substeps in button groups
+    # self.step2_2_registrationCollapsibleButtonGroup = qt.QButtonGroup()
+    # self.step2_2_registrationCollapsibleButtonGroup.addButton(self.step2_1_obiToPlanCtRegistrationCollapsibleButton)
+    # self.step2_2_registrationCollapsibleButtonGroup.addButton(self.step2_2_measuredDoseToObiRegistrationCollapsibleButton)
 
-    self.step2_2_measuredToObiRegistrationCollapsibleButtonGroup = qt.QButtonGroup()
-    self.step2_2_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_2_1_obiFiducialSelectionCollapsibleButton)
-    self.step2_2_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_2_2_measuredFiducialSelectionCollapsibleButton)
-    self.step2_2_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_2_3_measuredToObiRegistrationCollapsibleButton)
+    # self.step2_2_measuredToObiRegistrationCollapsibleButtonGroup = qt.QButtonGroup()
+    # self.step2_2_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_2_1_obiFiducialSelectionCollapsibleButton)
+    # self.step2_2_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_2_2_measuredFiducialSelectionCollapsibleButton)
+    # self.step2_2_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_2_3_measuredToObiRegistrationCollapsibleButton)
 
-    # Make sure first panels appear when steps are first opened (done before connections to avoid
-    # executing those steps, which are only needed when actually switching there during the workflow)
-    self.step2_2_1_obiFiducialSelectionCollapsibleButton.setProperty('collapsed', False)
-    self.step2_1_obiToPlanCtRegistrationCollapsibleButton.setProperty('collapsed', False)
+    # # Make sure first panels appear when steps are first opened (done before connections to avoid
+    # # executing those steps, which are only needed when actually switching there during the workflow)
+    # self.step2_2_1_obiFiducialSelectionCollapsibleButton.setProperty('collapsed', False)
+    # self.step2_1_obiToPlanCtRegistrationCollapsibleButton.setProperty('collapsed', False)
 
-    # Connections
-    self.step2_1_registerObiToPlanCtButton.connect('clicked()', self.onObiToPlanCTRegistration)
-    self.step2_1_translationSliders.connect('valuesChanged()', self.step2_1_rotationSliders.resetUnactiveSliders)
-    self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_MeasuredDoseToObiRegistrationSelected)
-    self.step2_2_1_obiFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_1_ObiFiducialCollectionSelected)
-    self.step2_2_2_measuredFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_2_MeasuredFiducialCollectionSelected)
-    self.step2_2_3_registerMeasuredToObiButton.connect('clicked()', self.onMeasuredToObiRegistration)
+    # # Connections
+    # self.step2_1_registerObiToPlanCtButton.connect('clicked()', self.onObiToPlanCTRegistration)
+    # self.step2_1_translationSliders.connect('valuesChanged()', self.step2_1_rotationSliders.resetUnactiveSliders)
+    # self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_MeasuredDoseToObiRegistrationSelected)
+    # self.step2_2_1_obiFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_1_ObiFiducialCollectionSelected)
+    # self.step2_2_2_measuredFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_2_MeasuredFiducialCollectionSelected)
+    # self.step2_2_3_registerMeasuredToObiButton.connect('clicked()', self.onMeasuredToObiRegistration)
 
-  def setup_step3_DoseCalibration(self):
-    # Step 3: Calibration step
-    self.step3_doseCalibrationCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step3_doseCalibrationCollapsibleButton.text = "3. Dose calibration"
-    self.sliceletPanelLayout.addWidget(self.step3_doseCalibrationCollapsibleButton)
-    self.step3_doseCalibrationCollapsibleButtonLayout = qt.QVBoxLayout(self.step3_doseCalibrationCollapsibleButton)
-    self.step3_doseCalibrationCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
-    self.step3_doseCalibrationCollapsibleButtonLayout.setSpacing(4)
+  # def setup_step3_DoseCalibration(self):
+    # # Step 3: Calibration step
+    # self.step3_doseCalibrationCollapsibleButton.setProperty('collapsedHeight', 4)
+    # self.step3_doseCalibrationCollapsibleButton.text = "3. Dose calibration"
+    # self.sliceletPanelLayout.addWidget(self.step3_doseCalibrationCollapsibleButton)
+    # self.step3_doseCalibrationCollapsibleButtonLayout = qt.QVBoxLayout(self.step3_doseCalibrationCollapsibleButton)
+    # self.step3_doseCalibrationCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
+    # self.step3_doseCalibrationCollapsibleButtonLayout.setSpacing(4)
     
-    # Step 3.1: Calibration routine (optional)
-    self.step3_1_calibrationRoutineCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step3_1_calibrationRoutineCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step3_1_calibrationRoutineCollapsibleButton.text = "3.1. Perform calibration routine (optional)"
-    self.step3_doseCalibrationCollapsibleButtonLayout.addWidget(self.step3_1_calibrationRoutineCollapsibleButton)
-    self.step3_1_calibrationRoutineLayout = qt.QFormLayout(self.step3_1_calibrationRoutineCollapsibleButton)
-    self.step3_1_calibrationRoutineLayout.setContentsMargins(12,4,4,4)
-    self.step3_1_calibrationRoutineLayout.setSpacing(4)
+    # # Step 3.1: Calibration routine (optional)
+    # self.step3_1_calibrationRoutineCollapsibleButton = ctk.ctkCollapsibleButton()
+    # self.step3_1_calibrationRoutineCollapsibleButton.setProperty('collapsedHeight', 4)
+    # self.step3_1_calibrationRoutineCollapsibleButton.text = "3.1. Perform calibration routine (optional)"
+    # self.step3_doseCalibrationCollapsibleButtonLayout.addWidget(self.step3_1_calibrationRoutineCollapsibleButton)
+    # self.step3_1_calibrationRoutineLayout = qt.QFormLayout(self.step3_1_calibrationRoutineCollapsibleButton)
+    # self.step3_1_calibrationRoutineLayout.setContentsMargins(12,4,4,4)
+    # self.step3_1_calibrationRoutineLayout.setSpacing(4)
 
-    # Info label
-    self.step3_1_calibrationRoutineLayout.addRow(qt.QLabel('Hint: Skip this step if calibration function is already available'))
+    # # Info label
+    # self.step3_1_calibrationRoutineLayout.addRow(qt.QLabel('Hint: Skip this step if calibration function is already available'))
 
-    # Load Pdd data
-    self.step3_1_pddLoadDataButton = qt.QPushButton("Load reference percent depth dose (PDD) data from CSV file")
-    self.step3_1_pddLoadDataButton.toolTip = "Load PDD data file from CSV"
-    self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_pddLoadDataButton)
+    # # Load Pdd data
+    # self.step3_1_pddLoadDataButton = qt.QPushButton("Load reference percent depth dose (PDD) data from CSV file")
+    # self.step3_1_pddLoadDataButton.toolTip = "Load PDD data file from CSV"
+    # self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_pddLoadDataButton)
 
-    # Relative dose factor
-    self.step3_1_rdfLineEdit = qt.QLineEdit()
-    self.step3_1_calibrationRoutineLayout.addRow('Relative dose factor (RDF): ', self.step3_1_rdfLineEdit)
+    # # Relative dose factor
+    # self.step3_1_rdfLineEdit = qt.QLineEdit()
+    # self.step3_1_calibrationRoutineLayout.addRow('Relative dose factor (RDF): ', self.step3_1_rdfLineEdit)
 
-    # Empty row
-    self.step3_1_calibrationRoutineLayout.addRow(' ', None)
+    # # Empty row
+    # self.step3_1_calibrationRoutineLayout.addRow(' ', None)
 
-    # Monitor units
-    self.step3_1_monitorUnitsLineEdit = qt.QLineEdit()
-    self.step3_1_calibrationRoutineLayout.addRow("Delivered monitor units (MU's): ", self.step3_1_monitorUnitsLineEdit)
+    # # Monitor units
+    # self.step3_1_monitorUnitsLineEdit = qt.QLineEdit()
+    # self.step3_1_calibrationRoutineLayout.addRow("Delivered monitor units (MU's): ", self.step3_1_monitorUnitsLineEdit)
 
-    # Averaging radius
-    self.step3_1_radiusMmFromCentrePixelLineEdit = qt.QLineEdit()
-    self.step3_1_radiusMmFromCentrePixelLineEdit.toolTip = "Radius of the cylinder that is extracted around central axis to get optical attenuation values per depth"
-    self.step3_1_calibrationRoutineLayout.addRow('Averaging radius (mm): ', self.step3_1_radiusMmFromCentrePixelLineEdit)
+    # # Averaging radius
+    # self.step3_1_radiusMmFromCentrePixelLineEdit = qt.QLineEdit()
+    # self.step3_1_radiusMmFromCentrePixelLineEdit.toolTip = "Radius of the cylinder that is extracted around central axis to get optical attenuation values per depth"
+    # self.step3_1_calibrationRoutineLayout.addRow('Averaging radius (mm): ', self.step3_1_radiusMmFromCentrePixelLineEdit)
 
-    # Align Pdd data and CALIBRATION data based on region of interest selected
-    self.step3_1_alignCalibrationCurvesButton = qt.QPushButton("Plot reference and gel PDD data")
-    self.step3_1_alignCalibrationCurvesButton.toolTip = "Align PDD data optical attenuation values with experimental optical attenuation values (coming from calibration gel volume)"
-    self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_alignCalibrationCurvesButton)
+    # # Align Pdd data and CALIBRATION data based on region of interest selected
+    # self.step3_1_alignCalibrationCurvesButton = qt.QPushButton("Plot reference and gel PDD data")
+    # self.step3_1_alignCalibrationCurvesButton.toolTip = "Align PDD data optical attenuation values with experimental optical attenuation values (coming from calibration gel volume)"
+    # self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_alignCalibrationCurvesButton)
 
-    # Controls to adjust alignment
-    self.step3_1_adjustAlignmentControlsLayout = qt.QHBoxLayout(self.step3_1_calibrationRoutineCollapsibleButton)
-    self.step3_1_adjustAlignmentLabel = qt.QLabel('Manual adjustment: ')
-    self.step3_1_xTranslationLabel = qt.QLabel('  X shift:')
-    self.step3_1_xTranslationSpinBox = qt.QDoubleSpinBox()
-    self.step3_1_xTranslationSpinBox.decimals = 2
-    self.step3_1_xTranslationSpinBox.singleStep = 0.01
-    self.step3_1_xTranslationSpinBox.value = 0
-    self.step3_1_xTranslationSpinBox.minimum = -10.0
-    self.step3_1_xTranslationSpinBox.maximumWidth = 48
-    self.step3_1_yScaleLabel = qt.QLabel('  Y scale:')
-    self.step3_1_yScaleSpinBox = qt.QDoubleSpinBox()
-    self.step3_1_yScaleSpinBox.decimals = 3
-    self.step3_1_yScaleSpinBox.singleStep = 0.01
-    self.step3_1_yScaleSpinBox.value = 1
-    self.step3_1_yScaleSpinBox.minimum = 0
-    self.step3_1_yScaleSpinBox.maximum = 100000
-    self.step3_1_yScaleSpinBox.maximumWidth = 60
-    self.step3_1_yTranslationLabel = qt.QLabel('  Y shift:')
-    self.step3_1_yTranslationSpinBox = qt.QDoubleSpinBox()
-    self.step3_1_yTranslationSpinBox.decimals = 2
-    self.step3_1_yTranslationSpinBox.singleStep = 0.1
-    self.step3_1_yTranslationSpinBox.value = 0
-    self.step3_1_yTranslationSpinBox.minimum = -99.9
-    self.step3_1_yTranslationSpinBox.maximumWidth = 48
-    self.step3_1_adjustAlignmentControlsLayout.addWidget(self.step3_1_adjustAlignmentLabel)
-    self.step3_1_adjustAlignmentControlsLayout.addWidget(self.step3_1_xTranslationLabel)
-    self.step3_1_adjustAlignmentControlsLayout.addWidget(self.step3_1_xTranslationSpinBox)
-    self.step3_1_adjustAlignmentControlsLayout.addWidget(self.step3_1_yScaleLabel)
-    self.step3_1_adjustAlignmentControlsLayout.addWidget(self.step3_1_yScaleSpinBox)
-    self.step3_1_adjustAlignmentControlsLayout.addWidget(self.step3_1_yTranslationLabel)
-    self.step3_1_adjustAlignmentControlsLayout.addWidget(self.step3_1_yTranslationSpinBox)
-    self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_adjustAlignmentControlsLayout)
+    # # Controls to adjust alignment
+    # self.step3_1_adjustAlignmentControlsLayout = qt.QHBoxLayout(self.step3_1_calibrationRoutineCollapsibleButton)
+    # self.step3_1_adjustAlignmentLabel = qt.QLabel('Manual adjustment: ')
+    # self.step3_1_xTranslationLabel = qt.QLabel('  X shift:')
+    # self.step3_1_xTranslationSpinBox = qt.QDoubleSpinBox()
+    # self.step3_1_xTranslationSpinBox.decimals = 2
+    # self.step3_1_xTranslationSpinBox.singleStep = 0.01
+    # self.step3_1_xTranslationSpinBox.value = 0
+    # self.step3_1_xTranslationSpinBox.minimum = -10.0
+    # self.step3_1_xTranslationSpinBox.maximumWidth = 48
+    # self.step3_1_yScaleLabel = qt.QLabel('  Y scale:')
+    # self.step3_1_yScaleSpinBox = qt.QDoubleSpinBox()
+    # self.step3_1_yScaleSpinBox.decimals = 3
+    # self.step3_1_yScaleSpinBox.singleStep = 0.01
+    # self.step3_1_yScaleSpinBox.value = 1
+    # self.step3_1_yScaleSpinBox.minimum = 0
+    # self.step3_1_yScaleSpinBox.maximum = 100000
+    # self.step3_1_yScaleSpinBox.maximumWidth = 60
+    # self.step3_1_yTranslationLabel = qt.QLabel('  Y shift:')
+    # self.step3_1_yTranslationSpinBox = qt.QDoubleSpinBox()
+    # self.step3_1_yTranslationSpinBox.decimals = 2
+    # self.step3_1_yTranslationSpinBox.singleStep = 0.1
+    # self.step3_1_yTranslationSpinBox.value = 0
+    # self.step3_1_yTranslationSpinBox.minimum = -99.9
+    # self.step3_1_yTranslationSpinBox.maximumWidth = 48
+    # self.step3_1_adjustAlignmentControlsLayout.addWidget(self.step3_1_adjustAlignmentLabel)
+    # self.step3_1_adjustAlignmentControlsLayout.addWidget(self.step3_1_xTranslationLabel)
+    # self.step3_1_adjustAlignmentControlsLayout.addWidget(self.step3_1_xTranslationSpinBox)
+    # self.step3_1_adjustAlignmentControlsLayout.addWidget(self.step3_1_yScaleLabel)
+    # self.step3_1_adjustAlignmentControlsLayout.addWidget(self.step3_1_yScaleSpinBox)
+    # self.step3_1_adjustAlignmentControlsLayout.addWidget(self.step3_1_yTranslationLabel)
+    # self.step3_1_adjustAlignmentControlsLayout.addWidget(self.step3_1_yTranslationSpinBox)
+    # self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_adjustAlignmentControlsLayout)
 
-    # Add empty row
-    self.step3_1_calibrationRoutineLayout.addRow(' ', None)
+    # # Add empty row
+    # self.step3_1_calibrationRoutineLayout.addRow(' ', None)
 
-    # Create dose information button
-    self.step3_1_computeDoseFromPddButton = qt.QPushButton("Calculate dose from reference PDD")
-    self.step3_1_computeDoseFromPddButton.toolTip = "Compute dose from PDD data based on RDF and MUs"
-    self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_computeDoseFromPddButton)
+    # # Create dose information button
+    # self.step3_1_computeDoseFromPddButton = qt.QPushButton("Calculate dose from reference PDD")
+    # self.step3_1_computeDoseFromPddButton.toolTip = "Compute dose from PDD data based on RDF and MUs"
+    # self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_computeDoseFromPddButton)
 
-    # Empty row
-    self.step3_1_calibrationRoutineLayout.addRow(' ', None)
+    # # Empty row
+    # self.step3_1_calibrationRoutineLayout.addRow(' ', None)
 
-    # Show chart of optical attenuation vs. dose curve and remove selected points
-    self.step3_1_oaVsDoseCurveControlsLayout = qt.QHBoxLayout(self.step3_1_calibrationRoutineCollapsibleButton)
-    self.step3_1_showOpticalAttenuationVsDoseCurveButton = qt.QPushButton("Plot optical attenuation vs dose")
-    self.step3_1_showOpticalAttenuationVsDoseCurveButton.toolTip = "Show optical attenuation vs. Dose curve to determine the order of polynomial to fit."
-    self.step3_1_removeSelectedPointsFromOpticalAttenuationVsDoseCurveButton = qt.QPushButton("Optional: Remove selected points from plot")
-    self.step3_1_removeSelectedPointsFromOpticalAttenuationVsDoseCurveButton.toolTip = "Removes the selected points (typically outliers) from the OA vs Dose curve so that they are omitted during polynomial fitting.\nTo select points, hold down the right mouse button and draw a selection rectangle in the chart view."
-    self.step3_1_helpLabel = qt.QLabel()
-    self.step3_1_helpLabel.pixmap = qt.QPixmap(':Icons/Help.png')
-    self.step3_1_helpLabel.maximumWidth = 24
-    self.step3_1_helpLabel.toolTip = "To select points in the plot, hold down the right mouse button and draw a selection rectangle in the chart view."
-    self.step3_1_oaVsDoseCurveControlsLayout.addWidget(self.step3_1_showOpticalAttenuationVsDoseCurveButton)
-    self.step3_1_oaVsDoseCurveControlsLayout.addWidget(self.step3_1_removeSelectedPointsFromOpticalAttenuationVsDoseCurveButton)
-    self.step3_1_oaVsDoseCurveControlsLayout.addWidget(self.step3_1_helpLabel)
-    self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_oaVsDoseCurveControlsLayout)
+    # # Show chart of optical attenuation vs. dose curve and remove selected points
+    # self.step3_1_oaVsDoseCurveControlsLayout = qt.QHBoxLayout(self.step3_1_calibrationRoutineCollapsibleButton)
+    # self.step3_1_showOpticalAttenuationVsDoseCurveButton = qt.QPushButton("Plot optical attenuation vs dose")
+    # self.step3_1_showOpticalAttenuationVsDoseCurveButton.toolTip = "Show optical attenuation vs. Dose curve to determine the order of polynomial to fit."
+    # self.step3_1_removeSelectedPointsFromOpticalAttenuationVsDoseCurveButton = qt.QPushButton("Optional: Remove selected points from plot")
+    # self.step3_1_removeSelectedPointsFromOpticalAttenuationVsDoseCurveButton.toolTip = "Removes the selected points (typically outliers) from the OA vs Dose curve so that they are omitted during polynomial fitting.\nTo select points, hold down the right mouse button and draw a selection rectangle in the chart view."
+    # self.step3_1_helpLabel = qt.QLabel()
+    # self.step3_1_helpLabel.pixmap = qt.QPixmap(':Icons/Help.png')
+    # self.step3_1_helpLabel.maximumWidth = 24
+    # self.step3_1_helpLabel.toolTip = "To select points in the plot, hold down the right mouse button and draw a selection rectangle in the chart view."
+    # self.step3_1_oaVsDoseCurveControlsLayout.addWidget(self.step3_1_showOpticalAttenuationVsDoseCurveButton)
+    # self.step3_1_oaVsDoseCurveControlsLayout.addWidget(self.step3_1_removeSelectedPointsFromOpticalAttenuationVsDoseCurveButton)
+    # self.step3_1_oaVsDoseCurveControlsLayout.addWidget(self.step3_1_helpLabel)
+    # self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_oaVsDoseCurveControlsLayout)
     
-    # Add empty row
-    self.step3_1_calibrationRoutineLayout.addRow(' ', None)
+    # # Add empty row
+    # self.step3_1_calibrationRoutineLayout.addRow(' ', None)
 
-    # Find polynomial fit
-    self.step3_1_selectOrderOfPolynomialFitButton = qt.QComboBox()
-    self.step3_1_selectOrderOfPolynomialFitButton.addItem('1')
-    self.step3_1_selectOrderOfPolynomialFitButton.addItem('2')
-    self.step3_1_selectOrderOfPolynomialFitButton.addItem('3')
-    self.step3_1_selectOrderOfPolynomialFitButton.addItem('4')
-    self.step3_1_calibrationRoutineLayout.addRow('Fit with what order polynomial function:', self.step3_1_selectOrderOfPolynomialFitButton)
+    # # Find polynomial fit
+    # self.step3_1_selectOrderOfPolynomialFitButton = qt.QComboBox()
+    # self.step3_1_selectOrderOfPolynomialFitButton.addItem('1')
+    # self.step3_1_selectOrderOfPolynomialFitButton.addItem('2')
+    # self.step3_1_selectOrderOfPolynomialFitButton.addItem('3')
+    # self.step3_1_selectOrderOfPolynomialFitButton.addItem('4')
+    # self.step3_1_calibrationRoutineLayout.addRow('Fit with what order polynomial function:', self.step3_1_selectOrderOfPolynomialFitButton)
     
-    self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton = qt.QPushButton("Fit data and determine calibration function")
-    self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton.toolTip = "Finds the line of best fit based on the data and polynomial order provided"
-    self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton)
+    # self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton = qt.QPushButton("Fit data and determine calibration function")
+    # self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton.toolTip = "Finds the line of best fit based on the data and polynomial order provided"
+    # self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton)
 
-    self.step3_1_fitPolynomialResidualsLabel = qt.QLabel()
-    self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_fitPolynomialResidualsLabel)
+    # self.step3_1_fitPolynomialResidualsLabel = qt.QLabel()
+    # self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_fitPolynomialResidualsLabel)
 
-    # Step 3.2: Apply calibration
-    self.step3_2_applyCalibrationCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step3_2_applyCalibrationCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step3_2_applyCalibrationCollapsibleButton.text = "3.2. Apply calibration"
-    self.step3_doseCalibrationCollapsibleButtonLayout.addWidget(self.step3_2_applyCalibrationCollapsibleButton)
-    self.step3_2_applyCalibrationLayout = qt.QFormLayout(self.step3_2_applyCalibrationCollapsibleButton)
-    self.step3_2_applyCalibrationLayout.setContentsMargins(12,4,4,4)
-    self.step3_2_applyCalibrationLayout.setSpacing(4)
+    # # Step 3.2: Apply calibration
+    # self.step3_2_applyCalibrationCollapsibleButton = ctk.ctkCollapsibleButton()
+    # self.step3_2_applyCalibrationCollapsibleButton.setProperty('collapsedHeight', 4)
+    # self.step3_2_applyCalibrationCollapsibleButton.text = "3.2. Apply calibration"
+    # self.step3_doseCalibrationCollapsibleButtonLayout.addWidget(self.step3_2_applyCalibrationCollapsibleButton)
+    # self.step3_2_applyCalibrationLayout = qt.QFormLayout(self.step3_2_applyCalibrationCollapsibleButton)
+    # self.step3_2_applyCalibrationLayout.setContentsMargins(12,4,4,4)
+    # self.step3_2_applyCalibrationLayout.setSpacing(4)
 
-    # Calibration function label
-    self.step3_2_calibrationFunctionLabel = qt.QLabel("Calibration function:\n(either determined from step 3.1., or can be manually input/altered)")
-    self.step3_2_calibrationFunctionLabel.wordWrap = True
-    self.step3_2_applyCalibrationLayout.addRow(self.step3_2_calibrationFunctionLabel)
+    # # Calibration function label
+    # self.step3_2_calibrationFunctionLabel = qt.QLabel("Calibration function:\n(either determined from step 3.1., or can be manually input/altered)")
+    # self.step3_2_calibrationFunctionLabel.wordWrap = True
+    # self.step3_2_applyCalibrationLayout.addRow(self.step3_2_calibrationFunctionLabel)
 
-    # Dose calibration function input fields
-    self.step3_2_calibrationFunctionLayout = qt.QGridLayout(self.step3_1_calibrationRoutineCollapsibleButton)
-    self.step3_2_doseLabel = qt.QLabel('Dose (Gy) = ')
-    self.step3_2_calibrationFunctionOrder0LineEdit = qt.QLineEdit()
-    self.step3_2_calibrationFunctionOrder0LineEdit.maximumWidth = 64
-    self.step3_2_calibrationFunctionOrder0Label = qt.QLabel(' OA<span style=" font-size:8pt; vertical-align:super;">0</span> + ')
-    self.step3_2_calibrationFunctionOrder1LineEdit = qt.QLineEdit()
-    self.step3_2_calibrationFunctionOrder1LineEdit.maximumWidth = 64
-    self.step3_2_calibrationFunctionOrder1Label = qt.QLabel(' OA<span style=" font-size:8pt; vertical-align:super;">1</span> + ')
-    self.step3_2_calibrationFunctionOrder2LineEdit = qt.QLineEdit()
-    self.step3_2_calibrationFunctionOrder2LineEdit.maximumWidth = 64
-    self.step3_2_calibrationFunctionOrder2Label = qt.QLabel(' OA<span style=" font-size:8pt; vertical-align:super;">2</span> + ')
-    self.step3_2_calibrationFunctionOrder3LineEdit = qt.QLineEdit()
-    self.step3_2_calibrationFunctionOrder3LineEdit.maximumWidth = 64
-    self.step3_2_calibrationFunctionOrder3Label = qt.QLabel(' OA<span style=" font-size:8pt; vertical-align:super;">3</span> + ')
-    self.step3_2_calibrationFunctionOrder4LineEdit = qt.QLineEdit()
-    self.step3_2_calibrationFunctionOrder4LineEdit.maximumWidth = 64
-    self.step3_2_calibrationFunctionOrder4Label = qt.QLabel(' OA<span style=" font-size:8pt; vertical-align:super;">4</span>')
-    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_doseLabel,0,0)
-    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder0LineEdit,0,1)
-    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder0Label,0,2)
-    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder1LineEdit,0,3)
-    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder1Label,0,4)
-    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder2LineEdit,0,5)
-    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder2Label,0,6)
-    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder3LineEdit,1,1)
-    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder3Label,1,2)
-    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder4LineEdit,1,3)
-    self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder4Label,1,4)
-    self.step3_2_applyCalibrationLayout.addRow(self.step3_2_calibrationFunctionLayout)
+    # # Dose calibration function input fields
+    # self.step3_2_calibrationFunctionLayout = qt.QGridLayout(self.step3_1_calibrationRoutineCollapsibleButton)
+    # self.step3_2_doseLabel = qt.QLabel('Dose (Gy) = ')
+    # self.step3_2_calibrationFunctionOrder0LineEdit = qt.QLineEdit()
+    # self.step3_2_calibrationFunctionOrder0LineEdit.maximumWidth = 64
+    # self.step3_2_calibrationFunctionOrder0Label = qt.QLabel(' OA<span style=" font-size:8pt; vertical-align:super;">0</span> + ')
+    # self.step3_2_calibrationFunctionOrder1LineEdit = qt.QLineEdit()
+    # self.step3_2_calibrationFunctionOrder1LineEdit.maximumWidth = 64
+    # self.step3_2_calibrationFunctionOrder1Label = qt.QLabel(' OA<span style=" font-size:8pt; vertical-align:super;">1</span> + ')
+    # self.step3_2_calibrationFunctionOrder2LineEdit = qt.QLineEdit()
+    # self.step3_2_calibrationFunctionOrder2LineEdit.maximumWidth = 64
+    # self.step3_2_calibrationFunctionOrder2Label = qt.QLabel(' OA<span style=" font-size:8pt; vertical-align:super;">2</span> + ')
+    # self.step3_2_calibrationFunctionOrder3LineEdit = qt.QLineEdit()
+    # self.step3_2_calibrationFunctionOrder3LineEdit.maximumWidth = 64
+    # self.step3_2_calibrationFunctionOrder3Label = qt.QLabel(' OA<span style=" font-size:8pt; vertical-align:super;">3</span> + ')
+    # self.step3_2_calibrationFunctionOrder4LineEdit = qt.QLineEdit()
+    # self.step3_2_calibrationFunctionOrder4LineEdit.maximumWidth = 64
+    # self.step3_2_calibrationFunctionOrder4Label = qt.QLabel(' OA<span style=" font-size:8pt; vertical-align:super;">4</span>')
+    # self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_doseLabel,0,0)
+    # self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder0LineEdit,0,1)
+    # self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder0Label,0,2)
+    # self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder1LineEdit,0,3)
+    # self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder1Label,0,4)
+    # self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder2LineEdit,0,5)
+    # self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder2Label,0,6)
+    # self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder3LineEdit,1,1)
+    # self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder3Label,1,2)
+    # self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder4LineEdit,1,3)
+    # self.step3_2_calibrationFunctionLayout.addWidget(self.step3_2_calibrationFunctionOrder4Label,1,4)
+    # self.step3_2_applyCalibrationLayout.addRow(self.step3_2_calibrationFunctionLayout)
 
-    # Export calibration polynomial coefficients to CSV
-    self.step3_2_exportCalibrationToCSV = qt.QPushButton("Optional: Export calibration points to a CSV file")
-    self.step3_2_exportCalibrationToCSV.toolTip = "Export optical attenuation to dose calibration plot points (if points were removed, those are not exported).\nIf polynomial fitting has been done, export the coefficients as well."
-    self.step3_2_applyCalibrationLayout.addRow(self.step3_2_exportCalibrationToCSV)
+    # # Export calibration polynomial coefficients to CSV
+    # self.step3_2_exportCalibrationToCSV = qt.QPushButton("Optional: Export calibration points to a CSV file")
+    # self.step3_2_exportCalibrationToCSV.toolTip = "Export optical attenuation to dose calibration plot points (if points were removed, those are not exported).\nIf polynomial fitting has been done, export the coefficients as well."
+    # self.step3_2_applyCalibrationLayout.addRow(self.step3_2_exportCalibrationToCSV)
     
-    # Empty row
-    self.step3_1_calibrationRoutineLayout.addRow(' ', None)
+    # # Empty row
+    # self.step3_1_calibrationRoutineLayout.addRow(' ', None)
 
-    # Apply calibration button
-    self.step3_2_applyCalibrationButton = qt.QPushButton("Apply calibration")
-    self.step3_2_applyCalibrationButton.toolTip = "Apply fitted polynomial on MEASURED volume"
-    self.step3_2_applyCalibrationLayout.addRow(self.step3_2_applyCalibrationButton)
+    # # Apply calibration button
+    # self.step3_2_applyCalibrationButton = qt.QPushButton("Apply calibration")
+    # self.step3_2_applyCalibrationButton.toolTip = "Apply fitted polynomial on MEASURED volume"
+    # self.step3_2_applyCalibrationLayout.addRow(self.step3_2_applyCalibrationButton)
 
-    self.step3_2_applyCalibrationStatusLabel = qt.QLabel()
-    self.step3_2_applyCalibrationLayout.addRow(' ', self.step3_2_applyCalibrationStatusLabel)
+    # self.step3_2_applyCalibrationStatusLabel = qt.QLabel()
+    # self.step3_2_applyCalibrationLayout.addRow(' ', self.step3_2_applyCalibrationStatusLabel)
 
-    # Add substeps in a button group
-    self.step3_calibrationCollapsibleButtonGroup = qt.QButtonGroup()
-    self.step3_calibrationCollapsibleButtonGroup.addButton(self.step3_1_calibrationRoutineCollapsibleButton)
-    self.step3_calibrationCollapsibleButtonGroup.addButton(self.step3_2_applyCalibrationCollapsibleButton)
+    # # Add substeps in a button group
+    # self.step3_calibrationCollapsibleButtonGroup = qt.QButtonGroup()
+    # self.step3_calibrationCollapsibleButtonGroup.addButton(self.step3_1_calibrationRoutineCollapsibleButton)
+    # self.step3_calibrationCollapsibleButtonGroup.addButton(self.step3_2_applyCalibrationCollapsibleButton)
 
-    # Make sure first panels appear when steps are first opened (done before connections to avoid
-    # executing those steps, which are only needed when actually switching there during the workflow)
-    self.step3_1_calibrationRoutineCollapsibleButton.setProperty('collapsed', False)
+    # # Make sure first panels appear when steps are first opened (done before connections to avoid
+    # # executing those steps, which are only needed when actually switching there during the workflow)
+    # self.step3_1_calibrationRoutineCollapsibleButton.setProperty('collapsed', False)
 
-    # Connections
-    self.step3_1_pddLoadDataButton.connect('clicked()', self.onLoadPddDataRead)
-    self.step3_1_alignCalibrationCurvesButton.connect('clicked()', self.onAlignCalibrationCurves)
-    self.step3_1_xTranslationSpinBox.connect('valueChanged(double)', self.onAdjustAlignmentValueChanged)
-    self.step3_1_yScaleSpinBox.connect('valueChanged(double)', self.onAdjustAlignmentValueChanged)
-    self.step3_1_yTranslationSpinBox.connect('valueChanged(double)', self.onAdjustAlignmentValueChanged)
-    self.step3_1_computeDoseFromPddButton.connect('clicked()', self.onComputeDoseFromPdd)
-    self.step3_1_calibrationRoutineCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep3_1_CalibrationRoutineSelected)
-    self.step3_1_showOpticalAttenuationVsDoseCurveButton.connect('clicked()', self.onShowOpticalAttenuationVsDoseCurve)
-    self.step3_1_removeSelectedPointsFromOpticalAttenuationVsDoseCurveButton.connect('clicked()', self.onRemoveSelectedPointsFromOpticalAttenuationVsDoseCurve)
-    self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton.connect('clicked()', self.onFitPolynomialToOpticalAttenuationVsDoseCurve)
-    self.step3_2_exportCalibrationToCSV.connect('clicked()', self.onExportCalibration)
-    self.step3_2_applyCalibrationButton.connect('clicked()', self.onApplyCalibration)
+    # # Connections
+    # self.step3_1_pddLoadDataButton.connect('clicked()', self.onLoadPddDataRead)
+    # self.step3_1_alignCalibrationCurvesButton.connect('clicked()', self.onAlignCalibrationCurves)
+    # self.step3_1_xTranslationSpinBox.connect('valueChanged(double)', self.onAdjustAlignmentValueChanged)
+    # self.step3_1_yScaleSpinBox.connect('valueChanged(double)', self.onAdjustAlignmentValueChanged)
+    # self.step3_1_yTranslationSpinBox.connect('valueChanged(double)', self.onAdjustAlignmentValueChanged)
+    # self.step3_1_computeDoseFromPddButton.connect('clicked()', self.onComputeDoseFromPdd)
+    # self.step3_1_calibrationRoutineCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep3_1_CalibrationRoutineSelected)
+    # self.step3_1_showOpticalAttenuationVsDoseCurveButton.connect('clicked()', self.onShowOpticalAttenuationVsDoseCurve)
+    # self.step3_1_removeSelectedPointsFromOpticalAttenuationVsDoseCurveButton.connect('clicked()', self.onRemoveSelectedPointsFromOpticalAttenuationVsDoseCurve)
+    # self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton.connect('clicked()', self.onFitPolynomialToOpticalAttenuationVsDoseCurve)
+    # self.step3_2_exportCalibrationToCSV.connect('clicked()', self.onExportCalibration)
+    # self.step3_2_applyCalibrationButton.connect('clicked()', self.onApplyCalibration)
     
-  def setup_Step4_DoseComparison(self):
-    # Step 4: Dose comparison and analysis
-    self.step4_doseComparisonCollapsibleButton.setProperty('collapsedHeight', 4)
-    # self.step4_doseComparisonCollapsibleButton.text = "4. 3D dose comparison"
-    self.step4_doseComparisonCollapsibleButton.text = "4. 3D gamma dose comparison" #TODO: Switch to line above when more dose comparisons are added
-    self.sliceletPanelLayout.addWidget(self.step4_doseComparisonCollapsibleButton)
-    self.step4_doseComparisonCollapsibleButtonLayout = qt.QFormLayout(self.step4_doseComparisonCollapsibleButton)
-    self.step4_doseComparisonCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
-    self.step4_doseComparisonCollapsibleButtonLayout.setSpacing(4)
+    
+    
+    
+  # def setup_Step4_DoseComparison(self):
+    # # Step 4: Dose comparison and analysis
+    # self.step4_doseComparisonCollapsibleButton.setProperty('collapsedHeight', 4)
+    # # self.step4_doseComparisonCollapsibleButton.text = "4. 3D dose comparison"
+    # self.step4_doseComparisonCollapsibleButton.text = "4. 2D gamma dose comparison" #TODO: Switch to line above when more dose comparisons are added
+    # self.sliceletPanelLayout.addWidget(self.step4_doseComparisonCollapsibleButton)
+    # self.step4_doseComparisonCollapsibleButtonLayout = qt.QFormLayout(self.step4_doseComparisonCollapsibleButton)
+    # self.step4_doseComparisonCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
+    # self.step4_doseComparisonCollapsibleButtonLayout.setSpacing(4)
 
-    # Info label
-    self.step4_doseComparisonReferenceVolumeLabel = qt.QLabel('Calibration has not been performed!')
-    self.step4_doseComparisonReferenceVolumeLabel.wordWrap = True
-    self.step4_doseComparisonCollapsibleButtonLayout.addRow('Plan dose volume (reference):', self.step4_doseComparisonReferenceVolumeLabel)
-    self.step4_doseComparisonEvaluatedVolumeLabel = qt.QLabel('Calibration has not been performed!')
-    self.step4_doseComparisonEvaluatedVolumeLabel.wordWrap = True
-    self.step4_doseComparisonCollapsibleButtonLayout.addRow('Calibrated gel volume (evaluated):', self.step4_doseComparisonEvaluatedVolumeLabel)
+    # # Info label
+    # self.step4_doseComparisonReferenceVolumeLabel = qt.QLabel('Calibration has not been performed!')
+    # self.step4_doseComparisonReferenceVolumeLabel.wordWrap = True
+    # self.step4_doseComparisonCollapsibleButtonLayout.addRow('Plan dose volume (reference):', self.step4_doseComparisonReferenceVolumeLabel)
+    # self.step4_doseComparisonEvaluatedVolumeLabel = qt.QLabel('Calibration has not been performed!')
+    # self.step4_doseComparisonEvaluatedVolumeLabel.wordWrap = True
+    # self.step4_doseComparisonCollapsibleButtonLayout.addRow('Calibrated gel volume (evaluated):', self.step4_doseComparisonEvaluatedVolumeLabel)
 
-    # Mask segmentation selector
-    from qSlicerSegmentationsModuleWidgetsPythonQt import qMRMLSegmentSelectorWidget
-    self.step4_maskSegmentationSelector = qMRMLSegmentSelectorWidget()
-    self.step4_maskSegmentationSelector.setMRMLScene(slicer.mrmlScene)
-    self.step4_maskSegmentationSelector.noneEnabled = True
-    self.step4_doseComparisonCollapsibleButtonLayout.addRow("Mask structure: ", self.step4_maskSegmentationSelector)
+    # # Mask segmentation selector
+    # from qSlicerSegmentationsModuleWidgetsPythonQt import qMRMLSegmentSelectorWidget
+    # self.step4_maskSegmentationSelector = qMRMLSegmentSelectorWidget()
+    # self.step4_maskSegmentationSelector.setMRMLScene(slicer.mrmlScene)
+    # self.step4_maskSegmentationSelector.noneEnabled = True
+    # self.step4_doseComparisonCollapsibleButtonLayout.addRow("Mask structure: ", self.step4_maskSegmentationSelector)
 
-    # Collapsible buttons for substeps
-    self.step4_1_gammaDoseComparisonCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step4_1_gammaDoseComparisonCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step4_1_gammaDoseComparisonCollapsibleButton.setVisible(False) # TODO:
-    self.step4_2_chiDoseComparisonCollapsibleButton = ctk.ctkCollapsibleButton() #TODO:
-    self.step4_2_chiDoseComparisonCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step4_2_chiDoseComparisonCollapsibleButton.setVisible(False) # TODO:
-    self.step4_3_doseDifferenceComparisonCollapsibleButton = ctk.ctkCollapsibleButton() #TODO:
-    self.step4_3_doseDifferenceComparisonCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step4_3_doseDifferenceComparisonCollapsibleButton.setVisible(False) # TODO:
+    # # Collapsible buttons for substeps
+    # self.step4_1_gammaDoseComparisonCollapsibleButton = ctk.ctkCollapsibleButton()
+    # self.step4_1_gammaDoseComparisonCollapsibleButton.setProperty('collapsedHeight', 4)
+    # self.step4_1_gammaDoseComparisonCollapsibleButton.setVisible(False) # TODO:
+    # self.step4_2_chiDoseComparisonCollapsibleButton = ctk.ctkCollapsibleButton() #TODO:
+    # self.step4_2_chiDoseComparisonCollapsibleButton.setProperty('collapsedHeight', 4)
+    # self.step4_2_chiDoseComparisonCollapsibleButton.setVisible(False) # TODO:
+    # self.step4_3_doseDifferenceComparisonCollapsibleButton = ctk.ctkCollapsibleButton() #TODO:
+    # self.step4_3_doseDifferenceComparisonCollapsibleButton.setProperty('collapsedHeight', 4)
+    # self.step4_3_doseDifferenceComparisonCollapsibleButton.setVisible(False) # TODO:
 
-    self.collapsibleButtonsGroupForDoseComparisonAndAnalysis = qt.QButtonGroup()
-    self.collapsibleButtonsGroupForDoseComparisonAndAnalysis.addButton(self.step4_1_gammaDoseComparisonCollapsibleButton)
-    self.collapsibleButtonsGroupForDoseComparisonAndAnalysis.addButton(self.step4_2_chiDoseComparisonCollapsibleButton)
-    self.collapsibleButtonsGroupForDoseComparisonAndAnalysis.addButton(self.step4_3_doseDifferenceComparisonCollapsibleButton)
+    # self.collapsibleButtonsGroupForDoseComparisonAndAnalysis = qt.QButtonGroup()
+    # self.collapsibleButtonsGroupForDoseComparisonAndAnalysis.addButton(self.step4_1_gammaDoseComparisonCollapsibleButton)
+    # self.collapsibleButtonsGroupForDoseComparisonAndAnalysis.addButton(self.step4_2_chiDoseComparisonCollapsibleButton)
+    # self.collapsibleButtonsGroupForDoseComparisonAndAnalysis.addButton(self.step4_3_doseDifferenceComparisonCollapsibleButton)
 
-    # 4.1. Gamma dose comparison
-    self.step4_1_gammaDoseComparisonCollapsibleButton.text = "4.1. Gamma dose comparison"
-    self.step4_1_gammaDoseComparisonCollapsibleButtonLayout = qt.QFormLayout(self.step4_1_gammaDoseComparisonCollapsibleButton)
-    self.step4_doseComparisonCollapsibleButtonLayout.addRow(self.step4_1_gammaDoseComparisonCollapsibleButton)
-    self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
-    self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.setSpacing(4)
+    # # 4.1. Gamma dose comparison
+    # self.step4_1_gammaDoseComparisonCollapsibleButton.text = "4.1. Gamma dose comparison"
+    # self.step4_1_gammaDoseComparisonCollapsibleButtonLayout = qt.QFormLayout(self.step4_1_gammaDoseComparisonCollapsibleButton)
+    # self.step4_doseComparisonCollapsibleButtonLayout.addRow(self.step4_1_gammaDoseComparisonCollapsibleButton)
+    # self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
+    # self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.setSpacing(4)
 
-    # Temporarily assign main layout to 4.1. gamma layout until more dose comparisons are added
-    #TODO: Remove when more dose comparisons are added
-    self.step4_1_gammaDoseComparisonCollapsibleButton = self.step4_doseComparisonCollapsibleButton
-    self.step4_1_gammaDoseComparisonCollapsibleButtonLayout = self.step4_doseComparisonCollapsibleButtonLayout
+    # # Temporarily assign main layout to 4.1. gamma layout until more dose comparisons are added
+    # #TODO: Remove when more dose comparisons are added
+    # self.step4_1_gammaDoseComparisonCollapsibleButton = self.step4_doseComparisonCollapsibleButton
+    # self.step4_1_gammaDoseComparisonCollapsibleButtonLayout = self.step4_doseComparisonCollapsibleButtonLayout
 
-    # DTA
-    self.step4_1_dtaDistanceToleranceMmSpinBox = qt.QDoubleSpinBox()
-    self.step4_1_dtaDistanceToleranceMmSpinBox.setValue(3.0)
-    self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow('Distance-to-agreement criteria (mm): ', self.step4_1_dtaDistanceToleranceMmSpinBox)
+    # # DTA
+    # self.step4_1_dtaDistanceToleranceMmSpinBox = qt.QDoubleSpinBox()
+    # self.step4_1_dtaDistanceToleranceMmSpinBox.setValue(3.0)
+    # self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow('Distance-to-agreement criteria (mm): ', self.step4_1_dtaDistanceToleranceMmSpinBox)
 
-    # Dose difference tolerance criteria
-    self.step4_1_doseDifferenceToleranceLayout = qt.QHBoxLayout(self.step4_1_gammaDoseComparisonCollapsibleButton)
-    self.step4_1_doseDifferenceToleranceLabelBefore = qt.QLabel('Dose difference criteria is ')
-    self.step4_1_doseDifferenceTolerancePercentSpinBox = qt.QDoubleSpinBox()
-    self.step4_1_doseDifferenceTolerancePercentSpinBox.setValue(3.0)
-    self.step4_1_doseDifferenceToleranceLabelAfter = qt.QLabel('% of:  ')
-    self.step4_1_doseDifferenceToleranceLayout.addWidget(self.step4_1_doseDifferenceToleranceLabelBefore)
-    self.step4_1_doseDifferenceToleranceLayout.addWidget(self.step4_1_doseDifferenceTolerancePercentSpinBox)
-    self.step4_1_doseDifferenceToleranceLayout.addWidget(self.step4_1_doseDifferenceToleranceLabelAfter)
+    # # Dose difference tolerance criteria
+    # self.step4_1_doseDifferenceToleranceLayout = qt.QHBoxLayout(self.step4_1_gammaDoseComparisonCollapsibleButton)
+    # self.step4_1_doseDifferenceToleranceLabelBefore = qt.QLabel('Dose difference criteria is ')
+    # self.step4_1_doseDifferenceTolerancePercentSpinBox = qt.QDoubleSpinBox()
+    # self.step4_1_doseDifferenceTolerancePercentSpinBox.setValue(3.0)
+    # self.step4_1_doseDifferenceToleranceLabelAfter = qt.QLabel('% of:  ')
+    # self.step4_1_doseDifferenceToleranceLayout.addWidget(self.step4_1_doseDifferenceToleranceLabelBefore)
+    # self.step4_1_doseDifferenceToleranceLayout.addWidget(self.step4_1_doseDifferenceTolerancePercentSpinBox)
+    # self.step4_1_doseDifferenceToleranceLayout.addWidget(self.step4_1_doseDifferenceToleranceLabelAfter)
 
-    self.step4_1_referenceDoseLayout = qt.QVBoxLayout()
-    self.step4_1_referenceDoseUseMaximumDoseRadioButton = qt.QRadioButton('the maximum dose\n(calculated from plan dose volume)')
-    self.step4_1_referenceDoseUseCustomValueLayout = qt.QHBoxLayout(self.step4_1_gammaDoseComparisonCollapsibleButton)
-    self.step4_1_referenceDoseUseCustomValueGyRadioButton = qt.QRadioButton('a custom dose value (cGy):')
-    self.step4_1_referenceDoseCustomValueCGySpinBox = qt.QDoubleSpinBox()
-    self.step4_1_referenceDoseCustomValueCGySpinBox.value = 5.0
-    self.step4_1_referenceDoseCustomValueCGySpinBox.maximum = 99999
-    self.step4_1_referenceDoseCustomValueCGySpinBox.maximumWidth = 48
-    self.step4_1_referenceDoseCustomValueCGySpinBox.enabled = False
-    self.step4_1_referenceDoseUseCustomValueLayout.addWidget(self.step4_1_referenceDoseUseCustomValueGyRadioButton)
-    self.step4_1_referenceDoseUseCustomValueLayout.addWidget(self.step4_1_referenceDoseCustomValueCGySpinBox)
-    self.step4_1_referenceDoseUseCustomValueLayout.addStretch(1) 
-    self.step4_1_referenceDoseLayout.addWidget(self.step4_1_referenceDoseUseMaximumDoseRadioButton)
-    self.step4_1_referenceDoseLayout.addLayout(self.step4_1_referenceDoseUseCustomValueLayout)
-    self.step4_1_doseDifferenceToleranceLayout.addLayout(self.step4_1_referenceDoseLayout)
+    # self.step4_1_referenceDoseLayout = qt.QVBoxLayout()
+    # self.step4_1_referenceDoseUseMaximumDoseRadioButton = qt.QRadioButton('the maximum dose\n(calculated from plan dose volume)')
+    # self.step4_1_referenceDoseUseCustomValueLayout = qt.QHBoxLayout(self.step4_1_gammaDoseComparisonCollapsibleButton)
+    # self.step4_1_referenceDoseUseCustomValueGyRadioButton = qt.QRadioButton('a custom dose value (cGy):')
+    # self.step4_1_referenceDoseCustomValueCGySpinBox = qt.QDoubleSpinBox()
+    # self.step4_1_referenceDoseCustomValueCGySpinBox.value = 5.0
+    # self.step4_1_referenceDoseCustomValueCGySpinBox.maximum = 99999
+    # self.step4_1_referenceDoseCustomValueCGySpinBox.maximumWidth = 48
+    # self.step4_1_referenceDoseCustomValueCGySpinBox.enabled = False
+    # self.step4_1_referenceDoseUseCustomValueLayout.addWidget(self.step4_1_referenceDoseUseCustomValueGyRadioButton)
+    # self.step4_1_referenceDoseUseCustomValueLayout.addWidget(self.step4_1_referenceDoseCustomValueCGySpinBox)
+    # self.step4_1_referenceDoseUseCustomValueLayout.addStretch(1) 
+    # self.step4_1_referenceDoseLayout.addWidget(self.step4_1_referenceDoseUseMaximumDoseRadioButton)
+    # self.step4_1_referenceDoseLayout.addLayout(self.step4_1_referenceDoseUseCustomValueLayout)
+    # self.step4_1_doseDifferenceToleranceLayout.addLayout(self.step4_1_referenceDoseLayout)
 
-    self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow(self.step4_1_doseDifferenceToleranceLayout)
+    # self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow(self.step4_1_doseDifferenceToleranceLayout)
 
-    # Analysis threshold
-    self.step4_1_analysisThresholdLayout = qt.QHBoxLayout(self.step4_1_gammaDoseComparisonCollapsibleButton)
-    self.step4_1_analysisThresholdLabelBefore = qt.QLabel('Do not calculate gamma values for voxels below ')
-    self.step4_1_analysisThresholdPercentSpinBox = qt.QDoubleSpinBox()
-    self.step4_1_analysisThresholdPercentSpinBox.value = 0.0
-    self.step4_1_analysisThresholdPercentSpinBox.maximumWidth = 48
-    self.step4_1_analysisThresholdLabelAfter = qt.QLabel('% of the maximum dose,')
-    self.step4_1_analysisThresholdLabelAfter.wordWrap = True
-    self.step4_1_analysisThresholdLayout.addWidget(self.step4_1_analysisThresholdLabelBefore)
-    self.step4_1_analysisThresholdLayout.addWidget(self.step4_1_analysisThresholdPercentSpinBox)
-    self.step4_1_analysisThresholdLayout.addWidget(self.step4_1_analysisThresholdLabelAfter)
-    self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow(self.step4_1_analysisThresholdLayout)
-    self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow(qt.QLabel('                                            or the custom dose value (depending on selection above).'))
+    # # Analysis threshold
+    # self.step4_1_analysisThresholdLayout = qt.QHBoxLayout(self.step4_1_gammaDoseComparisonCollapsibleButton)
+    # self.step4_1_analysisThresholdLabelBefore = qt.QLabel('Do not calculate gamma values for voxels below ')
+    # self.step4_1_analysisThresholdPercentSpinBox = qt.QDoubleSpinBox()
+    # self.step4_1_analysisThresholdPercentSpinBox.value = 0.0
+    # self.step4_1_analysisThresholdPercentSpinBox.maximumWidth = 48
+    # self.step4_1_analysisThresholdLabelAfter = qt.QLabel('% of the maximum dose,')
+    # self.step4_1_analysisThresholdLabelAfter.wordWrap = True
+    # self.step4_1_analysisThresholdLayout.addWidget(self.step4_1_analysisThresholdLabelBefore)
+    # self.step4_1_analysisThresholdLayout.addWidget(self.step4_1_analysisThresholdPercentSpinBox)
+    # self.step4_1_analysisThresholdLayout.addWidget(self.step4_1_analysisThresholdLabelAfter)
+    # self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow(self.step4_1_analysisThresholdLayout)
+    # self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow(qt.QLabel('                                            or the custom dose value (depending on selection above).'))
 
-    # Use linear interpolation
-    self.step4_1_useLinearInterpolationCheckBox = qt.QCheckBox()
-    self.step4_1_useLinearInterpolationCheckBox.checked = True
-    self.step4_1_useLinearInterpolationCheckBox.setToolTip('Flag determining whether linear interpolation is used when resampling the compare dose volume to reference grid. Nearest neighbour is used if unchecked.')
-    self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow('Use linear interpolation: ', self.step4_1_useLinearInterpolationCheckBox)
+    # # Use linear interpolation
+    # self.step4_1_useLinearInterpolationCheckBox = qt.QCheckBox()
+    # self.step4_1_useLinearInterpolationCheckBox.checked = True
+    # self.step4_1_useLinearInterpolationCheckBox.setToolTip('Flag determining whether linear interpolation is used when resampling the compare dose volume to reference grid. Nearest neighbour is used if unchecked.')
+    # self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow('Use linear interpolation: ', self.step4_1_useLinearInterpolationCheckBox)
 
-    # Maximum gamma
-    self.step4_1_maximumGammaSpinBox = qt.QDoubleSpinBox()
-    self.step4_1_maximumGammaSpinBox.setValue(2.0)
-    self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow('Upper bound for gamma calculation: ', self.step4_1_maximumGammaSpinBox)
+    # # Maximum gamma
+    # self.step4_1_maximumGammaSpinBox = qt.QDoubleSpinBox()
+    # self.step4_1_maximumGammaSpinBox.setValue(2.0)
+    # self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow('Upper bound for gamma calculation: ', self.step4_1_maximumGammaSpinBox)
 
-    # Gamma volume selector
-    self.step4_1_gammaVolumeSelectorLayout = qt.QHBoxLayout(self.step4_1_gammaDoseComparisonCollapsibleButton)
-    self.step4_1_gammaVolumeSelector = slicer.qMRMLNodeComboBox()
-    self.step4_1_gammaVolumeSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    self.step4_1_gammaVolumeSelector.addEnabled = True
-    self.step4_1_gammaVolumeSelector.removeEnabled = False
-    self.step4_1_gammaVolumeSelector.setMRMLScene( slicer.mrmlScene )
-    self.step4_1_gammaVolumeSelector.setToolTip( "Select output gamma volume" )
-    self.step4_1_gammaVolumeSelector.setProperty('baseName', 'GammaVolume')
-    self.step4_1_helpLabel = qt.QLabel()
-    self.step4_1_helpLabel.pixmap = qt.QPixmap(':Icons/Help.png')
-    self.step4_1_helpLabel.maximumWidth = 24
-    self.step4_1_helpLabel.toolTip = "A gamma volume must be selected to contain the output. You can create a new volume by selecting 'Create new Volume'"
-    self.step4_1_gammaVolumeSelectorLayout.addWidget(self.step4_1_gammaVolumeSelector)
-    self.step4_1_gammaVolumeSelectorLayout.addWidget(self.step4_1_helpLabel)
-    self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow("Gamma volume: ", self.step4_1_gammaVolumeSelectorLayout)
+    # # Gamma volume selector
+    # self.step4_1_gammaVolumeSelectorLayout = qt.QHBoxLayout(self.step4_1_gammaDoseComparisonCollapsibleButton)
+    # self.step4_1_gammaVolumeSelector = slicer.qMRMLNodeComboBox()
+    # self.step4_1_gammaVolumeSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
+    # self.step4_1_gammaVolumeSelector.addEnabled = True
+    # self.step4_1_gammaVolumeSelector.removeEnabled = False
+    # self.step4_1_gammaVolumeSelector.setMRMLScene( slicer.mrmlScene )
+    # self.step4_1_gammaVolumeSelector.setToolTip( "Select output gamma volume" )
+    # self.step4_1_gammaVolumeSelector.setProperty('baseName', 'GammaVolume')
+    # self.step4_1_helpLabel = qt.QLabel()
+    # self.step4_1_helpLabel.pixmap = qt.QPixmap(':Icons/Help.png')
+    # self.step4_1_helpLabel.maximumWidth = 24
+    # self.step4_1_helpLabel.toolTip = "A gamma volume must be selected to contain the output. You can create a new volume by selecting 'Create new Volume'"
+    # self.step4_1_gammaVolumeSelectorLayout.addWidget(self.step4_1_gammaVolumeSelector)
+    # self.step4_1_gammaVolumeSelectorLayout.addWidget(self.step4_1_helpLabel)
+    # self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow("Gamma volume: ", self.step4_1_gammaVolumeSelectorLayout)
 
-    self.step4_1_computeGammaButton = qt.QPushButton('Calculate gamma volume')
-    self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow(self.step4_1_computeGammaButton)
+    # self.step4_1_computeGammaButton = qt.QPushButton('Calculate gamma volume')
+    # self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow(self.step4_1_computeGammaButton)
 
-    self.step4_1_gammaStatusLabel = qt.QLabel()
-    self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow(self.step4_1_gammaStatusLabel)
+    # self.step4_1_gammaStatusLabel = qt.QLabel()
+    # self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow(self.step4_1_gammaStatusLabel)
 
-    self.step4_1_showGammaReportButton = qt.QPushButton('Show report')
-    self.step4_1_showGammaReportButton.enabled = False
-    self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow(self.step4_1_showGammaReportButton)
+    # self.step4_1_showGammaReportButton = qt.QPushButton('Show report')
+    # self.step4_1_showGammaReportButton.enabled = False
+    # self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow(self.step4_1_showGammaReportButton)
 
-    # 4.2. Chi dose comparison
-    self.step4_2_chiDoseComparisonCollapsibleButton.text = "4.2. Chi dose comparison"
-    self.step4_2_chiDoseComparisonCollapsibleButtonLayout = qt.QFormLayout(self.step4_2_chiDoseComparisonCollapsibleButton)
-    self.step4_doseComparisonCollapsibleButtonLayout.addRow(self.step4_2_chiDoseComparisonCollapsibleButton)
-    self.step4_2_chiDoseComparisonCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
-    self.step4_2_chiDoseComparisonCollapsibleButtonLayout.setSpacing(4)
+    # # 4.2. Chi dose comparison
+    # self.step4_2_chiDoseComparisonCollapsibleButton.text = "4.2. Chi dose comparison"
+    # self.step4_2_chiDoseComparisonCollapsibleButtonLayout = qt.QFormLayout(self.step4_2_chiDoseComparisonCollapsibleButton)
+    # self.step4_doseComparisonCollapsibleButtonLayout.addRow(self.step4_2_chiDoseComparisonCollapsibleButton)
+    # self.step4_2_chiDoseComparisonCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
+    # self.step4_2_chiDoseComparisonCollapsibleButtonLayout.setSpacing(4)
 
-    # 4.3. Dose difference comparison
-    self.step4_3_doseDifferenceComparisonCollapsibleButton.text = "4.3. Dose difference comparison"
-    self.step4_3_doseDifferenceComparisonCollapsibleButtonLayout = qt.QFormLayout(self.step4_3_doseDifferenceComparisonCollapsibleButton)
-    self.step4_doseComparisonCollapsibleButtonLayout.addRow(self.step4_3_doseDifferenceComparisonCollapsibleButton)
-    self.step4_3_doseDifferenceComparisonCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
-    self.step4_3_doseDifferenceComparisonCollapsibleButtonLayout.setSpacing(4)
+    # # 4.3. Dose difference comparison
+    # self.step4_3_doseDifferenceComparisonCollapsibleButton.text = "4.3. Dose difference comparison"
+    # self.step4_3_doseDifferenceComparisonCollapsibleButtonLayout = qt.QFormLayout(self.step4_3_doseDifferenceComparisonCollapsibleButton)
+    # self.step4_doseComparisonCollapsibleButtonLayout.addRow(self.step4_3_doseDifferenceComparisonCollapsibleButton)
+    # self.step4_3_doseDifferenceComparisonCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
+    # self.step4_3_doseDifferenceComparisonCollapsibleButtonLayout.setSpacing(4)
 
-    # Make sure first panels appear when steps are first opened (done before connections to avoid
-    # executing those steps, which are only needed when actually switching there during the workflow)
-    #self.step4_1_gammaDoseComparisonCollapsibleButton.setProperty('collapsed',False) #TODO: Uncomment when adding more dose comparisons
-    self.step4_1_referenceDoseUseMaximumDoseRadioButton.setChecked(True)
+    # # Make sure first panels appear when steps are first opened (done before connections to avoid
+    # # executing those steps, which are only needed when actually switching there during the workflow)
+    # #self.step4_1_gammaDoseComparisonCollapsibleButton.setProperty('collapsed',False) #TODO: Uncomment when adding more dose comparisons
+    # self.step4_1_referenceDoseUseMaximumDoseRadioButton.setChecked(True)
 
-    # Connections
-    self.step4_doseComparisonCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep4_DoseComparisonSelected)
-    self.step4_maskSegmentationSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onStep4_MaskSegmentationSelectionChanged)
-    self.step4_maskSegmentationSelector.connect('currentSegmentChanged(QString)', self.onStep4_MaskSegmentSelectionChanged)
-    self.step4_1_referenceDoseUseMaximumDoseRadioButton.connect('toggled(bool)', self.onUseMaximumDoseRadioButtonToggled)
-    self.step4_1_computeGammaButton.connect('clicked()', self.onGammaDoseComparison)
-    self.step4_1_showGammaReportButton.connect('clicked()', self.onShowGammaReport)
+    # # Connections
+    # self.step4_doseComparisonCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep4_DoseComparisonSelected)
+    # self.step4_maskSegmentationSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onStep4_MaskSegmentationSelectionChanged)
+    # self.step4_maskSegmentationSelector.connect('currentSegmentChanged(QString)', self.onStep4_MaskSegmentSelectionChanged)
+    # self.step4_1_referenceDoseUseMaximumDoseRadioButton.connect('toggled(bool)', self.onUseMaximumDoseRadioButtonToggled)
+    # self.step4_1_computeGammaButton.connect('clicked()', self.onGammaDoseComparison)
+    # self.step4_1_showGammaReportButton.connect('clicked()', self.onShowGammaReport)
 
   def setup_StepT1_lineProfileCollapsibleButton(self):
     # Step T1: Line profile tool
@@ -922,10 +925,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.stepT1_exportLineProfilesToCSV.toolTip = "Export calculated line profiles to CSV"
     self.stepT1_lineProfileCollapsibleButtonLayout.addRow(self.stepT1_exportLineProfilesToCSV)
 
-    # Hint label
-    self.stepT1_lineProfileCollapsibleButtonLayout.addRow(' ', None)
-    self.stepT1_lineProfileHintLabel = qt.QLabel("Hint: Full screen plot view is available in the layout selector tab (top one)")
-    self.stepT1_lineProfileCollapsibleButtonLayout.addRow(self.stepT1_lineProfileHintLabel)
+    # # Hint label
+    # self.stepT1_lineProfileCollapsibleButtonLayout.addRow(' ', None)
+    # self.stepT1_lineProfileHintLabel = qt.QLabel("Hint: Full screen plot view is available in the layout selector tab (top one)")
+    # self.stepT1_lineProfileCollapsibleButtonLayout.addRow(self.stepT1_lineProfileHintLabel)
 
     # Connections
     self.stepT1_lineProfileCollapsibleButton.connect('contentsCollapsed(bool)', self.onStepT1_LineProfileSelected)
@@ -983,63 +986,63 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.measuredVolumeNode = self.measuredVolumeSelector.currentNode()
       self.calibrationVolumeNode = self.calibrationVolumeSelector.currentNode()
 
-  def onStep2_2_MeasuredDoseToObiRegistrationSelected(self, collapsed):
-    # Make sure the functions handling entering the fiducial selection panels are called when entering the outer panel
-    if collapsed == False:
-      if self.step2_2_1_obiFiducialSelectionCollapsibleButton.collapsed == False:
-        self.onStep2_2_1_ObiFiducialCollectionSelected(False)
-      elif self.step2_2_2_measuredFiducialSelectionCollapsibleButton.collapsed == False:
-        self.onStep2_2_2_MeasuredFiducialCollectionSelected(False)
+  # def onStep2_2_MeasuredDoseToObiRegistrationSelected(self, collapsed):    
+    # # Make sure the functions handling entering the fiducial selection panels are called when entering the outer panel
+    # if collapsed == False: 
+      # # if self.step2_2_1_obiFiducialSelectionCollapsibleButton.collapsed == False:    to 995
+        # # self.onStep2_2_1_ObiFiducialCollectionSelected(False)
+      # # elif self.step2_2_2_measuredFiducialSelectionCollapsibleButton.collapsed == False:
+        # # self.onStep2_2_2_MeasuredFiducialCollectionSelected(False)
 
-  def onStep2_2_1_ObiFiducialCollectionSelected(self, collapsed):
-    appLogic = slicer.app.applicationLogic()
-    selectionNode = appLogic.GetSelectionNode()
-    interactionNode = appLogic.GetInteractionNode()
+  # def onStep2_2_1_ObiFiducialCollectionSelected(self, collapsed):
+    # appLogic = slicer.app.applicationLogic()
+    # selectionNode = appLogic.GetSelectionNode()
+    # interactionNode = appLogic.GetInteractionNode()
 
-    if collapsed == False:
-      # Turn on persistent fiducial placement mode
-      interactionNode.SwitchToPersistentPlaceMode()
+    # if collapsed == False:
+      # # Turn on persistent fiducial placement mode
+      # interactionNode.SwitchToPersistentPlaceMode()
 
-      # Select OBI fiducials node
-      self.step2_2_1_obiFiducialList.setCurrentNode(self.obiMarkupsFiducialNode)
-      self.step2_2_1_obiFiducialList.activate()
+      # # Select OBI fiducials node
+      # self.step2_2_1_obiFiducialList.setCurrentNode(self.obiMarkupsFiducialNode)
+      # self.step2_2_1_obiFiducialList.activate()
 
-      # Automatically show OBI volume (show nothing if not present)
-      if self.obiVolumeNode is not None:
-        selectionNode.SetActiveVolumeID(self.obiVolumeNode.GetID())
-      else:
-        selectionNode.SetActiveVolumeID(None)
-        slicer.util.errorDisplay('OBI volume not selected!\nPlease return to first step and make the assignment')
-      selectionNode.SetSecondaryVolumeID(None)
-      appLogic.PropagateVolumeSelection()
-    else:
-      # Turn off fiducial place mode
-      interactionNode.SwitchToViewTransformMode()
+      # # Automatically show OBI volume (show nothing if not present)
+      # if self.obiVolumeNode is not None:
+        # selectionNode.SetActiveVolumeID(self.obiVolumeNode.GetID())
+      # else:
+        # selectionNode.SetActiveVolumeID(None)
+        # slicer.util.errorDisplay('OBI volume not selected!\nPlease return to first step and make the assignment')
+      # selectionNode.SetSecondaryVolumeID(None)
+      # appLogic.PropagateVolumeSelection()
+    # else:
+      # # Turn off fiducial place mode
+      # interactionNode.SwitchToViewTransformMode()
 
-  def onStep2_2_2_MeasuredFiducialCollectionSelected(self, collapsed):
-    appLogic = slicer.app.applicationLogic()
-    selectionNode = appLogic.GetSelectionNode()
-    interactionNode = appLogic.GetInteractionNode()
+  # def onStep2_2_2_MeasuredFiducialCollectionSelected(self, collapsed):
+    # appLogic = slicer.app.applicationLogic()
+    # selectionNode = appLogic.GetSelectionNode()
+    # interactionNode = appLogic.GetInteractionNode()
 
-    if collapsed == False:
-      # Turn on persistent fiducial placement mode
-      interactionNode.SwitchToPersistentPlaceMode()
+    # if collapsed == False:
+      # # Turn on persistent fiducial placement mode
+      # interactionNode.SwitchToPersistentPlaceMode()
 
-      # Select MEASURED fiducials node
-      self.step2_2_2_measuredFiducialList.setCurrentNode(self.measuredMarkupsFiducialNode)
-      self.step2_2_2_measuredFiducialList.activate()
+      # # Select MEASURED fiducials node
+      # self.step2_2_2_measuredFiducialList.setCurrentNode(self.measuredMarkupsFiducialNode)
+      # self.step2_2_2_measuredFiducialList.activate()
 
-      # Automatically show MEASURED volume (show nothing if not present)
-      if self.measuredVolumeNode is not None:
-        selectionNode.SetActiveVolumeID(self.measuredVolumeNode.GetID())
-      else:
-        selectionNode.SetActiveVolumeID(None)
-        slicer.util.errorDisplay('Gel dosimeter volume not selected!\nPlease return to first step and make the assignment')
-      selectionNode.SetSecondaryVolumeID(None)
-      appLogic.PropagateVolumeSelection() 
-    else:
-      # Turn off fiducial place mode
-      interactionNode.SwitchToViewTransformMode()
+      # # Automatically show MEASURED volume (show nothing if not present)
+      # if self.measuredVolumeNode is not None:
+        # selectionNode.SetActiveVolumeID(self.measuredVolumeNode.GetID())
+      # else:
+        # selectionNode.SetActiveVolumeID(None)
+        # slicer.util.errorDisplay('Gel dosimeter volume not selected!\nPlease return to first step and make the assignment')
+      # selectionNode.SetSecondaryVolumeID(None)
+      # appLogic.PropagateVolumeSelection() 
+    # else:
+      # # Turn off fiducial place mode
+      # interactionNode.SwitchToViewTransformMode()
 
   def onObiToPlanCTRegistration(self):
     # Start registration
@@ -1072,11 +1075,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       beamModelsParent.SetDisplayVisibilityForBranch(0)
       
     # Set transforms to slider widgets
-    self.step2_1_translationSliders.setMRMLTransformNode(obiToPlanTransformNode)
+    #.step2_1_translationSliders.setMRMLTransformNode(obiToPlanTransformNode) 
     self.step2_1_rotationSliders.setMRMLTransformNode(obiToPlanTransformNode)
 
     # Change single step size to 0.5mm in the translation controls
-    sliders = slicer.util.findChildren(widget=self.step2_1_translationSliders, className='qMRMLLinearTransformSlider')
+    #sliders = slicer.util.findChildren(widget=self.step2_1_translationSliders, className='qMRMLLinearTransformSlider') 
     for slider in sliders:
       slider.singleStep = 0.5
 
@@ -1207,15 +1210,15 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calibrationDataAlignedLine.SetColor(0, 212, 0, 255)
     self.calibrationDataAlignedLine.SetWidth(2.0)
 
-    # Show chart
-    self.calibrationCurveChart.GetAxis(1).SetTitle('Depth (cm) - select region using right mouse button to be considered for calibration')
-    self.calibrationCurveChart.GetAxis(0).SetTitle('Percent Depth Dose / Optical Attenuation')
-    self.calibrationCurveChart.SetShowLegend(True)
-    self.calibrationCurveChart.SetTitle('PDD vs Calibration data')
-    self.calibrationCurveChartView.GetInteractor().Initialize()
-    self.calibrationCurveChartView.GetRenderWindow().SetSize(800,550)
-    self.calibrationCurveChartView.GetRenderWindow().SetWindowName('PDD vs Calibration data chart')
-    self.calibrationCurveChartView.GetRenderWindow().Start()
+    # # Show chart
+    # self.calibrationCurveChart.GetAxis(1).SetTitle('Depth (cm) - select region using right mouse button to be considered for calibration')
+    # self.calibrationCurveChart.GetAxis(0).SetTitle('Percent Depth Dose / Optical Attenuation')
+    # self.calibrationCurveChart.SetShowLegend(True)
+    # self.calibrationCurveChart.SetTitle('PDD vs Calibration data')
+    # self.calibrationCurveChartView.GetInteractor().Initialize()
+    # self.calibrationCurveChartView.GetRenderWindow().SetSize(800,550)
+    # self.calibrationCurveChartView.GetRenderWindow().SetWindowName('PDD vs Calibration data chart')
+    # self.calibrationCurveChartView.GetRenderWindow().Start()
 
   def onAlignCalibrationCurves(self):
     if self.logic.pddDataArray is None or self.logic.pddDataArray.size == 0:
@@ -1467,8 +1470,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   def onStep4_DoseComparisonSelected(self, collapsed):
     # Initialize mask segmentation selector to select plan structures
-    self.step4_maskSegmentationSelector.setCurrentNode(self.planStructuresNode)
-    self.onStep4_MaskSegmentationSelectionChanged(self.planStructuresNode)
+    #self.step4_maskSegmentationSelector.setCurrentNode(self.planStructuresNode) 
+    #self.onStep4_MaskSegmentationSelectionChanged(self.planStructuresNode)   
     # Turn scalar bar on/off
     if collapsed == False:
       self.sliceAnnotations.scalarBarEnabled = 1
@@ -1484,7 +1487,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.maskSegmentationNode.GetDisplayNode().SetVisibility(0)
     # Set new mask segmentation
     self.maskSegmentationNode = node
-    self.onStep4_MaskSegmentSelectionChanged(self.step4_maskSegmentationSelector.currentSegmentID())
+    #self.onStep4_MaskSegmentSelectionChanged(self.step4_maskSegmentationSelector.currentSegmentID()) #
     # Show new mask segmentation
     if self.maskSegmentationNode is not None:
       self.maskSegmentationNode.GetDisplayNode().SetVisibility(1)
@@ -1532,7 +1535,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.gammaParameterSetNode.SetAndObserveGammaVolumeNode(self.gammaVolumeNode)
       self.gammaParameterSetNode.SetDtaDistanceToleranceMm(self.step4_1_dtaDistanceToleranceMmSpinBox.value)
       self.gammaParameterSetNode.SetDoseDifferenceTolerancePercent(self.step4_1_doseDifferenceTolerancePercentSpinBox.value)
-      self.gammaParameterSetNode.SetUseMaximumDose(self.step4_1_referenceDoseUseMaximumDoseRadioButton.isChecked())
+      #self.gammaParameterSetNode.SetUseMaximumDose(self.step4_1_referenceDoseUseMaximumDoseRadioButton.isChecked()) 
       self.gammaParameterSetNode.SetUseLinearInterpolation(self.step4_1_useLinearInterpolationCheckBox.isChecked())
       self.gammaParameterSetNode.SetReferenceDoseGy(self.step4_1_referenceDoseCustomValueCGySpinBox.value / 100.0)
       self.gammaParameterSetNode.SetAnalysisThresholdPercent(self.step4_1_analysisThresholdPercentSpinBox.value)
@@ -1773,7 +1776,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     slicer.app.processEvents()
 
     # Select fiducials
-    self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.setChecked(True)
+    #self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.setChecked(True) 
     obiFiducialsNode = slicer.util.getNode(self.obiMarkupsFiducialNodeName)
     obiFiducialsNode.AddFiducial(76.4, 132.1, -44.8)
     obiFiducialsNode.AddFiducial(173, 118.4, -44.8)
@@ -1794,42 +1797,42 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step2_2_3_measuredToObiRegistrationCollapsibleButton.setChecked(True)
     self.onMeasuredToObiRegistration()
 
-    ### 4. Calibration
-    self.step3_doseCalibrationCollapsibleButton.setChecked(True)
-    self.logic.loadPdd('d:/devel/_Images/RT/20140123_FilmDosimetry_StructureSetIncluded/12MeV.csv')
+    # ### 4. Calibration
+    # self.step3_doseCalibrationCollapsibleButton.setChecked(True)
+    # self.logic.loadPdd('d:/devel/_Images/RT/20140123_FilmDosimetry_StructureSetIncluded/12MeV.csv')
 
-    # Parse calibration volume
-    self.step3_1_radiusMmFromCentrePixelLineEdit.setText('5')
+    # # Parse calibration volume
+    # self.step3_1_radiusMmFromCentrePixelLineEdit.setText('5')
 
-    # Align calibration curves
-    self.onAlignCalibrationCurves()
-    self.step3_1_xTranslationSpinBox.setValue(1)
-    self.step3_1_yScaleSpinBox.setValue(1.162)
-    self.step3_1_yTranslationSpinBox.setValue(1.28)
+    # # Align calibration curves
+    # self.onAlignCalibrationCurves()
+    # self.step3_1_xTranslationSpinBox.setValue(1)
+    # self.step3_1_yScaleSpinBox.setValue(1.162)
+    # self.step3_1_yTranslationSpinBox.setValue(1.28)
 
-    # Generate dose information
-    self.step3_doseCalibrationCollapsibleButton.setChecked(True)
-    self.step3_1_rdfLineEdit.setText('0.989')
-    self.step3_1_monitorUnitsLineEdit.setText('1850')
-    self.onComputeDoseFromPdd()
-    # Show optical attenuation VS dose curve
-    self.step3_1_calibrationRoutineCollapsibleButton.setChecked(True)
-    self.onShowOpticalAttenuationVsDoseCurve()
-    # Fit polynomial on OA VS dose curve
-    self.onFitPolynomialToOpticalAttenuationVsDoseCurve()
-    # Calibrate
-    self.onApplyCalibration()
+    # # Generate dose information
+    # self.step3_doseCalibrationCollapsibleButton.setChecked(True)
+    # self.step3_1_rdfLineEdit.setText('0.989')
+    # self.step3_1_monitorUnitsLineEdit.setText('1850')
+    # self.onComputeDoseFromPdd()
+    # # Show optical attenuation VS dose curve
+    # self.step3_1_calibrationRoutineCollapsibleButton.setChecked(True)
+    # self.onShowOpticalAttenuationVsDoseCurve()
+    # # Fit polynomial on OA VS dose curve
+    # self.onFitPolynomialToOpticalAttenuationVsDoseCurve()
+    # # Calibrate
+    # self.onApplyCalibration()
 
-    # 5. Dose comparison
-    slicer.app.processEvents()
-    self.logic.delayDisplay('Wait for the slicelet to catch up', 300)
-    self.step4_doseComparisonCollapsibleButton.setChecked(True)
-    self.step4_1_gammaVolumeSelector.addNode()
-    maskSegmentationNodeID = 'vtkMRMLSegmentationNode1'
-    maskSegmentID = 'Jar_crop'
-    self.step4_maskSegmentationSelector.setCurrentNodeID(maskSegmentationNodeID)
-    self.step4_maskSegmentationSelector.setCurrentSegmentID(maskSegmentID)
-    self.onGammaDoseComparison()
+    # # 5. Dose comparison
+    # slicer.app.processEvents()
+    # self.logic.delayDisplay('Wait for the slicelet to catch up', 300)
+    # self.step4_doseComparisonCollapsibleButton.setChecked(True)
+    # self.step4_1_gammaVolumeSelector.addNode()
+    # maskSegmentationNodeID = 'vtkMRMLSegmentationNode1'
+    # maskSegmentID = 'Jar_crop'
+    # self.step4_maskSegmentationSelector.setCurrentNodeID(maskSegmentationNodeID)
+    # self.step4_maskSegmentationSelector.setCurrentSegmentID(maskSegmentID)
+    # self.onGammaDoseComparison()
 
   def performSelfTestFromSavedScene(self):
     #TODO: Update saved scene to one with segmentations
@@ -1894,8 +1897,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Dose comparison
     self.step4_doseComparisonCollapsibleButton.setChecked(True)
     self.step4_1_gammaVolumeSelector.addNode()
-    self.step4_maskSegmentationSelector.setCurrentNodeID(maskSegmentationNodeID)
-    self.step4_maskSegmentationSelector.setCurrentSegmentID(maskSegmentID)
+    #self.step4_maskSegmentationSelector.setCurrentNodeID(maskSegmentationNodeID) 
+    #self.step4_maskSegmentationSelector.setCurrentSegmentID(maskSegmentID)  
     self.onGammaDoseComparison()
     
     qt.QApplication.restoreOverrideCursor()
@@ -1921,9 +1924,9 @@ class FilmDosimetryAnalysis(ScriptedLoadableModule):
     iconPath = os.path.join(os.path.dirname(self.parent.path), 'Resources/Icons', self.moduleName+'.png')
     parent.icon = qt.QIcon(iconPath)
 
-#
-# FilmDosimetryAnalysisWidget
-#
+
+#FilmDosimetryAnalysisWidget
+
 class FilmDosimetryAnalysisWidget(ScriptedLoadableModuleWidget):
   """Uses ScriptedLoadableModuleWidget base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
@@ -1960,7 +1963,7 @@ class FilmDosimetryAnalysisWidget(ScriptedLoadableModuleWidget):
   def onSliceletClosed(self):
     logging.debug('Slicelet closed')
 
-# ---------------------------------------------------------------------------
+# # ---------------------------------------------------------------------------
 class FilmDosimetryAnalysisTest(ScriptedLoadableModuleTest):
   """
   This is the test case for your scripted module.
