@@ -161,7 +161,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     #self.setup_Step2_Registration()  
     #self.setup_step3_DoseCalibration()  
     #self.setup_Step4_DoseComparison()
-    self.setup_StepT1_lineProfileCollapsibleButton()
+    #self.setup_StepT1_lineProfileCollapsibleButton()
 
     if widgetClass:
       self.widget = widgetClass(self.parent)
@@ -200,9 +200,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     #self.step4_1_computeGammaButton.disconnect('clicked()', self.onGammaDoseComparison) 
     #self.step4_1_showGammaReportButton.disconnect('clicked()', self.onShowGammaReport) 
     self.stepT1_lineProfileCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStepT1_LineProfileSelected)
-    self.stepT1_createLineProfileButton.disconnect('clicked(bool)', self.onCreateLineProfileButton)
-    self.stepT1_inputRulerSelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
-    self.stepT1_exportLineProfilesToCSV.disconnect('clicked()', self.onExportLineProfiles)
+   # self.stepT1_createLineProfileButton.disconnect('clicked(bool)', self.onCreateLineProfileButton)
+    #self.stepT1_inputRulerSelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
+    #self.stepT1_exportLineProfilesToCSV.disconnect('clicked()', self.onExportLineProfiles)
 
   def setup_Step0_LayoutSelection(self):
     # Layout selection step
@@ -874,67 +874,67 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # self.step4_1_computeGammaButton.connect('clicked()', self.onGammaDoseComparison)
     # self.step4_1_showGammaReportButton.connect('clicked()', self.onShowGammaReport)
 
-  def setup_StepT1_lineProfileCollapsibleButton(self):
-    # Step T1: Line profile tool
-    self.stepT1_lineProfileCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.stepT1_lineProfileCollapsibleButton.text = "Tool: Line profile"
-    self.sliceletPanelLayout.addWidget(self.stepT1_lineProfileCollapsibleButton)
-    self.stepT1_lineProfileCollapsibleButtonLayout = qt.QFormLayout(self.stepT1_lineProfileCollapsibleButton)
-    self.stepT1_lineProfileCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
-    self.stepT1_lineProfileCollapsibleButtonLayout.setSpacing(4)
+  # def setup_StepT1_lineProfileCollapsibleButton(self):
+    # # Step T1: Line profile tool
+    # self.stepT1_lineProfileCollapsibleButton.setProperty('collapsedHeight', 4)
+    # self.stepT1_lineProfileCollapsibleButton.text = "Tool: Line profile"
+    # self.sliceletPanelLayout.addWidget(self.stepT1_lineProfileCollapsibleButton)
+    # self.stepT1_lineProfileCollapsibleButtonLayout = qt.QFormLayout(self.stepT1_lineProfileCollapsibleButton)
+    # self.stepT1_lineProfileCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
+    # self.stepT1_lineProfileCollapsibleButtonLayout.setSpacing(4)
     
-    # Ruler creator
-    self.stepT1_rulerCreationButton = slicer.qSlicerMouseModeToolBar()
-    self.stepT1_rulerCreationButton.setApplicationLogic(slicer.app.applicationLogic())
-    self.stepT1_rulerCreationButton.setMRMLScene(slicer.app.mrmlScene())
-    self.stepT1_rulerCreationButton.setToolTip( "Create ruler (line segment) for line profile" )
-    self.stepT1_lineProfileCollapsibleButtonLayout.addRow("Create ruler: ", self.stepT1_rulerCreationButton)
+    # # Ruler creator
+    # self.stepT1_rulerCreationButton = slicer.qSlicerMouseModeToolBar()
+    # self.stepT1_rulerCreationButton.setApplicationLogic(slicer.app.applicationLogic())
+    # self.stepT1_rulerCreationButton.setMRMLScene(slicer.app.mrmlScene())
+    # self.stepT1_rulerCreationButton.setToolTip( "Create ruler (line segment) for line profile" )
+    # self.stepT1_lineProfileCollapsibleButtonLayout.addRow("Create ruler: ", self.stepT1_rulerCreationButton)
 
-    # Input ruler selector
-    self.stepT1_inputRulerSelector = slicer.qMRMLNodeComboBox()
-    self.stepT1_inputRulerSelector.nodeTypes = ["vtkMRMLAnnotationRulerNode"]
-    self.stepT1_inputRulerSelector.selectNodeUponCreation = True
-    self.stepT1_inputRulerSelector.addEnabled = False
-    self.stepT1_inputRulerSelector.removeEnabled = False
-    self.stepT1_inputRulerSelector.noneEnabled = False
-    self.stepT1_inputRulerSelector.showHidden = False
-    self.stepT1_inputRulerSelector.showChildNodeTypes = False
-    self.stepT1_inputRulerSelector.setMRMLScene( slicer.mrmlScene )
-    self.stepT1_inputRulerSelector.setToolTip( "Pick the ruler that defines the sampling line." )
-    self.stepT1_lineProfileCollapsibleButtonLayout.addRow("Input ruler: ", self.stepT1_inputRulerSelector)
+    # # Input ruler selector
+    # self.stepT1_inputRulerSelector = slicer.qMRMLNodeComboBox()
+    # self.stepT1_inputRulerSelector.nodeTypes = ["vtkMRMLAnnotationRulerNode"]
+    # self.stepT1_inputRulerSelector.selectNodeUponCreation = True
+    # self.stepT1_inputRulerSelector.addEnabled = False
+    # self.stepT1_inputRulerSelector.removeEnabled = False
+    # self.stepT1_inputRulerSelector.noneEnabled = False
+    # self.stepT1_inputRulerSelector.showHidden = False
+    # self.stepT1_inputRulerSelector.showChildNodeTypes = False
+    # self.stepT1_inputRulerSelector.setMRMLScene( slicer.mrmlScene )
+    # self.stepT1_inputRulerSelector.setToolTip( "Pick the ruler that defines the sampling line." )
+    # self.stepT1_lineProfileCollapsibleButtonLayout.addRow("Input ruler: ", self.stepT1_inputRulerSelector)
 
-    # Line sampling resolution in mm
-    self.stepT1_lineResolutionMmSliderWidget = ctk.ctkSliderWidget()
-    self.stepT1_lineResolutionMmSliderWidget.decimals = 1
-    self.stepT1_lineResolutionMmSliderWidget.singleStep = 0.1
-    self.stepT1_lineResolutionMmSliderWidget.minimum = 0.1
-    self.stepT1_lineResolutionMmSliderWidget.maximum = 2
-    self.stepT1_lineResolutionMmSliderWidget.value = 0.5
-    self.stepT1_lineResolutionMmSliderWidget.setToolTip("Sampling density along the line in mm")
-    self.stepT1_lineProfileCollapsibleButtonLayout.addRow("Line resolution (mm): ", self.stepT1_lineResolutionMmSliderWidget)
+    # # Line sampling resolution in mm
+    # self.stepT1_lineResolutionMmSliderWidget = ctk.ctkSliderWidget()
+    # self.stepT1_lineResolutionMmSliderWidget.decimals = 1
+    # self.stepT1_lineResolutionMmSliderWidget.singleStep = 0.1
+    # self.stepT1_lineResolutionMmSliderWidget.minimum = 0.1
+    # self.stepT1_lineResolutionMmSliderWidget.maximum = 2
+    # self.stepT1_lineResolutionMmSliderWidget.value = 0.5
+    # self.stepT1_lineResolutionMmSliderWidget.setToolTip("Sampling density along the line in mm")
+    # self.stepT1_lineProfileCollapsibleButtonLayout.addRow("Line resolution (mm): ", self.stepT1_lineResolutionMmSliderWidget)
 
-    # Create line profile button
-    self.stepT1_createLineProfileButton = qt.QPushButton("Create line profile")
-    self.stepT1_createLineProfileButton.toolTip = "Compute and show line profile"
-    self.stepT1_createLineProfileButton.enabled = False
-    self.stepT1_lineProfileCollapsibleButtonLayout.addRow(self.stepT1_createLineProfileButton)
-    self.onSelectLineProfileParameters()
+    # # Create line profile button
+    # self.stepT1_createLineProfileButton = qt.QPushButton("Create line profile")
+    # self.stepT1_createLineProfileButton.toolTip = "Compute and show line profile"
+    # self.stepT1_createLineProfileButton.enabled = False
+    # self.stepT1_lineProfileCollapsibleButtonLayout.addRow(self.stepT1_createLineProfileButton)
+    # self.onSelectLineProfileParameters()
 
-    # Export line profiles to CSV button
-    self.stepT1_exportLineProfilesToCSV = qt.QPushButton("Export line profiles to CSV")
-    self.stepT1_exportLineProfilesToCSV.toolTip = "Export calculated line profiles to CSV"
-    self.stepT1_lineProfileCollapsibleButtonLayout.addRow(self.stepT1_exportLineProfilesToCSV)
+    # # Export line profiles to CSV button
+    # self.stepT1_exportLineProfilesToCSV = qt.QPushButton("Export line profiles to CSV")
+    # self.stepT1_exportLineProfilesToCSV.toolTip = "Export calculated line profiles to CSV"
+    # self.stepT1_lineProfileCollapsibleButtonLayout.addRow(self.stepT1_exportLineProfilesToCSV)
 
-    # # Hint label
-    # self.stepT1_lineProfileCollapsibleButtonLayout.addRow(' ', None)
-    # self.stepT1_lineProfileHintLabel = qt.QLabel("Hint: Full screen plot view is available in the layout selector tab (top one)")
-    # self.stepT1_lineProfileCollapsibleButtonLayout.addRow(self.stepT1_lineProfileHintLabel)
+    # # # Hint label
+    # # self.stepT1_lineProfileCollapsibleButtonLayout.addRow(' ', None)
+    # # self.stepT1_lineProfileHintLabel = qt.QLabel("Hint: Full screen plot view is available in the layout selector tab (top one)")
+    # # self.stepT1_lineProfileCollapsibleButtonLayout.addRow(self.stepT1_lineProfileHintLabel)
 
-    # Connections
-    self.stepT1_lineProfileCollapsibleButton.connect('contentsCollapsed(bool)', self.onStepT1_LineProfileSelected)
-    self.stepT1_createLineProfileButton.connect('clicked(bool)', self.onCreateLineProfileButton)
-    self.stepT1_inputRulerSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
-    self.stepT1_exportLineProfilesToCSV.connect('clicked()', self.onExportLineProfiles)
+    # # Connections
+    # self.stepT1_lineProfileCollapsibleButton.connect('contentsCollapsed(bool)', self.onStepT1_LineProfileSelected)
+    # self.stepT1_createLineProfileButton.connect('clicked(bool)', self.onCreateLineProfileButton)
+    # self.stepT1_inputRulerSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
+    # self.stepT1_exportLineProfilesToCSV.connect('clicked()', self.onExportLineProfiles)
 
   #
   # -----------------------
