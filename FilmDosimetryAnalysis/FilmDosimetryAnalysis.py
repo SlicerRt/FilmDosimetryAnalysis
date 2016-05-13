@@ -173,7 +173,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step0_viewSelectorComboBox.disconnect('activated(int)', self.onViewSelect)
     self.step0_clinicalModeRadioButton.disconnect('toggled(bool)', self.onClinicalModeSelect)
     self.step0_preclinicalModeRadioButton.disconnect('toggled(bool)', self.onPreclinicalModeSelect)
-    self.step1_showDicomBrowserButton.disconnect('clicked()', self.logic.onDicomLoad)
+    #self.step1_showDicomBrowserButton.disconnect('clicked()', self.logic.onDicomLoad)
     #self.step2_1_registerObiToPlanCtButton.disconnect('clicked()', self.onObiToPlanCTRegistration) 
     #self.step2_1_translationSliders.disconnect('valuesChanged()', self.step2_1_rotationSliders.resetUnactiveSliders()) 
     #self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_MeasuredDoseToObiRegistrationSelected) 
@@ -254,14 +254,14 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_LoadDataLabel.wordWrap = True
     self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_LoadDataLabel)
 
-    # Load png data button
-    self.step1_showDicomBrowserButton = qt.QPushButton("Load .png data")
-    self.step1_showDicomBrowserButton.toolTip = "Load irradiated films"
-    self.step1_showDicomBrowserButton.name = "showDicomBrowserButton"
-    self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_showDicomBrowserButton)
+    # # Load png data button
+    # self.step1_showDicomBrowserButton = qt.QPushButton("Load .png data eventually") #AR step1_showDicomBrowserButton is the object
+    # self.step1_showDicomBrowserButton.toolTip = "Load irradiated films"
+    # self.step1_showDicomBrowserButton.name = "showDicomBrowserButton"
+    # self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_showDicomBrowserButton)
 
-    # Load non-DICOM data button
-    self.step1_loadNonDicomDataButton = qt.QPushButton("Load non-DICOM data from file")
+    # Load image data button
+    self.step1_loadNonDicomDataButton = qt.QPushButton("Load image files")
     self.step1_loadNonDicomDataButton.toolTip = "Load optical CT files from VFF, NRRD, etc."
     self.step1_loadNonDicomDataButton.name = "loadNonDicomDataButton"
     self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_loadNonDicomDataButton)
@@ -275,23 +275,25 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_AssignDataLabel)
 
     
-    # # PLANCT node selector
+    # PLANCT node selector
     # self.planCTSelector = slicer.qMRMLNodeComboBox()
     # self.planCTSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
     # self.planCTSelector.addEnabled = False
     # self.planCTSelector.removeEnabled = False
     # self.planCTSelector.setMRMLScene( slicer.mrmlScene )
     # self.planCTSelector.setToolTip( "Pick the planning CT volume" )
-    # self.step1_loadDataCollapsibleButtonLayout.addRow('Planning CT volume: ', self.planCTSelector)
+    # #self.step1_loadDataCollapsibleButtonLayout.addRow('Planning CT volume: ', self.planCTSelector)
 
-    # # PLANDOSE node selector
-    # self.planDoseSelector = slicer.qMRMLNodeComboBox()
-    # self.planDoseSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    # self.planDoseSelector.addEnabled = False
-    # self.planDoseSelector.removeEnabled = False
-    # self.planDoseSelector.setMRMLScene( slicer.mrmlScene )
-    # self.planDoseSelector.setToolTip( "Pick the planning dose volume." )
-    # self.step1_loadDataCollapsibleButtonLayout.addRow('Plan dose volume: ', self.planDoseSelector)
+    # PLANDOSE node selector  #floodFieldImageSelector used to be planDoseSelector
+    self.floodFieldImageSelector = slicer.qMRMLNodeComboBox()
+    self.floodFieldImageSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
+    self.floodFieldImageSelector.addEnabled = False
+    self.floodFieldImageSelector.removeEnabled = False
+    self.floodFieldImageSelector.setMRMLScene( slicer.mrmlScene )
+    self.floodFieldImageSelector.setToolTip( "--pick the flood field image file-- CHANGE THIS." )
+    self.step1_loadDataCollapsibleButtonLayout.addRow('Flood field image: ', self.floodFieldImageSelector)
+    
+    #
 
     # PLANSTRUCTURES node selector
     self.planStructuresSelector = slicer.qMRMLNodeComboBox()
@@ -331,10 +333,32 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calibrationVolumeSelector.setToolTip( "Pick the calibration gel dosimeter volume for registration.\nNote: Only needed if calibration function is not entered, but calculated based on calibration gel volume and PDD data" )
     self.step1_loadDataCollapsibleButtonLayout.addRow('Calibration gel volume (optional): ', self.calibrationVolumeSelector)
 
+    
+    # #######AR current change this
+    # # # copypasted from geldosimetry lines 76- Dose difference tolerance criteria   #AR change this
+    # self.step1_doseToImageLayout = qt.QHBoxLayout(self.step4_1_gammaDoseComparisonCollapsibleButton)
+    # self.step1_doseToImageLabelBefore = qt.QLabel('Dose difference criteria is ')
+    # self.step1_doseToImageIntegerSpinbox = qt.QDoubleSpinBox()  #AR will eventually be an appropriate spinbox
+    # self.step1_doseToImageIntegerSpinbox.setValue(3.0)
+    # self.step1_doseToImageLabelAfter = qt.QLabel('% of:  ')
+    # self.step1_doseToImageLayout.addWidget(self.step1_doseToImageLabelBefore)
+    # self.step1_doseToImageLayout.addWidget(self.step1_doseToImageIntegerSpinbox)
+    # self.step1_doseToImageLayout.addWidget(self.step1_doseToImageLabelAfter)
+    
+    # self.step1_doseToImageLayout.addLayout(self.step4_1_referenceDoseLayout) #AR copypasted from geldosimetry
+    
+    # self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_doseToImageLayout) #definitely need this to have it be visible 
+    
+    
+    
+    
+    
     # Connections
-    self.step1_showDicomBrowserButton.connect('clicked()', self.logic.onDicomLoad)
+    #self.step1_showDicomBrowserButton.connect('clicked()', self.logic.onDicomLoad)
     self.step1_loadNonDicomDataButton.connect('clicked()', self.onLoadNonDicomData)
     self.step1_loadDataCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep1_LoadDataCollapsed)
+    
+    
 
   # def setup_Step2_Registration(self):
     # # Step 2: Registration step
@@ -769,14 +793,14 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow('Distance-to-agreement criteria (mm): ', self.step4_1_dtaDistanceToleranceMmSpinBox)
 
     # # Dose difference tolerance criteria
-    # self.step4_1_doseDifferenceToleranceLayout = qt.QHBoxLayout(self.step4_1_gammaDoseComparisonCollapsibleButton)
-    # self.step4_1_doseDifferenceToleranceLabelBefore = qt.QLabel('Dose difference criteria is ')
-    # self.step4_1_doseDifferenceTolerancePercentSpinBox = qt.QDoubleSpinBox()
-    # self.step4_1_doseDifferenceTolerancePercentSpinBox.setValue(3.0)
-    # self.step4_1_doseDifferenceToleranceLabelAfter = qt.QLabel('% of:  ')
-    # self.step4_1_doseDifferenceToleranceLayout.addWidget(self.step4_1_doseDifferenceToleranceLabelBefore)
-    # self.step4_1_doseDifferenceToleranceLayout.addWidget(self.step4_1_doseDifferenceTolerancePercentSpinBox)
-    # self.step4_1_doseDifferenceToleranceLayout.addWidget(self.step4_1_doseDifferenceToleranceLabelAfter)
+    # self.step1_doseToImageLayout = qt.QHBoxLayout(self.step4_1_gammaDoseComparisonCollapsibleButton)
+    # self.step1_doseToImageLabelBefore = qt.QLabel('Dose difference criteria is ')
+    # self.step1_doseToImageIntegerSpinbox = qt.QDoubleSpinBox()
+    # self.step1_doseToImageIntegerSpinbox.setValue(3.0)
+    # self.step1_doseToImageLabelAfter = qt.QLabel('% of:  ')
+    # self.step1_doseToImageLayout.addWidget(self.step1_doseToImageLabelBefore)
+    # self.step1_doseToImageLayout.addWidget(self.step1_doseToImageIntegerSpinbox)
+    # self.step1_doseToImageLayout.addWidget(self.step1_doseToImageLabelAfter)
 
     # self.step4_1_referenceDoseLayout = qt.QVBoxLayout()
     # self.step4_1_referenceDoseUseMaximumDoseRadioButton = qt.QRadioButton('the maximum dose\n(calculated from plan dose volume)')
@@ -792,9 +816,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # self.step4_1_referenceDoseUseCustomValueLayout.addStretch(1) 
     # self.step4_1_referenceDoseLayout.addWidget(self.step4_1_referenceDoseUseMaximumDoseRadioButton)
     # self.step4_1_referenceDoseLayout.addLayout(self.step4_1_referenceDoseUseCustomValueLayout)
-    # self.step4_1_doseDifferenceToleranceLayout.addLayout(self.step4_1_referenceDoseLayout)
+    # self.step1_doseToImageLayout.addLayout(self.step4_1_referenceDoseLayout)
 
-    # self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow(self.step4_1_doseDifferenceToleranceLayout)
+    # self.step4_1_gammaDoseComparisonCollapsibleButtonLayout.addRow(self.step1_doseToImageLayout)
 
     # # Analysis threshold
     # self.step4_1_analysisThresholdLayout = qt.QHBoxLayout(self.step4_1_gammaDoseComparisonCollapsibleButton)
@@ -982,7 +1006,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Save selections to member variables when switching away from load data step
     if collapsed == True:
       self.planCtVolumeNode = self.planCTSelector.currentNode()
-      self.planDoseVolumeNode = self.planDoseSelector.currentNode()
+      self.planDoseVolumeNode = self.floodFieldImageSelector.currentNode()
       self.obiVolumeNode = self.obiSelector.currentNode()
       self.planStructuresNode = self.planStructuresSelector.currentNode()
       self.measuredVolumeNode = self.measuredVolumeSelector.currentNode()
@@ -1536,7 +1560,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
         self.gammaParameterSetNode.SetMaskSegmentID(self.maskSegmentID)
       self.gammaParameterSetNode.SetAndObserveGammaVolumeNode(self.gammaVolumeNode)
       self.gammaParameterSetNode.SetDtaDistanceToleranceMm(self.step4_1_dtaDistanceToleranceMmSpinBox.value)
-      self.gammaParameterSetNode.SetDoseDifferenceTolerancePercent(self.step4_1_doseDifferenceTolerancePercentSpinBox.value)
+      self.gammaParameterSetNode.SetDoseDifferenceTolerancePercent(self.step1_doseToImageIntegerSpinbox.value)
       #self.gammaParameterSetNode.SetUseMaximumDose(self.step4_1_referenceDoseUseMaximumDoseRadioButton.isChecked()) 
       self.gammaParameterSetNode.SetUseLinearInterpolation(self.step4_1_useLinearInterpolationCheckBox.isChecked())
       self.gammaParameterSetNode.SetReferenceDoseGy(self.step4_1_referenceDoseCustomValueCGySpinBox.value / 100.0)
@@ -1761,7 +1785,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     planCTVolume = slicer.util.getNode(planCTVolumeName)
     self.planCTSelector.setCurrentNode(planCTVolume)
     planDoseVolume = slicer.util.getNode(planDoseVolumeName)
-    self.planDoseSelector.setCurrentNode(planDoseVolume)
+    self.floodFieldImageSelector.setCurrentNode(planDoseVolume)
     obiVolume = slicer.util.getNode(obiVolumeName)
     self.obiSelector.setCurrentNode(obiVolume)
     structureSetNode = slicer.util.getNode(structureSetNodeName)
@@ -1936,6 +1960,7 @@ class FilmDosimetryAnalysisWidget(ScriptedLoadableModuleWidget):
 
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self) 
+    slicer.test = self
 
     # Show slicelet button
     launchSliceletButton = qt.QPushButton("Show slicelet")
