@@ -83,18 +83,18 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Initiate and group together all panels
     self.step0_layoutSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step1_loadDataCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step2_registrationCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step3_doseCalibrationCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step4_doseComparisonCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.stepT1_lineProfileCollapsibleButton = ctk.ctkCollapsibleButton()
+    #self.step2_registrationCollapsibleButton = ctk.ctkCollapsibleButton()
+    #self.step3_doseCalibrationCollapsibleButton = ctk.ctkCollapsibleButton()
+   # self.step4_doseComparisonCollapsibleButton = ctk.ctkCollapsibleButton()
+    #self.stepT1_lineProfileCollapsibleButton = ctk.ctkCollapsibleButton()
 
     self.collapsibleButtonsGroup = qt.QButtonGroup()
     self.collapsibleButtonsGroup.addButton(self.step0_layoutSelectionCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step1_loadDataCollapsibleButton)
-    self.collapsibleButtonsGroup.addButton(self.step2_registrationCollapsibleButton)
-    self.collapsibleButtonsGroup.addButton(self.step3_doseCalibrationCollapsibleButton)
-    self.collapsibleButtonsGroup.addButton(self.step4_doseComparisonCollapsibleButton)
-    self.collapsibleButtonsGroup.addButton(self.stepT1_lineProfileCollapsibleButton)
+    #self.collapsibleButtonsGroup.addButton(self.step2_registrationCollapsibleButton)
+    #self.collapsibleButtonsGroup.addButton(self.step3_doseCalibrationCollapsibleButton)
+    #self.collapsibleButtonsGroup.addButton(self.step4_doseComparisonCollapsibleButton)
+   # self.collapsibleButtonsGroup.addButton(self.stepT1_lineProfileCollapsibleButton)
 
     self.step0_layoutSelectionCollapsibleButton.setProperty('collapsed', False)
     
@@ -199,7 +199,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     #self.step4_1_referenceDoseUseMaximumDoseRadioButton.disconnect('toggled(bool)', self.onUseMaximumDoseRadioButtonToggled)  
     #self.step4_1_computeGammaButton.disconnect('clicked()', self.onGammaDoseComparison) 
     #self.step4_1_showGammaReportButton.disconnect('clicked()', self.onShowGammaReport) 
-    self.stepT1_lineProfileCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStepT1_LineProfileSelected)
+    #self.stepT1_lineProfileCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStepT1_LineProfileSelected)
    # self.stepT1_createLineProfileButton.disconnect('clicked(bool)', self.onCreateLineProfileButton)
     #self.stepT1_inputRulerSelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
     #self.stepT1_exportLineProfilesToCSV.disconnect('clicked()', self.onExportLineProfiles)
@@ -274,23 +274,24 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_AssignDataLabel.wordWrap = True
     self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_AssignDataLabel)
 
-    # PLANCT node selector
-    self.planCTSelector = slicer.qMRMLNodeComboBox()
-    self.planCTSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    self.planCTSelector.addEnabled = False
-    self.planCTSelector.removeEnabled = False
-    self.planCTSelector.setMRMLScene( slicer.mrmlScene )
-    self.planCTSelector.setToolTip( "Pick the planning CT volume" )
-    self.step1_loadDataCollapsibleButtonLayout.addRow('Planning CT volume: ', self.planCTSelector)
+    
+    # # PLANCT node selector
+    # self.planCTSelector = slicer.qMRMLNodeComboBox()
+    # self.planCTSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
+    # self.planCTSelector.addEnabled = False
+    # self.planCTSelector.removeEnabled = False
+    # self.planCTSelector.setMRMLScene( slicer.mrmlScene )
+    # self.planCTSelector.setToolTip( "Pick the planning CT volume" )
+    # self.step1_loadDataCollapsibleButtonLayout.addRow('Planning CT volume: ', self.planCTSelector)
 
-    # PLANDOSE node selector
-    self.planDoseSelector = slicer.qMRMLNodeComboBox()
-    self.planDoseSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    self.planDoseSelector.addEnabled = False
-    self.planDoseSelector.removeEnabled = False
-    self.planDoseSelector.setMRMLScene( slicer.mrmlScene )
-    self.planDoseSelector.setToolTip( "Pick the planning dose volume." )
-    self.step1_loadDataCollapsibleButtonLayout.addRow('Plan dose volume: ', self.planDoseSelector)
+    # # PLANDOSE node selector
+    # self.planDoseSelector = slicer.qMRMLNodeComboBox()
+    # self.planDoseSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
+    # self.planDoseSelector.addEnabled = False
+    # self.planDoseSelector.removeEnabled = False
+    # self.planDoseSelector.setMRMLScene( slicer.mrmlScene )
+    # self.planDoseSelector.setToolTip( "Pick the planning dose volume." )
+    # self.step1_loadDataCollapsibleButtonLayout.addRow('Plan dose volume: ', self.planDoseSelector)
 
     # PLANSTRUCTURES node selector
     self.planStructuresSelector = slicer.qMRMLNodeComboBox()
@@ -302,23 +303,23 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.planStructuresSelector.setToolTip( "Pick the planning structure set." )
     self.step1_loadDataCollapsibleButtonLayout.addRow('Structures: ', self.planStructuresSelector)
 
-    # OBI node selector
-    self.obiSelector = slicer.qMRMLNodeComboBox()
-    self.obiSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    self.obiSelector.addEnabled = False
-    self.obiSelector.removeEnabled = False
-    self.obiSelector.setMRMLScene( slicer.mrmlScene )
-    self.obiSelector.setToolTip( "Pick the OBI volume." )
-    self.step1_loadDataCollapsibleButtonLayout.addRow('OBI volume: ', self.obiSelector)
+    # # OBI node selector
+    # self.obiSelector = slicer.qMRMLNodeComboBox()
+    # self.obiSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
+    # self.obiSelector.addEnabled = False
+    # self.obiSelector.removeEnabled = False
+    # self.obiSelector.setMRMLScene( slicer.mrmlScene )
+    # self.obiSelector.setToolTip( "Pick the OBI volume." )
+    # self.step1_loadDataCollapsibleButtonLayout.addRow('OBI volume: ', self.obiSelector)
 
-    # MEASURED node selector
-    self.measuredVolumeSelector = slicer.qMRMLNodeComboBox()
-    self.measuredVolumeSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    self.measuredVolumeSelector.addEnabled = False
-    self.measuredVolumeSelector.removeEnabled = False
-    self.measuredVolumeSelector.setMRMLScene( slicer.mrmlScene )
-    self.measuredVolumeSelector.setToolTip( "Pick the measured gel dosimeter volume." )
-    self.step1_loadDataCollapsibleButtonLayout.addRow('Measured gel dosimeter volume: ', self.measuredVolumeSelector)
+    # # MEASURED node selector
+    # self.measuredVolumeSelector = slicer.qMRMLNodeComboBox()
+    # self.measuredVolumeSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
+    # self.measuredVolumeSelector.addEnabled = False
+    # self.measuredVolumeSelector.removeEnabled = False
+    # self.measuredVolumeSelector.setMRMLScene( slicer.mrmlScene )
+    # self.measuredVolumeSelector.setToolTip( "Pick the measured gel dosimeter volume." )
+    # self.step1_loadDataCollapsibleButtonLayout.addRow('Measured gel dosimeter volume: ', self.measuredVolumeSelector)
 
     # CALIBRATION node selector
     self.calibrationVolumeSelector = slicer.qMRMLNodeComboBox()
@@ -941,6 +942,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   # Event handler functions
   # -----------------------
   #
+  
   def onViewSelect(self, layoutIndex):
     if layoutIndex == 0:
        self.layoutWidget.setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpView)
@@ -1075,8 +1077,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       beamModelsParent.SetDisplayVisibilityForBranch(0)
       
     # Set transforms to slider widgets
-    #.step2_1_translationSliders.setMRMLTransformNode(obiToPlanTransformNode) 
-    self.step2_1_rotationSliders.setMRMLTransformNode(obiToPlanTransformNode)
+    #step2_1_translationSliders.setMRMLTransformNode(obiToPlanTransformNode) 
+    #self.step2_1_rotationSliders.setMRMLTransformNode(obiToPlanTransformNode)
 
     # Change single step size to 0.5mm in the translation controls
     #sliders = slicer.util.findChildren(widget=self.step2_1_translationSliders, className='qMRMLLinearTransformSlider') 
@@ -1100,7 +1102,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     selectionNode.SetSecondaryVolumeID(self.measuredVolumeNode.GetID())
     appLogic.PropagateVolumeSelection() 
 
-  def onLoadPddDataRead(self):
+  def onLoadPddDataRead(self):  #AR this is the thing to turn into the PNG
     fileName = qt.QFileDialog.getOpenFileName(0, 'Open PDD data file', '', 'CSV with COMMA ( *.csv )')
     if fileName is not None and fileName != '':
       success = self.logic.loadPdd(fileName)
