@@ -273,18 +273,20 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_AssignDataLabel = qt.QLabel("Assign loaded data to roles.\nNote: If this selection is changed later then all the following steps need to be performed again")
     self.step1_AssignDataLabel.wordWrap = True
     self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_AssignDataLabel)
-
     
-    # PLANCT node selector
-    # self.planCTSelector = slicer.qMRMLNodeComboBox()
-    # self.planCTSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    # self.planCTSelector.addEnabled = False
-    # self.planCTSelector.removeEnabled = False
-    # self.planCTSelector.setMRMLScene( slicer.mrmlScene )
-    # self.planCTSelector.setToolTip( "Pick the planning CT volume" )
-    # #self.step1_loadDataCollapsibleButtonLayout.addRow('Planning CT volume: ', self.planCTSelector)
-
-    # PLANDOSE node selector  #floodFieldImageSelector used to be planDoseSelector
+    # number of calibration films node selector
+    self.numberOfCalibrationFilmsSelectorLayout = qt.QHBoxLayout()   #AR add parent in parentheses, needed?
+    self.numberOfCalibrationFilmsSpinBox = qt.QSpinBox()
+    self.numberOfCalibrationFilmsSpinBox.value = 5
+    self.numberOfCalibrationFilmsSpinBox.maximum = 10
+    self.numberOfCalibrationFilmsSpinBox.minimum = 0
+    self.numberOfCalibrationFilmsSpinBox.enabled = True
+    self.numberOfCalibrationFilmsLabelBefore = qt.QLabel('Number of Calibration Films is: ')
+    self.numberOfCalibrationFilmsSelectorLayout.addWidget(self.numberOfCalibrationFilmsLabelBefore)
+    self.numberOfCalibrationFilmsSelectorLayout.addWidget(self.numberOfCalibrationFilmsSpinBox)
+    self.step1_loadDataCollapsibleButtonLayout.addRow(self.numberOfCalibrationFilmsSelectorLayout) 
+    
+    # number of calibration fields node selector  #floodFieldImageSelector used to be planDoseSelector
     self.floodFieldImageSelector = slicer.qMRMLNodeComboBox()
     self.floodFieldImageSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
     self.floodFieldImageSelector.addEnabled = False
@@ -292,18 +294,46 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.floodFieldImageSelector.setMRMLScene( slicer.mrmlScene )
     self.floodFieldImageSelector.setToolTip( "--pick the flood field image file-- CHANGE THIS." )
     self.step1_loadDataCollapsibleButtonLayout.addRow('Flood field image: ', self.floodFieldImageSelector)
+   
     
-    #
+    #assigning cGy doses to film images node selector 
+    
+    #assigning doses
+    self.doseToImageSelectorLayout = qt.QHBoxLayout()
+    self.doseToImageSelectorLabelBefore = qt.QLabel('Calibration ')
+    self.doseToImageSelector_cGySpinBox = qt.QSpinBox()
+    self.doseToImageSelectorLabelMiddle = qt.QLabel(' cGy : ')
+    
+    self.doseToImageSelectorLayout.addWidget(self.doseToImageSelectorLabelBefore)
+    self.doseToImageSelectorLayout.addWidget(self.doseToImageSelector_cGySpinBox)
+    self.doseToImageSelectorLayout.addWidget(self.doseToImageSelectorLabelMiddle)
+    
+   
+    #AR this needs to into a loop/other panel eventually 
+    #calibration film image node selector 
+    self.doseToImageFilmSelector = slicer.qMRMLNodeComboBox()
+    self.doseToImageFilmSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
+    self.doseToImageFilmSelector.addEnabled = False
+    self.doseToImageFilmSelector.removeEnabled = False
+    self.doseToImageFilmSelector.setMRMLScene( slicer.mrmlScene )
+    self.doseToImageFilmSelector.setToolTip( "Choose the film image corresponding to the dose above" )
+    
+    self.doseToImageSelectorLayout.addWidget(self.doseToImageFilmSelector)
+    self.step1_loadDataCollapsibleButtonLayout.addRow(self.doseToImageSelectorLayout)
+    
 
-    # PLANSTRUCTURES node selector
-    self.planStructuresSelector = slicer.qMRMLNodeComboBox()
-    self.planStructuresSelector.nodeTypes = ["vtkMRMLSegmentationNode"]
-    self.planStructuresSelector.noneEnabled = True
-    self.planStructuresSelector.addEnabled = False
-    self.planStructuresSelector.removeEnabled = False
-    self.planStructuresSelector.setMRMLScene( slicer.mrmlScene )
-    self.planStructuresSelector.setToolTip( "Pick the planning structure set." )
-    self.step1_loadDataCollapsibleButtonLayout.addRow('Structures: ', self.planStructuresSelector)
+    
+    
+    
+    # # PLANSTRUCTURES node selector
+    # self.planStructuresSelector = slicer.qMRMLNodeComboBox()
+    # self.planStructuresSelector.nodeTypes = ["vtkMRMLSegmentationNode"]
+    # self.planStructuresSelector.noneEnabled = True
+    # self.planStructuresSelector.addEnabled = False
+    # self.planStructuresSelector.removeEnabled = False
+    # self.planStructuresSelector.setMRMLScene( slicer.mrmlScene )
+    # self.planStructuresSelector.setToolTip( "Pick the planning structure set." )
+    # self.step1_loadDataCollapsibleButtonLayout.addRow('Structures: ', self.planStructuresSelector)
 
     # # OBI node selector
     # self.obiSelector = slicer.qMRMLNodeComboBox()
@@ -323,22 +353,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # self.measuredVolumeSelector.setToolTip( "Pick the measured gel dosimeter volume." )
     # self.step1_loadDataCollapsibleButtonLayout.addRow('Measured gel dosimeter volume: ', self.measuredVolumeSelector)
 
-    # CALIBRATION node selector
-    self.calibrationVolumeSelector = slicer.qMRMLNodeComboBox()
-    self.calibrationVolumeSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    self.calibrationVolumeSelector.noneEnabled = True
-    self.calibrationVolumeSelector.addEnabled = False
-    self.calibrationVolumeSelector.removeEnabled = False
-    self.calibrationVolumeSelector.setMRMLScene( slicer.mrmlScene )
-    self.calibrationVolumeSelector.setToolTip( "Pick the calibration gel dosimeter volume for registration.\nNote: Only needed if calibration function is not entered, but calculated based on calibration gel volume and PDD data" )
-    self.step1_loadDataCollapsibleButtonLayout.addRow('Calibration gel volume (optional): ', self.calibrationVolumeSelector)
-
     
     # #######AR current change this
     # # # copypasted from geldosimetry lines 76- Dose difference tolerance criteria   #AR change this
     # self.step1_doseToImageLayout = qt.QHBoxLayout(self.step4_1_gammaDoseComparisonCollapsibleButton)
     # self.step1_doseToImageLabelBefore = qt.QLabel('Dose difference criteria is ')
-    # self.step1_doseToImageIntegerSpinbox = qt.QDoubleSpinBox()  #AR will eventually be an appropriate spinbox
+    # self.step1_doseToImageIntegerSpinbox = qt.QDoubleSpinBox()  #AR needs a text field, not a spin box
     # self.step1_doseToImageIntegerSpinbox.setValue(3.0)
     # self.step1_doseToImageLabelAfter = qt.QLabel('% of:  ')
     # self.step1_doseToImageLayout.addWidget(self.step1_doseToImageLabelBefore)
@@ -1005,12 +1025,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   def onStep1_LoadDataCollapsed(self, collapsed):
     # Save selections to member variables when switching away from load data step
     if collapsed == True:
-      self.planCtVolumeNode = self.planCTSelector.currentNode()
+      self.planCtVolumeNode = self.doseToImageFilmSelector.currentNode()
       self.planDoseVolumeNode = self.floodFieldImageSelector.currentNode()
       self.obiVolumeNode = self.obiSelector.currentNode()
       self.planStructuresNode = self.planStructuresSelector.currentNode()
       self.measuredVolumeNode = self.measuredVolumeSelector.currentNode()
-      self.calibrationVolumeNode = self.calibrationVolumeSelector.currentNode()
+      self.calibrationVolumeNode = self.numberOfCalibrationFilmsSelector.currentNode()
 
   # def onStep2_2_MeasuredDoseToObiRegistrationSelected(self, collapsed):    
     # # Make sure the functions handling entering the fiducial selection panels are called when entering the outer panel
@@ -1783,7 +1803,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     calibrationVolumeName = 'lcv02_hr.vff'
 
     planCTVolume = slicer.util.getNode(planCTVolumeName)
-    self.planCTSelector.setCurrentNode(planCTVolume)
+    self.doseToImageFilmSelector.setCurrentNode(planCTVolume)
     planDoseVolume = slicer.util.getNode(planDoseVolumeName)
     self.floodFieldImageSelector.setCurrentNode(planDoseVolume)
     obiVolume = slicer.util.getNode(obiVolumeName)
@@ -1793,7 +1813,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     measuredVolume = slicer.util.getNode(measuredVolumeName)
     self.measuredVolumeSelector.setCurrentNode(measuredVolume)
     calibrationVolume = slicer.util.getNode(calibrationVolumeName)
-    self.calibrationVolumeSelector.setCurrentNode(calibrationVolume)
+    self.numberOfCalibrationFilmsSelector.setCurrentNode(calibrationVolume)
     slicer.app.processEvents()
 
     ### 2. Register
