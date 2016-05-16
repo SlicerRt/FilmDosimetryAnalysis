@@ -190,7 +190,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     #self.step3_1_calibrationRoutineCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep3_1_CalibrationRoutineSelected) 
     #self.step3_1_showOpticalAttenuationVsDoseCurveButton.disconnect('clicked()', self.onShowOpticalAttenuationVsDoseCurve) 
     #self.step3_1_removeSelectedPointsFromOpticalAttenuationVsDoseCurveButton.disconnect('clicked()', self.onRemoveSelectedPointsFromOpticalAttenuationVsDoseCurve) 
-    #self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton.disconnect('clicked()', self.onFitPolynomialToOpticalAttenuationVsDoseCurve) 
+    #self.step1_2_performCalibrationButton.disconnect('clicked()', self.onFitPolynomialToOpticalAttenuationVsDoseCurve) 
     #self.step3_2_exportCalibrationToCSV.disconnect('clicked()', self.onExportCalibration) 
     #self.step3_2_applyCalibrationButton.disconnect('clicked()', self.onApplyCalibration) 
     #self.step4_doseComparisonCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep4_DoseComparisonSelected) 
@@ -286,7 +286,20 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.numberOfCalibrationFilmsSelectorLayout.addWidget(self.numberOfCalibrationFilmsSpinBox)
     self.step1_loadDataCollapsibleButtonLayout.addRow(self.numberOfCalibrationFilmsSelectorLayout) 
     
-    # number of calibration fields node selector  #floodFieldImageSelector used to be planDoseSelector
+    #AR make ctk label 
+    
+    self.step1_1_doseToImageSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.step1_1_doseToImageSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step1_1_doseToImageSelectionCollapsibleButton.text = "1.1. Input calibration film images to assigned dose"
+    self.step1_loadDataCollapsibleButtonLayout.addWidget(self.step1_1_doseToImageSelectionCollapsibleButton)
+    
+    self.step1_1_doseToImageSelectionButtonLayout = qt.QFormLayout(self.step1_1_doseToImageSelectionCollapsibleButton)
+    self.step1_1_doseToImageSelectionButtonLayout.setContentsMargins(4,4,4,4)
+    self.step1_1_doseToImageSelectionButtonLayout.setSpacing(4)
+    
+    
+    
+    ##choose the flood field image
     self.floodFieldImageSelector = slicer.qMRMLNodeComboBox()
     self.floodFieldImageSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
     self.floodFieldImageSelector.addEnabled = False
@@ -296,32 +309,45 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_loadDataCollapsibleButtonLayout.addRow('Flood field image: ', self.floodFieldImageSelector)
    
     
-    #assigning cGy doses to film images node selector 
+    #add image selectors to step1_1_doseToImageSelectionCollapsibleButton
     
-    #assigning doses
-    self.doseToImageSelectorLayout = qt.QHBoxLayout()
-    self.doseToImageSelectorLabelBefore = qt.QLabel('Calibration ')
-    self.doseToImageSelector_cGySpinBox = qt.QSpinBox()
-    self.doseToImageSelectorLabelMiddle = qt.QLabel(' cGy : ')
+    self.step1_1_doseToImageSelectionButtonLayout.addRow('Flood field image: ', self.floodFieldImageSelector)
     
-    self.doseToImageSelectorLayout.addWidget(self.doseToImageSelectorLabelBefore)
-    self.doseToImageSelectorLayout.addWidget(self.doseToImageSelector_cGySpinBox)
-    self.doseToImageSelectorLayout.addWidget(self.doseToImageSelectorLabelMiddle)
+    
+    
+    for doseToImageLayoutNumber in range (self.numberOfCalibrationFilmsSpinBox.value):
+      self.doseToImageSelectorLayout = qt.QHBoxLayout()
+      self.doseToImageSelectorLabelBefore = qt.QLabel('Calibration ')
+      self.doseToImageSelector_cGySpinBox = qt.QSpinBox()
+      self.doseToImageSelector_cGySpinBox.minimum = 0
+      self.doseToImageSelector_cGySpinBox.maximum = 1000
+      self.doseToImageSelectorLabelMiddle = qt.QLabel(' cGy : ')
+     
+      self.doseToImageFilmSelector = slicer.qMRMLNodeComboBox()
+      self.doseToImageFilmSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
+      self.doseToImageFilmSelector.addEnabled = False
+      self.doseToImageFilmSelector.removeEnabled = False
+      self.doseToImageFilmSelector.setMRMLScene( slicer.mrmlScene )
+      self.doseToImageFilmSelector.setToolTip( "Choose the film image corresponding to the dose above" )
+      
+      self.doseToImageSelectorLayout.addWidget(self.doseToImageSelectorLabelBefore)
+      self.doseToImageSelectorLayout.addWidget(self.doseToImageSelector_cGySpinBox)
+      self.doseToImageSelectorLayout.addWidget(self.doseToImageSelectorLabelMiddle)
+      self.doseToImageSelectorLayout.addWidget(self.doseToImageFilmSelector)
+      
+      self.step1_loadDataCollapsibleButtonLayout.addRow(self.doseToImageSelectorLayout)
+      
+      #self.step1_1_doseToImageSelectionButtonLayout.addRow(self.doseToImageSelectorLayout)
+  
+    self.step1_2_performCalibrationButton = qt.QPushButton("Perform Calibration")
+    self.step1_2_performCalibrationButton.toolTip = "Finds the calibration function"
+    self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_2_performCalibrationButton)
+    
     
    
-    #AR this needs to into a loop/other panel eventually 
-    #calibration film image node selector 
-    self.doseToImageFilmSelector = slicer.qMRMLNodeComboBox()
-    self.doseToImageFilmSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    self.doseToImageFilmSelector.addEnabled = False
-    self.doseToImageFilmSelector.removeEnabled = False
-    self.doseToImageFilmSelector.setMRMLScene( slicer.mrmlScene )
-    self.doseToImageFilmSelector.setToolTip( "Choose the film image corresponding to the dose above" )
     
-    self.doseToImageSelectorLayout.addWidget(self.doseToImageFilmSelector)
-    self.step1_loadDataCollapsibleButtonLayout.addRow(self.doseToImageSelectorLayout)
     
-
+      
     
     
     
@@ -368,8 +394,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # self.step1_doseToImageLayout.addLayout(self.step4_1_referenceDoseLayout) #AR copypasted from geldosimetry
     
     # self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_doseToImageLayout) #definitely need this to have it be visible 
-    
-    
     
     
     
@@ -556,38 +580,38 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # self.step3_1_calibrationRoutineCollapsibleButton.setProperty('collapsedHeight', 4)
     # self.step3_1_calibrationRoutineCollapsibleButton.text = "3.1. Perform calibration routine (optional)"
     # self.step3_doseCalibrationCollapsibleButtonLayout.addWidget(self.step3_1_calibrationRoutineCollapsibleButton)
-    # self.step3_1_calibrationRoutineLayout = qt.QFormLayout(self.step3_1_calibrationRoutineCollapsibleButton)
-    # self.step3_1_calibrationRoutineLayout.setContentsMargins(12,4,4,4)
-    # self.step3_1_calibrationRoutineLayout.setSpacing(4)
+    # self.step1_1_doseToImageSelectionButtonLayout = qt.QFormLayout(self.step3_1_calibrationRoutineCollapsibleButton)
+    # self.step1_1_doseToImageSelectionButtonLayout.setContentsMargins(12,4,4,4)
+    # self.step1_1_doseToImageSelectionButtonLayout.setSpacing(4)
 
     # # Info label
-    # self.step3_1_calibrationRoutineLayout.addRow(qt.QLabel('Hint: Skip this step if calibration function is already available'))
+    # self.step1_1_doseToImageSelectionButtonLayout.addRow(qt.QLabel('Hint: Skip this step if calibration function is already available'))
 
     # # Load Pdd data
     # self.step3_1_pddLoadDataButton = qt.QPushButton("Load reference percent depth dose (PDD) data from CSV file")
     # self.step3_1_pddLoadDataButton.toolTip = "Load PDD data file from CSV"
-    # self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_pddLoadDataButton)
+    # self.step1_1_doseToImageSelectionButtonLayout.addRow(self.step3_1_pddLoadDataButton)
 
     # # Relative dose factor
     # self.step3_1_rdfLineEdit = qt.QLineEdit()
-    # self.step3_1_calibrationRoutineLayout.addRow('Relative dose factor (RDF): ', self.step3_1_rdfLineEdit)
+    # self.step1_1_doseToImageSelectionButtonLayout.addRow('Relative dose factor (RDF): ', self.step3_1_rdfLineEdit)
 
     # # Empty row
-    # self.step3_1_calibrationRoutineLayout.addRow(' ', None)
+    # self.step1_1_doseToImageSelectionButtonLayout.addRow(' ', None)
 
     # # Monitor units
     # self.step3_1_monitorUnitsLineEdit = qt.QLineEdit()
-    # self.step3_1_calibrationRoutineLayout.addRow("Delivered monitor units (MU's): ", self.step3_1_monitorUnitsLineEdit)
+    # self.step1_1_doseToImageSelectionButtonLayout.addRow("Delivered monitor units (MU's): ", self.step3_1_monitorUnitsLineEdit)
 
     # # Averaging radius
     # self.step3_1_radiusMmFromCentrePixelLineEdit = qt.QLineEdit()
     # self.step3_1_radiusMmFromCentrePixelLineEdit.toolTip = "Radius of the cylinder that is extracted around central axis to get optical attenuation values per depth"
-    # self.step3_1_calibrationRoutineLayout.addRow('Averaging radius (mm): ', self.step3_1_radiusMmFromCentrePixelLineEdit)
+    # self.step1_1_doseToImageSelectionButtonLayout.addRow('Averaging radius (mm): ', self.step3_1_radiusMmFromCentrePixelLineEdit)
 
     # # Align Pdd data and CALIBRATION data based on region of interest selected
     # self.step3_1_alignCalibrationCurvesButton = qt.QPushButton("Plot reference and gel PDD data")
     # self.step3_1_alignCalibrationCurvesButton.toolTip = "Align PDD data optical attenuation values with experimental optical attenuation values (coming from calibration gel volume)"
-    # self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_alignCalibrationCurvesButton)
+    # self.step1_1_doseToImageSelectionButtonLayout.addRow(self.step3_1_alignCalibrationCurvesButton)
 
     # # Controls to adjust alignment
     # self.step3_1_adjustAlignmentControlsLayout = qt.QHBoxLayout(self.step3_1_calibrationRoutineCollapsibleButton)
@@ -621,18 +645,18 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # self.step3_1_adjustAlignmentControlsLayout.addWidget(self.step3_1_yScaleSpinBox)
     # self.step3_1_adjustAlignmentControlsLayout.addWidget(self.step3_1_yTranslationLabel)
     # self.step3_1_adjustAlignmentControlsLayout.addWidget(self.step3_1_yTranslationSpinBox)
-    # self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_adjustAlignmentControlsLayout)
+    # self.step1_1_doseToImageSelectionButtonLayout.addRow(self.step3_1_adjustAlignmentControlsLayout)
 
     # # Add empty row
-    # self.step3_1_calibrationRoutineLayout.addRow(' ', None)
+    # self.step1_1_doseToImageSelectionButtonLayout.addRow(' ', None)
 
     # # Create dose information button
     # self.step3_1_computeDoseFromPddButton = qt.QPushButton("Calculate dose from reference PDD")
     # self.step3_1_computeDoseFromPddButton.toolTip = "Compute dose from PDD data based on RDF and MUs"
-    # self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_computeDoseFromPddButton)
+    # self.step1_1_doseToImageSelectionButtonLayout.addRow(self.step3_1_computeDoseFromPddButton)
 
     # # Empty row
-    # self.step3_1_calibrationRoutineLayout.addRow(' ', None)
+    # self.step1_1_doseToImageSelectionButtonLayout.addRow(' ', None)
 
     # # Show chart of optical attenuation vs. dose curve and remove selected points
     # self.step3_1_oaVsDoseCurveControlsLayout = qt.QHBoxLayout(self.step3_1_calibrationRoutineCollapsibleButton)
@@ -647,10 +671,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # self.step3_1_oaVsDoseCurveControlsLayout.addWidget(self.step3_1_showOpticalAttenuationVsDoseCurveButton)
     # self.step3_1_oaVsDoseCurveControlsLayout.addWidget(self.step3_1_removeSelectedPointsFromOpticalAttenuationVsDoseCurveButton)
     # self.step3_1_oaVsDoseCurveControlsLayout.addWidget(self.step3_1_helpLabel)
-    # self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_oaVsDoseCurveControlsLayout)
+    # self.step1_1_doseToImageSelectionButtonLayout.addRow(self.step3_1_oaVsDoseCurveControlsLayout)
     
     # # Add empty row
-    # self.step3_1_calibrationRoutineLayout.addRow(' ', None)
+    # self.step1_1_doseToImageSelectionButtonLayout.addRow(' ', None)
 
     # # Find polynomial fit
     # self.step3_1_selectOrderOfPolynomialFitButton = qt.QComboBox()
@@ -658,14 +682,14 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # self.step3_1_selectOrderOfPolynomialFitButton.addItem('2')
     # self.step3_1_selectOrderOfPolynomialFitButton.addItem('3')
     # self.step3_1_selectOrderOfPolynomialFitButton.addItem('4')
-    # self.step3_1_calibrationRoutineLayout.addRow('Fit with what order polynomial function:', self.step3_1_selectOrderOfPolynomialFitButton)
+    # self.step1_1_doseToImageSelectionButtonLayout.addRow('Fit with what order polynomial function:', self.step3_1_selectOrderOfPolynomialFitButton)
     
-    # self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton = qt.QPushButton("Fit data and determine calibration function")
-    # self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton.toolTip = "Finds the line of best fit based on the data and polynomial order provided"
-    # self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton)
+    # self.step1_2_performCalibrationButton = qt.QPushButton("Fit data and determine calibration function")
+    # self.step1_2_performCalibrationButton.toolTip = "Finds the line of best fit based on the data and polynomial order provided"
+    # self.step1_1_doseToImageSelectionButtonLayout.addRow(self.step1_2_performCalibrationButton)
 
     # self.step3_1_fitPolynomialResidualsLabel = qt.QLabel()
-    # self.step3_1_calibrationRoutineLayout.addRow(self.step3_1_fitPolynomialResidualsLabel)
+    # self.step1_1_doseToImageSelectionButtonLayout.addRow(self.step3_1_fitPolynomialResidualsLabel)
 
     # # Step 3.2: Apply calibration
     # self.step3_2_applyCalibrationCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -718,7 +742,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # self.step3_2_applyCalibrationLayout.addRow(self.step3_2_exportCalibrationToCSV)
     
     # # Empty row
-    # self.step3_1_calibrationRoutineLayout.addRow(' ', None)
+    # self.step1_1_doseToImageSelectionButtonLayout.addRow(' ', None)
 
     # # Apply calibration button
     # self.step3_2_applyCalibrationButton = qt.QPushButton("Apply calibration")
@@ -747,7 +771,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # self.step3_1_calibrationRoutineCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep3_1_CalibrationRoutineSelected)
     # self.step3_1_showOpticalAttenuationVsDoseCurveButton.connect('clicked()', self.onShowOpticalAttenuationVsDoseCurve)
     # self.step3_1_removeSelectedPointsFromOpticalAttenuationVsDoseCurveButton.connect('clicked()', self.onRemoveSelectedPointsFromOpticalAttenuationVsDoseCurve)
-    # self.step3_1_fitPolynomialToOpticalAttenuationVsDoseCurveButton.connect('clicked()', self.onFitPolynomialToOpticalAttenuationVsDoseCurve)
+    # self.step1_2_performCalibrationButton.connect('clicked()', self.onFitPolynomialToOpticalAttenuationVsDoseCurve)
     # self.step3_2_exportCalibrationToCSV.connect('clicked()', self.onExportCalibration)
     # self.step3_2_applyCalibrationButton.connect('clicked()', self.onApplyCalibration)
     
