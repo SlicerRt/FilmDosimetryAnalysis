@@ -254,11 +254,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_LoadDataLabel.wordWrap = True
     self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_LoadDataLabel)
 
-    # # Load png data button
-    # self.step1_showDicomBrowserButton = qt.QPushButton("Load .png data eventually") #AR step1_showDicomBrowserButton is the object
-    # self.step1_showDicomBrowserButton.toolTip = "Load irradiated films"
-    # self.step1_showDicomBrowserButton.name = "showDicomBrowserButton"
-    # self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_showDicomBrowserButton)
 
     # Load image data button
     self.step1_loadNonDicomDataButton = qt.QPushButton("Load image files")
@@ -275,47 +270,59 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_AssignDataLabel)
     
     # number of calibration films node selector
-    self.numberOfCalibrationFilmsSelectorLayout = qt.QHBoxLayout()   #AR add parent in parentheses, needed?
-    self.numberOfCalibrationFilmsSpinBox = qt.QSpinBox()
-    self.numberOfCalibrationFilmsSpinBox.value = 5
-    self.numberOfCalibrationFilmsSpinBox.maximum = 10
-    self.numberOfCalibrationFilmsSpinBox.minimum = 0
-    self.numberOfCalibrationFilmsSpinBox.enabled = True
-    self.numberOfCalibrationFilmsLabelBefore = qt.QLabel('Number of Calibration Films is: ')
-    self.numberOfCalibrationFilmsSelectorLayout.addWidget(self.numberOfCalibrationFilmsLabelBefore)
-    self.numberOfCalibrationFilmsSelectorLayout.addWidget(self.numberOfCalibrationFilmsSpinBox)
-    self.step1_loadDataCollapsibleButtonLayout.addRow(self.numberOfCalibrationFilmsSelectorLayout) 
-    
-    #AR make ctk label 
-    
-    self.step1_1_doseToImageSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step1_1_doseToImageSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step1_1_doseToImageSelectionCollapsibleButton.text = "1.1. Input calibration film images to assigned dose"
-    self.step1_loadDataCollapsibleButtonLayout.addWidget(self.step1_1_doseToImageSelectionCollapsibleButton)
-    
-    self.step1_1_doseToImageSelectionButtonLayout = qt.QFormLayout(self.step1_1_doseToImageSelectionCollapsibleButton)
-    self.step1_1_doseToImageSelectionButtonLayout.setContentsMargins(4,4,4,4)
-    self.step1_1_doseToImageSelectionButtonLayout.setSpacing(4)
+    self.step1_numberOfCalibrationFilmsSelectorLayout = qt.QHBoxLayout()   #TODO add parent in parentheses, needed?
+    self.step1_numberOfCalibrationFilmsSpinBox = qt.QSpinBox()
+    self.step1_numberOfCalibrationFilmsSpinBox.value = 5
+    self.step1_numberOfCalibrationFilmsSpinBox.maximum = 10
+    self.step1_numberOfCalibrationFilmsSpinBox.minimum = 0
+    self.step1_numberOfCalibrationFilmsSpinBox.enabled = True
+    self.step1_numberOfCalibrationFilmsLabelBefore = qt.QLabel('Number of Calibration Films is: ')
+    self.step1_numberOfCalibrationFilmsSelectorLayout.addWidget(self.step1_numberOfCalibrationFilmsLabelBefore)
+    self.step1_numberOfCalibrationFilmsSelectorLayout.addWidget(self.step1_numberOfCalibrationFilmsSpinBox)
+    self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_numberOfCalibrationFilmsSelectorLayout) 
     
     
+    
+    #TODO make ctk label 
+    
+    # self.step1_1_doseToImageSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
+    # self.step1_1_doseToImageSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
+    # self.step1_1_doseToImageSelectionCollapsibleButton.text = "1.1. Input calibration film images to assigned dose"
+    # self.step1_loadDataCollapsibleButtonLayout.addWidget(self.step1_1_doseToImageSelectionCollapsibleButton)
+    
+    # self.step1_1_doseToImageSelectionButtonLayout = qt.QFormLayout(self.step1_1_doseToImageSelectionCollapsibleButton)
+    # self.step1_1_doseToImageSelectionButtonLayout.setContentsMargins(4,4,4,4)
+    # self.step1_1_doseToImageSelectionButtonLayout.setSpacing(4)
+    
+    #TODO continue changing names to have step1_
     
     ##choose the flood field image
+    self.floodFieldImageSelectorLayout = qt.QHBoxLayout()
     self.floodFieldImageSelector = slicer.qMRMLNodeComboBox()
     self.floodFieldImageSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
     self.floodFieldImageSelector.addEnabled = False
     self.floodFieldImageSelector.removeEnabled = False
     self.floodFieldImageSelector.setMRMLScene( slicer.mrmlScene )
     self.floodFieldImageSelector.setToolTip( "--pick the flood field image file-- CHANGE THIS." )
+    self.floodFieldImageSelectorLabel = qt.QLabel('Flood field image: ')
+    
+    self.floodFieldImageSelectorLayout.addWidget(self.floodFieldImageSelectorLabel)
+    self.floodFieldImageSelectorLayout.addWidget(self.floodFieldImageSelector)
+
+    
     self.step1_loadDataCollapsibleButtonLayout.addRow('Flood field image: ', self.floodFieldImageSelector)
-   
+    
+    
     
     #add image selectors to step1_1_doseToImageSelectionCollapsibleButton
     
-    self.step1_1_doseToImageSelectionButtonLayout.addRow('Flood field image: ', self.floodFieldImageSelector)
+    #self.step1_1_doseToImageSelectionButtonLayout.addRow('Flood field image: ', self.floodFieldImageSelector)
+    #self.step1_1_doseToImageSelectionCollapsibleButton.addWidget(self.floodFieldImageSelectorLayout)
+
+
+    #TODO put loop in a frame, add handler function (search for "connect" - valueChanged(int) equivalent of clicked(), look at line 748
     
-    
-    
-    for doseToImageLayoutNumber in range (self.numberOfCalibrationFilmsSpinBox.value):
+    for doseToImageLayoutNumber in range (self.step1_numberOfCalibrationFilmsSpinBox.value):
       self.doseToImageSelectorLayout = qt.QHBoxLayout()
       self.doseToImageSelectorLabelBefore = qt.QLabel('Calibration ')
       self.doseToImageSelector_cGySpinBox = qt.QSpinBox()
@@ -339,61 +346,15 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       
       #self.step1_1_doseToImageSelectionButtonLayout.addRow(self.doseToImageSelectorLayout)
   
+    
+    
+    
+    #calibration button
     self.step1_2_performCalibrationButton = qt.QPushButton("Perform Calibration")
     self.step1_2_performCalibrationButton.toolTip = "Finds the calibration function"
     self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_2_performCalibrationButton)
     
     
-   
-    
-    
-      
-    
-    
-    
-    # # PLANSTRUCTURES node selector
-    # self.planStructuresSelector = slicer.qMRMLNodeComboBox()
-    # self.planStructuresSelector.nodeTypes = ["vtkMRMLSegmentationNode"]
-    # self.planStructuresSelector.noneEnabled = True
-    # self.planStructuresSelector.addEnabled = False
-    # self.planStructuresSelector.removeEnabled = False
-    # self.planStructuresSelector.setMRMLScene( slicer.mrmlScene )
-    # self.planStructuresSelector.setToolTip( "Pick the planning structure set." )
-    # self.step1_loadDataCollapsibleButtonLayout.addRow('Structures: ', self.planStructuresSelector)
-
-    # # OBI node selector
-    # self.obiSelector = slicer.qMRMLNodeComboBox()
-    # self.obiSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    # self.obiSelector.addEnabled = False
-    # self.obiSelector.removeEnabled = False
-    # self.obiSelector.setMRMLScene( slicer.mrmlScene )
-    # self.obiSelector.setToolTip( "Pick the OBI volume." )
-    # self.step1_loadDataCollapsibleButtonLayout.addRow('OBI volume: ', self.obiSelector)
-
-    # # MEASURED node selector
-    # self.measuredVolumeSelector = slicer.qMRMLNodeComboBox()
-    # self.measuredVolumeSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    # self.measuredVolumeSelector.addEnabled = False
-    # self.measuredVolumeSelector.removeEnabled = False
-    # self.measuredVolumeSelector.setMRMLScene( slicer.mrmlScene )
-    # self.measuredVolumeSelector.setToolTip( "Pick the measured gel dosimeter volume." )
-    # self.step1_loadDataCollapsibleButtonLayout.addRow('Measured gel dosimeter volume: ', self.measuredVolumeSelector)
-
-    
-    # #######AR current change this
-    # # # copypasted from geldosimetry lines 76- Dose difference tolerance criteria   #AR change this
-    # self.step1_doseToImageLayout = qt.QHBoxLayout(self.step4_1_gammaDoseComparisonCollapsibleButton)
-    # self.step1_doseToImageLabelBefore = qt.QLabel('Dose difference criteria is ')
-    # self.step1_doseToImageIntegerSpinbox = qt.QDoubleSpinBox()  #AR needs a text field, not a spin box
-    # self.step1_doseToImageIntegerSpinbox.setValue(3.0)
-    # self.step1_doseToImageLabelAfter = qt.QLabel('% of:  ')
-    # self.step1_doseToImageLayout.addWidget(self.step1_doseToImageLabelBefore)
-    # self.step1_doseToImageLayout.addWidget(self.step1_doseToImageIntegerSpinbox)
-    # self.step1_doseToImageLayout.addWidget(self.step1_doseToImageLabelAfter)
-    
-    # self.step1_doseToImageLayout.addLayout(self.step4_1_referenceDoseLayout) #AR copypasted from geldosimetry
-    
-    # self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_doseToImageLayout) #definitely need this to have it be visible 
     
     
     
@@ -401,170 +362,14 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     #self.step1_showDicomBrowserButton.connect('clicked()', self.logic.onDicomLoad)
     self.step1_loadNonDicomDataButton.connect('clicked()', self.onLoadNonDicomData)
     self.step1_loadDataCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep1_LoadDataCollapsed)
+    #TODO add connection for step1_numberOfCalibrationFilmsSpinBox , add disconnect
+    self.step1_numberOfCalibrationFilmsSpinBox.connect('valueChanged(int)', self.onstep1_numberOfCalibrationFilmsSpinBoxValueChanged)
+    
     
     
 
   # def setup_Step2_Registration(self):
-    # # Step 2: Registration step
-    # self.step2_registrationCollapsibleButton.setProperty('collapsedHeight', 4)
-    # self.step2_registrationCollapsibleButton.text = "2. Registration"
-    # self.sliceletPanelLayout.addWidget(self.step2_registrationCollapsibleButton)
-    # self.step2_registrationCollapsibleButtonLayout = qt.QFormLayout(self.step2_registrationCollapsibleButton)
-    # self.step2_registrationCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
-    # self.step2_registrationCollapsibleButtonLayout.setSpacing(4)
-
-    # # Step 2.1: OBI to PLANCT registration panel    
-    # self.step2_1_obiToPlanCtRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
-    # self.step2_1_obiToPlanCtRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
-    # self.step2_1_obiToPlanCtRegistrationCollapsibleButton.text = "2.1. Register planning CT to OBI"
-    # self.step2_registrationCollapsibleButtonLayout.addWidget(self.step2_1_obiToPlanCtRegistrationCollapsibleButton)
-    # self.step2_1_obiToPlanCtRegistrationLayout = qt.QFormLayout(self.step2_1_obiToPlanCtRegistrationCollapsibleButton)
-    # self.step2_1_obiToPlanCtRegistrationLayout.setContentsMargins(12,4,4,4)
-    # self.step2_1_obiToPlanCtRegistrationLayout.setSpacing(4)
-
-    # # Registration label
-    # self.step2_1_registrationLabel = qt.QLabel("Automatically register the OBI volume to the planning CT.\nIt should take several seconds.")
-    # self.step2_1_registrationLabel.wordWrap = True
-    # self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_registrationLabel)
-
-    # # OBI to PLANCT registration button
-    # self.step2_1_registerObiToPlanCtButton = qt.QPushButton("Perform registration")
-    # self.step2_1_registerObiToPlanCtButton.toolTip = "Register planning CT volume to OBI volume"
-    # self.step2_1_registerObiToPlanCtButton.name = "step2_1_registerObiToPlanCtButton"
-    # self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_registerObiToPlanCtButton)
-
-    # # Add empty row
-    # self.step2_1_obiToPlanCtRegistrationLayout.addRow(' ', None)
-
-    # # Transform fine-tune controls
-    # self.step2_1_transformSlidersInfoLabel = qt.QLabel("If registration result is not satisfactory, a simple re-run of the registration may solve it.\nOtherwise adjust result registration transform if needed:")
-    # self.step2_1_transformSlidersInfoLabel.wordWrap = True
-    # self.step2_1_translationSliders = slicer.qMRMLTransformSliders()
-    # #self.step2_1_translationSliders.CoordinateReference = slicer.qMRMLTransformSliders.LOCAL # This would make the sliders always start form 0 (then min/max would also not be needed)
-    # translationGroupBox = slicer.util.findChildren(widget=self.step2_1_translationSliders, className='ctkCollapsibleGroupBox')[0]
-    # translationGroupBox.collapsed  = True # Collapse by default
-    # self.step2_1_translationSliders.setMRMLScene(slicer.mrmlScene)
-    # self.step2_1_rotationSliders = slicer.qMRMLTransformSliders()
-    # self.step2_1_rotationSliders.minMaxVisible = False
-    # self.step2_1_rotationSliders.TypeOfTransform = slicer.qMRMLTransformSliders.ROTATION
-    # self.step2_1_rotationSliders.Title = "Rotation"
-    # self.step2_1_rotationSliders.CoordinateReference = slicer.qMRMLTransformSliders.LOCAL
-    # rotationGroupBox = slicer.util.findChildren(widget=self.step2_1_rotationSliders, className='ctkCollapsibleGroupBox')[0]
-    # rotationGroupBox.collapsed  = True # Collapse by default
-    # # self.step2_1_rotationSliders.setMRMLScene(slicer.mrmlScene) # If scene is set, then mm appears instead of degrees
-    # self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_transformSlidersInfoLabel)
-    # self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_translationSliders)
-    # self.step2_1_obiToPlanCtRegistrationLayout.addRow(self.step2_1_rotationSliders)
-
-    # # Step 2.2: Gel CT scan to cone beam CT registration panel
-    # self.step2_2_measuredDoseToObiRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
-    # self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
-    # self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.text = "2.2. Register gel dosimeter volume to OBI"
-    # self.step2_registrationCollapsibleButtonLayout.addWidget(self.step2_2_measuredDoseToObiRegistrationCollapsibleButton)
-    # self.step2_2_measuredDoseToObiRegistrationLayout = qt.QVBoxLayout(self.step2_2_measuredDoseToObiRegistrationCollapsibleButton)
-    # self.step2_2_measuredDoseToObiRegistrationLayout.setContentsMargins(12,4,4,4)
-    # self.step2_2_measuredDoseToObiRegistrationLayout.setSpacing(4)
-
-    # # Step 2.2.1: Select OBI fiducials on OBI volume
-    # self.step2_2_1_obiFiducialSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
-    # self.step2_2_1_obiFiducialSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
-    # self.step2_2_1_obiFiducialSelectionCollapsibleButton.text = "2.2.1 Select OBI fiducial points"
-    # self.step2_2_measuredDoseToObiRegistrationLayout.addWidget(self.step2_2_1_obiFiducialSelectionCollapsibleButton)
-    # self.step2_2_1_obiFiducialSelectionLayout = qt.QFormLayout(self.step2_2_1_obiFiducialSelectionCollapsibleButton)
-    # self.step2_2_1_obiFiducialSelectionLayout.setContentsMargins(12,4,4,4)
-    # self.step2_2_1_obiFiducialSelectionLayout.setSpacing(4)
-
-    # # Create instructions label
-    # self.step2_2_1_instructionsLayout = qt.QHBoxLayout(self.step2_2_1_obiFiducialSelectionCollapsibleButton)
-    # self.step2_2_1_obiFiducialSelectionInfoLabel = qt.QLabel("Locate image plane of the OBI fiducials, then click the 'Place fiducials' button (blue arrow with red dot). Next, select the fiducial points in the displayed image plane.")
-    # self.step2_2_1_obiFiducialSelectionInfoLabel.wordWrap = True
-    # self.step2_2_1_helpLabel = qt.QLabel()
-    # self.step2_2_1_helpLabel.pixmap = qt.QPixmap(':Icons/Help.png')
-    # self.step2_2_1_helpLabel.maximumWidth = 24
-    # self.step2_2_1_helpLabel.toolTip = "Hint: Use Shift key for '3D cursor' navigation."
-    # self.step2_2_1_instructionsLayout.addWidget(self.step2_2_1_obiFiducialSelectionInfoLabel)
-    # self.step2_2_1_instructionsLayout.addWidget(self.step2_2_1_helpLabel)
-    # self.step2_2_1_obiFiducialSelectionLayout.addRow(self.step2_2_1_instructionsLayout)
-
-    # # OBI fiducial selector simple markups widget
-    # self.step2_2_1_obiFiducialList = slicer.qSlicerSimpleMarkupsWidget()
-    # self.step2_2_1_obiFiducialList.setMRMLScene(slicer.mrmlScene)
-    # self.step2_2_1_obiFiducialSelectionLayout.addRow(self.step2_2_1_obiFiducialList)
-
-    # # Step 2.2.2: Select MEASURED fiducials on MEASURED dose volume
-    # self.step2_2_2_measuredFiducialSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
-    # self.step2_2_2_measuredFiducialSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
-    # self.step2_2_2_measuredFiducialSelectionCollapsibleButton.text = "2.2.2 Select measured gel dosimeter fiducial points"
-    # self.step2_2_measuredDoseToObiRegistrationLayout.addWidget(self.step2_2_2_measuredFiducialSelectionCollapsibleButton)
-    # self.step2_2_2_measuredFiducialSelectionLayout = qt.QFormLayout(self.step2_2_2_measuredFiducialSelectionCollapsibleButton)
-    # self.step2_2_2_measuredFiducialSelectionLayout.setContentsMargins(12,4,4,4)
-    # self.step2_2_2_measuredFiducialSelectionLayout.setSpacing(4)
-
-    # # Create instructions label
-    # self.step2_2_2_instructionsLayout = qt.QHBoxLayout(self.step2_2_2_measuredFiducialSelectionCollapsibleButton)
-    # self.step2_2_2_measuredFiducialSelectionInfoLabel = qt.QLabel("Select the fiducial points in the gel dosimeter volume in the same order as the OBI fiducials were selected.")
-    # self.step2_2_2_measuredFiducialSelectionInfoLabel.wordWrap = True
-    # self.step2_2_2_helpLabel = qt.QLabel()
-    # self.step2_2_2_helpLabel.pixmap = qt.QPixmap(':Icons/Help.png')
-    # self.step2_2_2_helpLabel.maximumWidth = 24
-    # self.step2_2_2_helpLabel.toolTip = "Hint: Use Shift key for '3D cursor' navigation.\nHint: If gel dosimeter volume is too dark or low contrast, press left mouse button on the image and drag it to change window/level"
-    # self.step2_2_2_instructionsLayout.addWidget(self.step2_2_2_measuredFiducialSelectionInfoLabel)
-    # self.step2_2_2_instructionsLayout.addWidget(self.step2_2_2_helpLabel)
-    # self.step2_2_2_measuredFiducialSelectionLayout.addRow(self.step2_2_2_instructionsLayout)
-
-    # # Measured fiducial selector simple markups widget
-    # self.step2_2_2_measuredFiducialList = slicer.qSlicerSimpleMarkupsWidget()
-    # self.step2_2_2_measuredFiducialList.setMRMLScene(slicer.mrmlScene)
-    # self.step2_2_2_measuredFiducialSelectionLayout.addRow(self.step2_2_2_measuredFiducialList)
-
-    # # Step 2.2.3: Perform registration
-    # self.step2_2_3_measuredToObiRegistrationCollapsibleButton = ctk.ctkCollapsibleButton()
-    # self.step2_2_3_measuredToObiRegistrationCollapsibleButton.setProperty('collapsedHeight', 4)
-    # self.step2_2_3_measuredToObiRegistrationCollapsibleButton.text = "2.2.3 Perform registration"
-    # measuredToObiRegistrationCollapsibleButtonLayout = qt.QFormLayout(self.step2_2_3_measuredToObiRegistrationCollapsibleButton)
-    # measuredToObiRegistrationCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
-    # measuredToObiRegistrationCollapsibleButtonLayout.setSpacing(4)
-    # self.step2_2_measuredDoseToObiRegistrationLayout.addWidget(self.step2_2_3_measuredToObiRegistrationCollapsibleButton)
-
-    # # Registration button - register MEASURED to OBI with fiducial registration
-    # self.step2_2_3_registerMeasuredToObiButton = qt.QPushButton("Register gel volume to OBI")
-    # self.step2_2_3_registerMeasuredToObiButton.toolTip = "Perform fiducial registration between measured gel dosimeter volume and OBI"
-    # self.step2_2_3_registerMeasuredToObiButton.name = "registerMeasuredToObiButton"
-    # measuredToObiRegistrationCollapsibleButtonLayout.addRow(self.step2_2_3_registerMeasuredToObiButton)
-
-    # # Fiducial error label
-    # self.step2_2_3_measuredToObiFiducialRegistrationErrorLabel = qt.QLabel('[Not yet performed]')
-    # measuredToObiRegistrationCollapsibleButtonLayout.addRow('Fiducial registration error: ', self.step2_2_3_measuredToObiFiducialRegistrationErrorLabel)
-
-    # # Add empty row
-    # measuredToObiRegistrationCollapsibleButtonLayout.addRow(' ', None)
-
-    # # Note label about fiducial error
-    # self.step2_2_3_NoteLabel = qt.QLabel("Note: Typical registration error is < 3mm")
-    # measuredToObiRegistrationCollapsibleButtonLayout.addRow(self.step2_2_3_NoteLabel)
-    
-    # # Add substeps in button groups
-    # self.step2_2_registrationCollapsibleButtonGroup = qt.QButtonGroup()
-    # self.step2_2_registrationCollapsibleButtonGroup.addButton(self.step2_1_obiToPlanCtRegistrationCollapsibleButton)
-    # self.step2_2_registrationCollapsibleButtonGroup.addButton(self.step2_2_measuredDoseToObiRegistrationCollapsibleButton)
-
-    # self.step2_2_measuredToObiRegistrationCollapsibleButtonGroup = qt.QButtonGroup()
-    # self.step2_2_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_2_1_obiFiducialSelectionCollapsibleButton)
-    # self.step2_2_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_2_2_measuredFiducialSelectionCollapsibleButton)
-    # self.step2_2_measuredToObiRegistrationCollapsibleButtonGroup.addButton(self.step2_2_3_measuredToObiRegistrationCollapsibleButton)
-
-    # # Make sure first panels appear when steps are first opened (done before connections to avoid
-    # # executing those steps, which are only needed when actually switching there during the workflow)
-    # self.step2_2_1_obiFiducialSelectionCollapsibleButton.setProperty('collapsed', False)
-    # self.step2_1_obiToPlanCtRegistrationCollapsibleButton.setProperty('collapsed', False)
-
-    # # Connections
-    # self.step2_1_registerObiToPlanCtButton.connect('clicked()', self.onObiToPlanCTRegistration)
-    # self.step2_1_translationSliders.connect('valuesChanged()', self.step2_1_rotationSliders.resetUnactiveSliders)
-    # self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_MeasuredDoseToObiRegistrationSelected)
-    # self.step2_2_1_obiFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_1_ObiFiducialCollectionSelected)
-    # self.step2_2_2_measuredFiducialSelectionCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_2_2_MeasuredFiducialCollectionSelected)
-    # self.step2_2_3_registerMeasuredToObiButton.connect('clicked()', self.onMeasuredToObiRegistration)
+    #deleted step 2 code
 
   # def setup_step3_DoseCalibration(self):
     # # Step 3: Calibration step
@@ -1045,6 +850,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     
   def onLoadNonDicomData(self):
     slicer.util.openAddDataDialog()
+    
+  #TODO current add connection event here
+  def onstep1_numberOfCalibrationFilmsSpinBoxValueChanged(self):
+    print "onstep1_numberOfCalibrationFilmsSpinBoxValueChanged has been called"
+  
 
   def onStep1_LoadDataCollapsed(self, collapsed):
     # Save selections to member variables when switching away from load data step
@@ -1170,7 +980,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     selectionNode.SetSecondaryVolumeID(self.measuredVolumeNode.GetID())
     appLogic.PropagateVolumeSelection() 
 
-  def onLoadPddDataRead(self):  #AR this is the thing to turn into the PNG
+  def onLoadPddDataRead(self):  #TODO this is the thing to turn into the PNG
     fileName = qt.QFileDialog.getOpenFileName(0, 'Open PDD data file', '', 'CSV with COMMA ( *.csv )')
     if fileName is not None and fileName != '':
       success = self.logic.loadPdd(fileName)
@@ -1322,6 +1132,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   def onAdjustAlignmentValueChanged(self, value):
     self.logic.createAlignedCalibrationArray(self.step3_1_xTranslationSpinBox.value, self.step3_1_yScaleSpinBox.value, self.step3_1_yTranslationSpinBox.value)
     self.showCalibrationCurves()
+    
+    
+  
 
   def onComputeDoseFromPdd(self):
     try:
