@@ -83,7 +83,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Initiate and group together all panels
     self.step0_layoutSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step1_loadDataCollapsibleButton = ctk.ctkCollapsibleButton()
-    #self.step2_registrationCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.testButton = ctk.ctkCollapsibleButton()
     #self.step3_doseCalibrationCollapsibleButton = ctk.ctkCollapsibleButton()
    # self.step4_doseComparisonCollapsibleButton = ctk.ctkCollapsibleButton()
     #self.stepT1_lineProfileCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -91,7 +91,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.collapsibleButtonsGroup = qt.QButtonGroup()
     self.collapsibleButtonsGroup.addButton(self.step0_layoutSelectionCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step1_loadDataCollapsibleButton)
-    #self.collapsibleButtonsGroup.addButton(self.step2_registrationCollapsibleButton)
+    self.collapsibleButtonsGroup.addButton(self.testButton)
     #self.collapsibleButtonsGroup.addButton(self.step3_doseCalibrationCollapsibleButton)
     #self.collapsibleButtonsGroup.addButton(self.step4_doseComparisonCollapsibleButton)
    # self.collapsibleButtonsGroup.addButton(self.stepT1_lineProfileCollapsibleButton)
@@ -173,13 +173,13 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step0_viewSelectorComboBox.disconnect('activated(int)', self.onViewSelect)
     self.step0_clinicalModeRadioButton.disconnect('toggled(bool)', self.onClinicalModeSelect)
     self.step0_preclinicalModeRadioButton.disconnect('toggled(bool)', self.onPreclinicalModeSelect)
-    #self.step1_showDicomBrowserButton.disconnect('clicked()', self.logic.onDicomLoad)
     #self.step2_1_registerObiToPlanCtButton.disconnect('clicked()', self.onObiToPlanCTRegistration) 
     #self.step2_1_translationSliders.disconnect('valuesChanged()', self.step2_1_rotationSliders.resetUnactiveSliders()) 
-    #self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_MeasuredDoseToObiRegistrationSelected) 
+    #self.step1_2_doseToFilmCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_MeasuredDoseToObiRegistrationSelected) 
     #self.step2_2_1_obiFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_1_ObiFiducialCollectionSelected) 
     #self.step2_2_2_measuredFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_2_MeasuredFiducialCollectionSelected) 
     self.step1_loadNonDicomDataButton.disconnect('clicked()', self.onLoadNonDicomData)
+    self.step1_numberOfCalibrationFilmsSpinBox.disconnect('valueChanged()', self.onstep1_numberOfCalibrationFilmsSpinBoxValueChanged)
     #self.step2_2_3_registerMeasuredToObiButton.disconnect('clicked()', self.onMeasuredToObiRegistration) 
     #self.step3_1_pddLoadDataButton.disconnect('clicked()', self.onLoadPddDataRead)    
     #self.step3_1_alignCalibrationCurvesButton.disconnect('clicked()', self.onAlignCalibrationCurves)  
@@ -187,10 +187,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     #self.step3_1_yScaleSpinBox.disconnect('valueChanged(double)', self.onAdjustAlignmentValueChanged) 
     #self.step3_1_yTranslationSpinBox.disconnect('valueChanged(double)', self.onAdjustAlignmentValueChanged) 
     #self.step3_1_computeDoseFromPddButton.disconnect('clicked()', self.onComputeDoseFromPdd) 
-    #self.step3_1_calibrationRoutineCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep3_1_CalibrationRoutineSelected) 
+    self.step3_1_calibrationRoutineCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep3_1_CalibrationRoutineSelected) 
     #self.step3_1_showOpticalAttenuationVsDoseCurveButton.disconnect('clicked()', self.onShowOpticalAttenuationVsDoseCurve) 
     #self.step3_1_removeSelectedPointsFromOpticalAttenuationVsDoseCurveButton.disconnect('clicked()', self.onRemoveSelectedPointsFromOpticalAttenuationVsDoseCurve) 
-    #self.step1_2_performCalibrationButton.disconnect('clicked()', self.onFitPolynomialToOpticalAttenuationVsDoseCurve) 
     #self.step3_2_exportCalibrationToCSV.disconnect('clicked()', self.onExportCalibration) 
     #self.step3_2_applyCalibrationButton.disconnect('clicked()', self.onApplyCalibration) 
     #self.step4_doseComparisonCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep4_DoseComparisonSelected) 
@@ -242,33 +241,49 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   def setup_Step1_LoadData(self):
     # Step 1: Load data panel
-    self.step1_loadDataCollapsibleButton.setProperty('collapsedHeight', 4)    
+    self.step1_loadDataCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step1_loadDataCollapsibleButton.text = "1. Load data"
     self.sliceletPanelLayout.addWidget(self.step1_loadDataCollapsibleButton)
-    self.step1_loadDataCollapsibleButtonLayout = qt.QFormLayout(self.step1_loadDataCollapsibleButton)
-    self.step1_loadDataCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
-    self.step1_loadDataCollapsibleButtonLayout.setSpacing(4)
+    #self.step1_loadDataCollapsibleButtonLayout = qt.QFormLayout(self.step1_loadDataCollapsibleButton)  #changed QFormLayout to QVBoxLayout
+    #self.step1_loadDataCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
+    #self.step1_loadDataCollapsibleButtonLayout.setSpacing(4)
 
+    #self.step1_loadDataFromDirectoryLayout = qt.QHBoxLayout(self.step1_loadDataCollapsibleButtonLayout)
+    
+    #Step 1 main background layout
+    self.step1_backgroundLayout = qt.QVBoxLayout(self.step1_loadDataCollapsibleButton)
+    
+    
+    
+    ######## step1_topBackgroundSubLayout
+    self.step1_topBackgroundSubLayout = qt.QVBoxLayout()
+    #add to step1_backgroundLayout
+    self.step1_backgroundLayout.addLayout(self.step1_topBackgroundSubLayout)
+    
+    
     # Load data label
-    self.step1_LoadDataLabel = qt.QLabel("Load all DICOM data involved in the workflow.\nNote: Can return to this step later if more data needs to be loaded")
-    self.step1_LoadDataLabel.wordWrap = True
-    self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_LoadDataLabel)
-
-
+    self.step1_loadDataLabel = qt.QLabel("Load all DICOM data involved in the workflow.\nNote: Can return to this step later if more data needs to be loaded")
+    self.step1_loadDataLabel.wordWrap = True
+    #self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_loadDataLabel)
+    self.step1_topBackgroundSubLayout.addWidget(self.step1_loadDataLabel)
+    
+    
+    
     # Load image data button
     self.step1_loadNonDicomDataButton = qt.QPushButton("Load image files")
     self.step1_loadNonDicomDataButton.toolTip = "Load optical CT files from VFF, NRRD, etc."
     self.step1_loadNonDicomDataButton.name = "loadNonDicomDataButton"
-    self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_loadNonDicomDataButton)
-    
-    # Add empty row
-    self.step1_loadDataCollapsibleButtonLayout.addRow(' ', None)
+    self.step1_topBackgroundSubLayout.addWidget(self.step1_loadNonDicomDataButton)
+
+    # # Add empty row
+    # self.step1_loadDataCollapsibleButtonLayout.addRow(' ', None)
+
     
     # Assign data label
     self.step1_AssignDataLabel = qt.QLabel("Assign loaded data to roles.\nNote: If this selection is changed later then all the following steps need to be performed again")
     self.step1_AssignDataLabel.wordWrap = True
-    self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_AssignDataLabel)
-    
+    self.step1_topBackgroundSubLayout.addWidget(self.step1_AssignDataLabel)
+
     # number of calibration films node selector
     self.step1_numberOfCalibrationFilmsSelectorLayout = qt.QHBoxLayout()   #TODO add parent in parentheses, needed?
     self.step1_numberOfCalibrationFilmsSpinBox = qt.QSpinBox()
@@ -276,99 +291,116 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_numberOfCalibrationFilmsSpinBox.maximum = 10
     self.step1_numberOfCalibrationFilmsSpinBox.minimum = 0
     self.step1_numberOfCalibrationFilmsSpinBox.enabled = True
-    self.step1_numberOfCalibrationFilmsLabelBefore = qt.QLabel('Number of Calibration Films is: ')
+    self.step1_numberOfCalibrationFilmsLabelBefore = qt.QLabel('Number of calibration films is: ')
     self.step1_numberOfCalibrationFilmsSelectorLayout.addWidget(self.step1_numberOfCalibrationFilmsLabelBefore)
     self.step1_numberOfCalibrationFilmsSelectorLayout.addWidget(self.step1_numberOfCalibrationFilmsSpinBox)
-    self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_numberOfCalibrationFilmsSelectorLayout) 
-    
-    
-    
-    #TODO make ctk label 
-    
-    # self.step1_1_doseToImageSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
-    # self.step1_1_doseToImageSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
-    # self.step1_1_doseToImageSelectionCollapsibleButton.text = "1.1. Input calibration film images to assigned dose"
-    # self.step1_loadDataCollapsibleButtonLayout.addWidget(self.step1_1_doseToImageSelectionCollapsibleButton)
-    
-    # self.step1_1_doseToImageSelectionButtonLayout = qt.QFormLayout(self.step1_1_doseToImageSelectionCollapsibleButton)
-    # self.step1_1_doseToImageSelectionButtonLayout.setContentsMargins(4,4,4,4)
-    # self.step1_1_doseToImageSelectionButtonLayout.setSpacing(4)
-    
+    self.step1_topBackgroundSubLayout.addLayout(self.step1_numberOfCalibrationFilmsSelectorLayout)
+
+
     #TODO continue changing names to have step1_
-    
+
     ##choose the flood field image
-    self.floodFieldImageSelectorLayout = qt.QHBoxLayout()
-    self.floodFieldImageSelector = slicer.qMRMLNodeComboBox()
-    self.floodFieldImageSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    self.floodFieldImageSelector.addEnabled = False
-    self.floodFieldImageSelector.removeEnabled = False
-    self.floodFieldImageSelector.setMRMLScene( slicer.mrmlScene )
-    self.floodFieldImageSelector.setToolTip( "--pick the flood field image file-- CHANGE THIS." )
-    self.floodFieldImageSelectorLabel = qt.QLabel('Flood field image: ')
-    
-    self.floodFieldImageSelectorLayout.addWidget(self.floodFieldImageSelectorLabel)
-    self.floodFieldImageSelectorLayout.addWidget(self.floodFieldImageSelector)
+    self.step1_floodFieldImageSelectorNodeLayout = qt.QHBoxLayout()
+    self.step1_floodFieldImageSelectorNode = slicer.qMRMLNodeComboBox()
+    self.step1_floodFieldImageSelectorNode.nodeTypes = ["vtkMRMLScalarVolumeNode"]
+    self.step1_floodFieldImageSelectorNode.addEnabled = False
+    self.step1_floodFieldImageSelectorNode.removeEnabled = False
+    self.step1_floodFieldImageSelectorNode.setMRMLScene( slicer.mrmlScene )
+    self.step1_floodFieldImageSelectorNode.setToolTip( "--pick the flood field image file-- CHANGE THIS." )
+    self.step1_floodFieldImageSelectorNodeLabel = qt.QLabel('Flood field image: ')
 
-    
-    self.step1_loadDataCollapsibleButtonLayout.addRow('Flood field image: ', self.floodFieldImageSelector)
-    
-    
-    
-    #add image selectors to step1_1_doseToImageSelectionCollapsibleButton
-    
-    #self.step1_1_doseToImageSelectionButtonLayout.addRow('Flood field image: ', self.floodFieldImageSelector)
-    #self.step1_1_doseToImageSelectionCollapsibleButton.addWidget(self.floodFieldImageSelectorLayout)
+    self.step1_floodFieldImageSelectorNodeLayout.addWidget(self.step1_floodFieldImageSelectorNodeLabel)
+    self.step1_floodFieldImageSelectorNodeLayout.addWidget(self.step1_floodFieldImageSelectorNode)
 
+    self.step1_topBackgroundSubLayout.addLayout(self.step1_floodFieldImageSelectorNodeLayout)
 
-    #TODO put loop in a frame, add handler function (search for "connect" - valueChanged(int) equivalent of clicked(), look at line 748
+    #self.step1_topBackgroundSubLayout.addRow('Flood field image: ', self.step1_floodFieldImageSelectorNode) #TODO what is this?
+
+    ##
+
+    self.step1_middleBackgroundSubLayout = qt.QVBoxLayout()
+    #add to step1_backgroundLayout
+    self.step1_backgroundLayout.addLayout(self.step1_middleBackgroundSubLayout)
     
-    for doseToImageLayoutNumber in range (self.step1_numberOfCalibrationFilmsSpinBox.value):
-      self.doseToImageSelectorLayout = qt.QHBoxLayout()
+    # self.middleTest = qt.QLabel('testmiddlebackground')
+    # self.step1_middleBackgroundSubLayout.addWidget(self.middleTest)
+     
+     
+     
+    # #TODO put loop in a layout, add handler function (search for "connect" - valueChanged(int) equivalent of clicked(), look at line 748
+
+    for doseToImageLayoutNumber in xrange (self.step1_numberOfCalibrationFilmsSpinBox.value):
+      self.step1_doseToImageSelectorRowLayout = qt.QHBoxLayout()
       self.doseToImageSelectorLabelBefore = qt.QLabel('Calibration ')
       self.doseToImageSelector_cGySpinBox = qt.QSpinBox()
       self.doseToImageSelector_cGySpinBox.minimum = 0
       self.doseToImageSelector_cGySpinBox.maximum = 1000
       self.doseToImageSelectorLabelMiddle = qt.QLabel(' cGy : ')
-     
+
       self.doseToImageFilmSelector = slicer.qMRMLNodeComboBox()
       self.doseToImageFilmSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
       self.doseToImageFilmSelector.addEnabled = False
       self.doseToImageFilmSelector.removeEnabled = False
       self.doseToImageFilmSelector.setMRMLScene( slicer.mrmlScene )
       self.doseToImageFilmSelector.setToolTip( "Choose the film image corresponding to the dose above" )
+
+      self.step1_doseToImageSelectorRowLayout.addWidget(self.doseToImageSelectorLabelBefore)
+      self.step1_doseToImageSelectorRowLayout.addWidget(self.doseToImageSelector_cGySpinBox)
+      self.step1_doseToImageSelectorRowLayout.addWidget(self.doseToImageSelectorLabelMiddle)
+      self.step1_doseToImageSelectorRowLayout.addWidget(self.doseToImageFilmSelector)
+
+      #self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_doseToImageSelectorRowLayout)
+      self.step1_middleBackgroundSubLayout.addLayout(self.step1_doseToImageSelectorRowLayout)
+      #self.step1_1_doseToImageSelectionButtonLayout.addRow(self.step1_doseToImageSelectorRowLayout)
+
       
-      self.doseToImageSelectorLayout.addWidget(self.doseToImageSelectorLabelBefore)
-      self.doseToImageSelectorLayout.addWidget(self.doseToImageSelector_cGySpinBox)
-      self.doseToImageSelectorLayout.addWidget(self.doseToImageSelectorLabelMiddle)
-      self.doseToImageSelectorLayout.addWidget(self.doseToImageFilmSelector)
+    self.step1_bottomBackgroundSubLayout = qt.QVBoxLayout()
+    #add to step1_backgroundLayout
+    self.step1_backgroundLayout.addLayout(self.step1_bottomBackgroundSubLayout)
       
-      self.step1_loadDataCollapsibleButtonLayout.addRow(self.doseToImageSelectorLayout)
-      
-      #self.step1_1_doseToImageSelectionButtonLayout.addRow(self.doseToImageSelectorLayout)
-  
-    
-    
-    
     #calibration button
-    self.step1_2_performCalibrationButton = qt.QPushButton("Perform Calibration")
+    self.step1_2_performCalibrationButton = qt.QPushButton("Perform calibration")
     self.step1_2_performCalibrationButton.toolTip = "Finds the calibration function"
-    self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_2_performCalibrationButton)
-    
-    
-    
-    
-    
-    # Connections
+    self.step1_bottomBackgroundSubLayout.addWidget(self.step1_2_performCalibrationButton)
+
+    # # Connections
     #self.step1_showDicomBrowserButton.connect('clicked()', self.logic.onDicomLoad)
     self.step1_loadNonDicomDataButton.connect('clicked()', self.onLoadNonDicomData)
     self.step1_loadDataCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep1_LoadDataCollapsed)
     #TODO add connection for step1_numberOfCalibrationFilmsSpinBox , add disconnect
     self.step1_numberOfCalibrationFilmsSpinBox.connect('valueChanged(int)', self.onstep1_numberOfCalibrationFilmsSpinBoxValueChanged)
-    
-    
-    
 
-  # def setup_Step2_Registration(self):
+
+    ################
+    
+# ###step 2 button for testing
+
+ # # Step 2: Registration step
+    # #self.testButton = ctk.ctkCollapsibleButton()
+    
+    
+    # self.testButton.setProperty('collapsedHeight', 4)
+    # self.testButton.text = "test button"
+    # self.sliceletPanelLayout.addWidget(self.testButton)
+    # self.testButtonLayout = qt.QFormLayout(self.testButton)
+    # self.testButtonLayout.setContentsMargins(12,4,4,4)
+    # self.testButtonLayout.setSpacing(4)
+    
+    # self.testVerticalLayout = qt.QVBoxLayout()
+    # self.testTopLayout = qt.QHBoxLayout()
+    # self.testBottomLayout = qt.QHBoxLayout()
+    
+    # self.testTopLayoutLabel = qt.QLabel("test top label")
+    # self.testBottomLayoutLabel = qt.QLabel("test bottom label")
+    
+    # self.testTopLayout.addWidget(self.testTopLayoutLabel)
+    # self.testBottomLayout.addWidget(self.testBottomLayoutLabel)
+    # self.testVerticalLayout.addLayout(self.testTopLayout)
+    # self.testVerticalLayout.addLayout(self.testBottomLayout)
+    # self.testButton.addWidget(self.testVerticalLayout)
+    
+    
+  # def setup_Step2_Registration(self):step1_loadDataCollapsibleButtonLayout
     #deleted step 2 code
 
   # def setup_step3_DoseCalibration(self):
@@ -854,13 +886,71 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   #TODO current add connection event here
   def onstep1_numberOfCalibrationFilmsSpinBoxValueChanged(self):
     print "onstep1_numberOfCalibrationFilmsSpinBoxValueChanged has been called"
+    # self.step1_doseToImageSelectorRowLayout = qt.QHBoxLayout()
+    # self.doseToImageSelectorLabelBefore = qt.QLabel('Calibration ')
+    # self.doseToImageSelector_cGySpinBox = qt.QSpinBox()
+    # self.doseToImageSelector_cGySpinBox.minimum = 0
+    # self.doseToImageSelector_cGySpinBox.maximum = 1000
+    # self.doseToImageSelectorLabelMiddle = qt.QLabel(' cGy : ')
+    # self.doseToImageFilmSelector = slicer.qMRMLNodeComboBox()
+    # self.doseToImageFilmSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
+    # self.doseToImageFilmSelector.addEnabled = False
+    # self.doseToImageFilmSelector.removeEnabled = False
+    # self.doseToImageFilmSelector.setMRMLScene( slicer.mrmlScene )
+    # self.doseToImageFilmSelector.setToolTip( "Choose the film image corresponding to the dose above" )
+    # self.step1_doseToImageSelectorRowLayout.addWidget(self.doseToImageSelectorLabelBefore)
+    # self.step1_doseToImageSelectorRowLayout.addWidget(self.doseToImageSelector_cGySpinBox)
+    # self.step1_doseToImageSelectorRowLayout.addWidget(self.doseToImageSelectorLabelMiddle)
+    # self.step1_doseToImageSelectorRowLayout.addWidget(self.doseToImageFilmSelector)
+    
+    
+    self.step1_doseToImageRowLayout = qt.QHBoxLayout()
+    
+    self.step1_doseToImageRowLabelMiddle = qt.QLabel(' cGy :')
+    
+    
+    self.step1_doseToImageRowLayout.addWidget(self.step1_doseToImageRowLabelMiddle)
+    
+    self.step1_middleBackgroundSubLayout.addLayout(self.step1_middleBackgroundSubLayout)
+    
+    #self.step1_middleBackgroundSubLayout.addLayout(step1_doseToImageSelectorRowLayout)
+    # for imageSelectionFormRow in reversed(range(self.step1_middleBackgroundSubLayout.count())):
+      # self.step1_middleBackgroundSubLayout.itemAt(imageSelectionFormRow).widget().delete()
+    
+      # #print imageSelectionFormRow #TODO delete all child widgets
+    
+    self.step1_doseToImageRowLabelBefore = qt.QLabel('Calibration ')
+    self.step1_doseToImageRowSpinBox = qt.QSpinBox()
+
+    self.step1_middleBackgroundSubLayout.addWidget(self.step1_doseToImageRowLabelBefore)
+    self.step1_middleBackgroundSubLayout.addWidget(self.doseToImageSelectorLabelBefore)
+    
+    self.testLayout = qt.QHBoxLayout()
+    self.testLayout.addWidget(self.step1_doseToImageRowLabelBefore)
+    self.testLayout.addWidget(self.step1_doseToImageRowSpinBox)
+    
+    
+    self.step1_middleBackgroundSubLayout.addLayout(self.testLayout)
+    
+    
+    
+    
+    
+    for i in range(self.step1_middleBackgroundSubLayout.count()):
+      print i
+    
+    
+    
+    
+      
+      
   
 
   def onStep1_LoadDataCollapsed(self, collapsed):
     # Save selections to member variables when switching away from load data step
     if collapsed == True:
       self.planCtVolumeNode = self.doseToImageFilmSelector.currentNode()
-      self.planDoseVolumeNode = self.floodFieldImageSelector.currentNode()
+      self.planDoseVolumeNode = self.step1_floodFieldImageSelectorNode.currentNode()
       self.obiVolumeNode = self.obiSelector.currentNode()
       self.planStructuresNode = self.planStructuresSelector.currentNode()
       self.measuredVolumeNode = self.measuredVolumeSelector.currentNode()
@@ -1642,7 +1732,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     planCTVolume = slicer.util.getNode(planCTVolumeName)
     self.doseToImageFilmSelector.setCurrentNode(planCTVolume)
     planDoseVolume = slicer.util.getNode(planDoseVolumeName)
-    self.floodFieldImageSelector.setCurrentNode(planDoseVolume)
+    self.step1_floodFieldImageSelectorNode.setCurrentNode(planDoseVolume)
     obiVolume = slicer.util.getNode(obiVolumeName)
     self.obiSelector.setCurrentNode(obiVolume)
     structureSetNode = slicer.util.getNode(structureSetNodeName)
@@ -1654,12 +1744,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     slicer.app.processEvents()
 
     ### 2. Register
-    self.step2_registrationCollapsibleButton.setChecked(True)
+    self.testButton.setChecked(True)
     self.onObiToPlanCTRegistration()
     slicer.app.processEvents()
 
     # Select fiducials
-    #self.step2_2_measuredDoseToObiRegistrationCollapsibleButton.setChecked(True) 
+    #self.step1_2_doseToFilmCollapsibleButton.setChecked(True) 
     obiFiducialsNode = slicer.util.getNode(self.obiMarkupsFiducialNodeName)
     obiFiducialsNode.AddFiducial(76.4, 132.1, -44.8)
     obiFiducialsNode.AddFiducial(173, 118.4, -44.8)
