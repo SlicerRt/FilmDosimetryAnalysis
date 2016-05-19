@@ -329,13 +329,25 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
      
     # #TODO put loop in a layout, add handler function (search for "connect" - valueChanged(int) equivalent of clicked(), look at line 748
 
+    self.step1_doseToImageFormLayoutList = []
+    self.step1_doseToImageSelectorLabelBeforeList = []
+    self.step1_doseToImageSelector_cGySpinBoxList = []
+    self.step1_doseToImageSelector_cGyLabelList = []
+    self.step1_doseToImageFilmSelectorComboBoxList = []
+    
+    
     for doseToImageLayoutNumber in xrange (self.step1_numberOfCalibrationFilmsSpinBox.value):
       self.step1_doseToImageSelectorRowLayout = qt.QHBoxLayout()
       self.doseToImageSelectorLabelBefore = qt.QLabel('Calibration ')
+      self.step1_doseToImageSelectorLabelBeforeList.append(self.doseToImageSelectorLabelBefore)
+      
       self.doseToImageSelector_cGySpinBox = qt.QSpinBox()
       self.doseToImageSelector_cGySpinBox.minimum = 0
       self.doseToImageSelector_cGySpinBox.maximum = 1000
+      self.step1_doseToImageSelector_cGySpinBoxList.append(self.doseToImageSelector_cGySpinBox)
+      
       self.doseToImageSelectorLabelMiddle = qt.QLabel(' cGy : ')
+      self.step1_doseToImageSelector_cGyLabelList.append(self.doseToImageSelectorLabelMiddle)
 
       self.doseToImageFilmSelector = slicer.qMRMLNodeComboBox()
       self.doseToImageFilmSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
@@ -343,6 +355,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.doseToImageFilmSelector.removeEnabled = False
       self.doseToImageFilmSelector.setMRMLScene( slicer.mrmlScene )
       self.doseToImageFilmSelector.setToolTip( "Choose the film image corresponding to the dose above" )
+      self.step1_doseToImageFilmSelectorComboBoxList.append(self.doseToImageFilmSelector)
 
       self.step1_doseToImageSelectorRowLayout.addWidget(self.doseToImageSelectorLabelBefore)
       self.step1_doseToImageSelectorRowLayout.addWidget(self.doseToImageSelector_cGySpinBox)
@@ -350,6 +363,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.step1_doseToImageSelectorRowLayout.addWidget(self.doseToImageFilmSelector)
 
       #self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_doseToImageSelectorRowLayout)
+      
+      self.step1_doseToImageFormLayoutList.append(self.step1_doseToImageSelectorRowLayout)
+      
       self.step1_middleBackgroundSubLayout.addLayout(self.step1_doseToImageSelectorRowLayout)
       #self.step1_1_doseToImageSelectionButtonLayout.addRow(self.step1_doseToImageSelectorRowLayout)
 
@@ -887,6 +903,25 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   def onstep1_numberOfCalibrationFilmsSpinBoxValueChanged(self):
     print "onstep1_numberOfCalibrationFilmsSpinBoxValueChanged has been called"
     
+    print self.step1_doseToImageFormLayoutList
+    
+    for doseToImageFormLayout in range(len(self.step1_doseToImageFormLayoutList)-1,-1,-1):
+      print "at ", doseToImageFormLayout, " in list"
+      #print "deleting", " widget: " 
+      #print self.step1_doseToImageFormLayoutList[doseToImageFormLayout]
+      self.step1_doseToImageFormLayoutList[doseToImageFormLayout].deleteLater()
+      self.step1_doseToImageFormLayoutList.pop()
+      self.step1_doseToImageSelectorLabelBeforeList[doseToImageFormLayout].deleteLater()
+      self.step1_doseToImageSelectorLabelBeforeList.pop()
+      self.step1_doseToImageSelector_cGySpinBoxList[doseToImageFormLayout].deleteLater()
+      self.step1_doseToImageSelector_cGySpinBoxList.pop()
+      self.step1_doseToImageSelector_cGyLabelList[doseToImageFormLayout].deleteLater()
+      self.step1_doseToImageSelector_cGyLabelList.pop()
+      self.step1_doseToImageFilmSelectorComboBoxList[doseToImageFormLayout].deleteLater()
+      self.step1_doseToImageFilmSelectorComboBoxList.pop()
+      
+      
+    
     
     #TODO get it to delete labels
    
@@ -902,16 +937,24 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       # #print imageSelectionFormRow #TODO delete all child widgets
     for doseToImageLayoutNumber in xrange (self.step1_numberOfCalibrationFilmsSpinBox.value):
       self.step1_doseToImageRowLabelBefore = qt.QLabel('Calibration ')
+      self.step1_doseToImageSelectorLabelBeforeList.append(self.step1_doseToImageRowLabelBefore)
+      
       self.step1_doseToImageRowSpinBox = qt.QSpinBox()
       self.step1_doseToImageRowSpinBox.minimum = 0
       self.step1_doseToImageRowSpinBox.maximum = 1000
+      self.step1_doseToImageSelector_cGySpinBoxList.append(self.step1_doseToImageRowSpinBox)
+      
       self.step1_doseToImage_cGyLabel = qt.QLabel(' cGy : ')
+      self.step1_doseToImageSelector_cGyLabelList.append(self.step1_doseToImage_cGyLabel)
+      
+      
       self.step1_doseToImageSelectorComboBox = slicer.qMRMLNodeComboBox()
       self.step1_doseToImageSelectorComboBox.nodeTypes = ["vtkMRMLScalarVolumeNode"]
       self.step1_doseToImageSelectorComboBox.addEnabled = False
       self.step1_doseToImageSelectorComboBox.removeEnabled = False
       self.step1_doseToImageSelectorComboBox.setMRMLScene( slicer.mrmlScene )
       self.step1_doseToImageSelectorComboBox.setToolTip( "Choose the film image corresponding to the dose above" )
+      self.step1_doseToImageFilmSelectorComboBoxList.append(self.step1_doseToImageSelectorComboBox)
       
       
       self.step1_doseToImageFormLayout = qt.QHBoxLayout()
@@ -919,7 +962,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.step1_doseToImageFormLayout.addWidget(self.step1_doseToImageRowSpinBox)
       self.step1_doseToImageFormLayout.addWidget(self.step1_doseToImage_cGyLabel)
       self.step1_doseToImageFormLayout.addWidget(self.step1_doseToImageSelectorComboBox)
-      
+      self.step1_doseToImageFormLayoutList.append(self.step1_doseToImageFormLayout)
       
       
       self.step1_middleBackgroundSubLayout.addLayout(self.step1_doseToImageFormLayout)
@@ -930,11 +973,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     
     for i in range(self.step1_middleBackgroundSubLayout.count()):
       print i
-    
-    
-    
-    
-      
       
   
 
