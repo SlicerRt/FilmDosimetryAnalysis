@@ -187,7 +187,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     #self.step3_1_yScaleSpinBox.disconnect('valueChanged(double)', self.onAdjustAlignmentValueChanged) 
     #self.step3_1_yTranslationSpinBox.disconnect('valueChanged(double)', self.onAdjustAlignmentValueChanged) 
     #self.step3_1_computeDoseFromPddButton.disconnect('clicked()', self.onComputeDoseFromPdd) 
-    self.step3_1_calibrationRoutineCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep3_1_CalibrationRoutineSelected) 
+    #self.step3_1_calibrationRoutineCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep3_1_CalibrationRoutineSelected) 
     #self.step3_1_showOpticalAttenuationVsDoseCurveButton.disconnect('clicked()', self.onShowOpticalAttenuationVsDoseCurve) 
     #self.step3_1_removeSelectedPointsFromOpticalAttenuationVsDoseCurveButton.disconnect('clicked()', self.onRemoveSelectedPointsFromOpticalAttenuationVsDoseCurve) 
     #self.step3_2_exportCalibrationToCSV.disconnect('clicked()', self.onExportCalibration) 
@@ -886,51 +886,43 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   #TODO current add connection event here
   def onstep1_numberOfCalibrationFilmsSpinBoxValueChanged(self):
     print "onstep1_numberOfCalibrationFilmsSpinBoxValueChanged has been called"
-    # self.step1_doseToImageSelectorRowLayout = qt.QHBoxLayout()
-    # self.doseToImageSelectorLabelBefore = qt.QLabel('Calibration ')
-    # self.doseToImageSelector_cGySpinBox = qt.QSpinBox()
-    # self.doseToImageSelector_cGySpinBox.minimum = 0
-    # self.doseToImageSelector_cGySpinBox.maximum = 1000
-    # self.doseToImageSelectorLabelMiddle = qt.QLabel(' cGy : ')
-    # self.doseToImageFilmSelector = slicer.qMRMLNodeComboBox()
-    # self.doseToImageFilmSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    # self.doseToImageFilmSelector.addEnabled = False
-    # self.doseToImageFilmSelector.removeEnabled = False
-    # self.doseToImageFilmSelector.setMRMLScene( slicer.mrmlScene )
-    # self.doseToImageFilmSelector.setToolTip( "Choose the film image corresponding to the dose above" )
-    # self.step1_doseToImageSelectorRowLayout.addWidget(self.doseToImageSelectorLabelBefore)
-    # self.step1_doseToImageSelectorRowLayout.addWidget(self.doseToImageSelector_cGySpinBox)
-    # self.step1_doseToImageSelectorRowLayout.addWidget(self.doseToImageSelectorLabelMiddle)
-    # self.step1_doseToImageSelectorRowLayout.addWidget(self.doseToImageFilmSelector)
     
     
-    self.step1_doseToImageRowLayout = qt.QHBoxLayout()
+    #TODO get it to delete labels
+   
     
     self.step1_doseToImageRowLabelMiddle = qt.QLabel(' cGy :')
     
     
-    self.step1_doseToImageRowLayout.addWidget(self.step1_doseToImageRowLabelMiddle)
+    #self.step1_middleBackgroundSubLayout.addLayout(self.step1_middleBackgroundSubLayout)
     
-    self.step1_middleBackgroundSubLayout.addLayout(self.step1_middleBackgroundSubLayout)
-    
-    #self.step1_middleBackgroundSubLayout.addLayout(step1_doseToImageSelectorRowLayout)
     # for imageSelectionFormRow in reversed(range(self.step1_middleBackgroundSubLayout.count())):
       # self.step1_middleBackgroundSubLayout.itemAt(imageSelectionFormRow).widget().delete()
     
       # #print imageSelectionFormRow #TODO delete all child widgets
-    
-    self.step1_doseToImageRowLabelBefore = qt.QLabel('Calibration ')
-    self.step1_doseToImageRowSpinBox = qt.QSpinBox()
-
-    self.step1_middleBackgroundSubLayout.addWidget(self.step1_doseToImageRowLabelBefore)
-    self.step1_middleBackgroundSubLayout.addWidget(self.doseToImageSelectorLabelBefore)
-    
-    self.testLayout = qt.QHBoxLayout()
-    self.testLayout.addWidget(self.step1_doseToImageRowLabelBefore)
-    self.testLayout.addWidget(self.step1_doseToImageRowSpinBox)
-    
-    
-    self.step1_middleBackgroundSubLayout.addLayout(self.testLayout)
+    for doseToImageLayoutNumber in xrange (self.step1_numberOfCalibrationFilmsSpinBox.value):
+      self.step1_doseToImageRowLabelBefore = qt.QLabel('Calibration ')
+      self.step1_doseToImageRowSpinBox = qt.QSpinBox()
+      self.step1_doseToImageRowSpinBox.minimum = 0
+      self.step1_doseToImageRowSpinBox.maximum = 1000
+      self.step1_doseToImage_cGyLabel = qt.QLabel(' cGy : ')
+      self.step1_doseToImageSelectorComboBox = slicer.qMRMLNodeComboBox()
+      self.step1_doseToImageSelectorComboBox.nodeTypes = ["vtkMRMLScalarVolumeNode"]
+      self.step1_doseToImageSelectorComboBox.addEnabled = False
+      self.step1_doseToImageSelectorComboBox.removeEnabled = False
+      self.step1_doseToImageSelectorComboBox.setMRMLScene( slicer.mrmlScene )
+      self.step1_doseToImageSelectorComboBox.setToolTip( "Choose the film image corresponding to the dose above" )
+      
+      
+      self.step1_doseToImageFormLayout = qt.QHBoxLayout()
+      self.step1_doseToImageFormLayout.addWidget(self.step1_doseToImageRowLabelBefore)
+      self.step1_doseToImageFormLayout.addWidget(self.step1_doseToImageRowSpinBox)
+      self.step1_doseToImageFormLayout.addWidget(self.step1_doseToImage_cGyLabel)
+      self.step1_doseToImageFormLayout.addWidget(self.step1_doseToImageSelectorComboBox)
+      
+      
+      
+      self.step1_middleBackgroundSubLayout.addLayout(self.step1_doseToImageFormLayout)
     
     
     
@@ -1865,7 +1857,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.onApplyCalibration()
 
     self.step3_doseCalibrationCollapsibleButton.setChecked(True)
-    self.step3_1_calibrationRoutineCollapsibleButton.setChecked(True)
+    #self.step3_1_calibrationRoutineCollapsibleButton.setChecked(True)
 
     # Dose comparison
     self.step4_doseComparisonCollapsibleButton.setChecked(True)
