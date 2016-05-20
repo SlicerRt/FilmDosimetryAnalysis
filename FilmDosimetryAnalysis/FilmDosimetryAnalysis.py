@@ -106,10 +106,14 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Set up constants
     self.obiMarkupsFiducialNodeName = "OBI fiducials"
     self.measuredMarkupsFiducialNodeName = "MEASURED fiducials"
+    
+    
 	
     # Declare member variables (selected at certain steps and then from then on for the workflow)
     self.mode = None
-
+    
+    #TODO add constant for the volume 
+    
     self.planCtVolumeNode = None
     self.planDoseVolumeNode = None
     self.planStructuresNode = None
@@ -178,7 +182,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     #self.step1_2_doseToFilmCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_MeasuredDoseToObiRegistrationSelected) 
     #self.step2_2_1_obiFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_1_ObiFiducialCollectionSelected) 
     #self.step2_2_2_measuredFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_2_MeasuredFiducialCollectionSelected) 
-    self.step1_loadNonDicomDataButton.disconnect('clicked()', self.onLoadNonDicomData)
+    self.step1_loadImageFilesButton.disconnect('clicked()', self.onLoadNonDicomData)
     self.step1_numberOfCalibrationFilmsSpinBox.disconnect('valueChanged()', self.onstep1_numberOfCalibrationFilmsSpinBoxValueChanged)
     #self.step2_2_3_registerMeasuredToObiButton.disconnect('clicked()', self.onMeasuredToObiRegistration) 
     #self.step3_1_pddLoadDataButton.disconnect('clicked()', self.onLoadPddDataRead)    
@@ -262,21 +266,28 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     
     
     # Load data label
-    self.step1_loadDataLabel = qt.QLabel("Load all DICOM data involved in the workflow.\nNote: Can return to this step later if more data needs to be loaded")
+    self.step1_loadDataLabel = qt.QLabel("Load all image data involved in the workflow.\nCan either be a new batch of image files, or a saved image batch")
     self.step1_loadDataLabel.wordWrap = True
     #self.step1_loadDataCollapsibleButtonLayout.addRow(self.step1_loadDataLabel)
     self.step1_topBackgroundSubLayout.addWidget(self.step1_loadDataLabel)
     
-    
-    
+   
     # Load image data button
-    self.step1_loadNonDicomDataButton = qt.QPushButton("Load image files")
-    self.step1_loadNonDicomDataButton.toolTip = "Load optical CT files from VFF, NRRD, etc."
-    self.step1_loadNonDicomDataButton.name = "loadNonDicomDataButton"
-    self.step1_topBackgroundSubLayout.addWidget(self.step1_loadNonDicomDataButton)
+    self.step1_loadImageFilesButton = qt.QPushButton("Load image files")
+    self.step1_loadImageFilesButton.toolTip = "Load png film images."
+    self.step1_loadImageFilesButton.name = "loadImageFilesButton"
+    #load saved image batch button
+    self.step1_loadSavedImageBatchButton = qt.QPushButton("Load saved image batch")
+    self.step1_loadSavedImageBatchButton.toolTip = "Load a batch of films with assigned doses."
+    self.step1_loadSavedImageBatchButton.name = "loadSavedImageFilesButton"
+    #horizontal button layout
+    self.step1_loadImageButtonLayout = qt.QHBoxLayout()
+    self.step1_loadImageButtonLayout.addWidget(self.step1_loadImageFilesButton)
+    self.step1_loadImageButtonLayout.addWidget(self.step1_loadSavedImageBatchButton)
 
-    # # Add empty row
-    # self.step1_loadDataCollapsibleButtonLayout.addRow(' ', None)
+    
+    #self.step1_topBackgroundSubLayout.addWidget(self.step1_loadImageFilesButton)
+    self.step1_topBackgroundSubLayout.addLayout(self.step1_loadImageButtonLayout)
 
     
     # Assign data label
@@ -390,9 +401,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # # Connections
     #self.step4_maskSegmentationSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onStep4_MaskSegmentationSelectionChanged)
+    self.step1_loadImageFilesButton.connect('clicked()', self.onLoadNonDicomData)
+    self.step1_saveCalibrationBatchButton.connect('clicked()', self.onSaveCalibrationBatchButton)
     
     #self.step1_showDicomBrowserButton.connect('clicked()', self.logic.onDicomLoad)
-    self.step1_loadNonDicomDataButton.connect('clicked()', self.onLoadNonDicomData)
+    self.step1_loadImageFilesButton.connect('clicked()', self.onLoadNonDicomData)
     self.step1_loadDataCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep1_LoadDataCollapsed)
     #TODO add connection for step1_numberOfCalibrationFilmsSpinBox , add disconnect
     self.step1_numberOfCalibrationFilmsSpinBox.connect('valueChanged(int)', self.onstep1_numberOfCalibrationFilmsSpinBoxValueChanged)
@@ -986,7 +999,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       print i
       
   
-
+  def onSaveCalibrationBatchButton(self):
+    print "onSaveCalibrationBatchButton"
+    
+  
+  
+  
   def onStep1_LoadDataCollapsed(self, collapsed):
     # Save selections to member variables when switching away from load data step
     if collapsed == True:
