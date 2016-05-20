@@ -336,7 +336,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_doseToImageFilmSelectorComboBoxList = []
     
     
-    for doseToImageLayoutNumber in xrange (self.step1_numberOfCalibrationFilmsSpinBox.value):
+    for doseToImageLayoutNumber in xrange(self.step1_numberOfCalibrationFilmsSpinBox.value):
       self.step1_doseToImageSelectorRowLayout = qt.QHBoxLayout()
       self.doseToImageSelectorLabelBefore = qt.QLabel('Calibration ')
       self.step1_doseToImageSelectorLabelBeforeList.append(self.doseToImageSelectorLabelBefore)
@@ -378,6 +378,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_2_performCalibrationButton = qt.QPushButton("Perform calibration")
     self.step1_2_performCalibrationButton.toolTip = "Finds the calibration function"
     self.step1_bottomBackgroundSubLayout.addWidget(self.step1_2_performCalibrationButton)
+    
+    self.step1_bottomBackgroundSubLayout.addStretch(1)  #TODO fix main layout when addStretch is added
 
     # # Connections
     #self.step1_showDicomBrowserButton.connect('clicked()', self.logic.onDicomLoad)
@@ -905,7 +907,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     
     print self.step1_doseToImageFormLayoutList
     
-    for doseToImageFormLayout in range(len(self.step1_doseToImageFormLayoutList)-1,-1,-1):
+    for doseToImageFormLayout in xrange(len(self.step1_doseToImageFormLayoutList)-1,-1,-1):
       print "at ", doseToImageFormLayout, " in list"
       #print "deleting", " widget: " 
       #print self.step1_doseToImageFormLayoutList[doseToImageFormLayout]
