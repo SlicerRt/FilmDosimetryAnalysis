@@ -375,13 +375,22 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_backgroundLayout.addLayout(self.step1_bottomBackgroundSubLayout)
       
     #calibration button
-    self.step1_2_performCalibrationButton = qt.QPushButton("Perform calibration")
-    self.step1_2_performCalibrationButton.toolTip = "Finds the calibration function"
-    self.step1_bottomBackgroundSubLayout.addWidget(self.step1_2_performCalibrationButton)
+    self.step1_performCalibrationButton = qt.QPushButton("Perform calibration")
+    self.step1_performCalibrationButton.toolTip = "Finds the calibration function"
+    self.step1_bottomBackgroundSubLayout.addWidget(self.step1_performCalibrationButton)
+    
+    #Save batch button
+    self.step1_saveCalibrationBatchButton = qt.QPushButton("Save calibration batch")
+    self.step1_saveCalibrationBatchButton.toolTip = "Saves current calibration batch"
+    self.step1_bottomBackgroundSubLayout.addWidget(self.step1_saveCalibrationBatchButton)
+    
+    
     
     self.step1_bottomBackgroundSubLayout.addStretch(1)  #TODO fix main layout when addStretch is added
 
     # # Connections
+    #self.step4_maskSegmentationSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onStep4_MaskSegmentationSelectionChanged)
+    
     #self.step1_showDicomBrowserButton.connect('clicked()', self.logic.onDicomLoad)
     self.step1_loadNonDicomDataButton.connect('clicked()', self.onLoadNonDicomData)
     self.step1_loadDataCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep1_LoadDataCollapsed)
@@ -539,9 +548,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # self.step3_1_selectOrderOfPolynomialFitButton.addItem('4')
     # self.step1_1_doseToImageSelectionButtonLayout.addRow('Fit with what order polynomial function:', self.step3_1_selectOrderOfPolynomialFitButton)
     
-    # self.step1_2_performCalibrationButton = qt.QPushButton("Fit data and determine calibration function")
-    # self.step1_2_performCalibrationButton.toolTip = "Finds the line of best fit based on the data and polynomial order provided"
-    # self.step1_1_doseToImageSelectionButtonLayout.addRow(self.step1_2_performCalibrationButton)
+    # self.step1_performCalibrationButton = qt.QPushButton("Fit data and determine calibration function")
+    # self.step1_performCalibrationButton.toolTip = "Finds the line of best fit based on the data and polynomial order provided"
+    # self.step1_1_doseToImageSelectionButtonLayout.addRow(self.step1_performCalibrationButton)
 
     # self.step3_1_fitPolynomialResidualsLabel = qt.QLabel()
     # self.step1_1_doseToImageSelectionButtonLayout.addRow(self.step3_1_fitPolynomialResidualsLabel)
@@ -626,7 +635,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # self.step3_1_calibrationRoutineCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep3_1_CalibrationRoutineSelected)
     # self.step3_1_showOpticalAttenuationVsDoseCurveButton.connect('clicked()', self.onShowOpticalAttenuationVsDoseCurve)
     # self.step3_1_removeSelectedPointsFromOpticalAttenuationVsDoseCurveButton.connect('clicked()', self.onRemoveSelectedPointsFromOpticalAttenuationVsDoseCurve)
-    # self.step1_2_performCalibrationButton.connect('clicked()', self.onFitPolynomialToOpticalAttenuationVsDoseCurve)
+    # self.step1_performCalibrationButton.connect('clicked()', self.onFitPolynomialToOpticalAttenuationVsDoseCurve)
     # self.step3_2_exportCalibrationToCSV.connect('clicked()', self.onExportCalibration)
     # self.step3_2_applyCalibrationButton.connect('clicked()', self.onApplyCalibration)
     
