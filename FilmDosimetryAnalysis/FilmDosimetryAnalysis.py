@@ -106,13 +106,16 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Set up constants
     self.obiMarkupsFiducialNodeName = "OBI fiducials"
     self.measuredMarkupsFiducialNodeName = "MEASURED fiducials"
-    
+    self.saveCalibrationBatchFolderNodeName = "Calibration batch" 
     
 	
     # Declare member variables (selected at certain steps and then from then on for the workflow)
     self.mode = None
     
     #TODO add constant for the volume 
+    self.doseCalibrationVolumes = [] #AR constant for film image selection in film/dose saving
+    self.selectedImageValues_cGy = [] #AR constant for dose selection in film/dose saving 
+    
     
     self.planCtVolumeNode = None
     self.planDoseVolumeNode = None
@@ -142,6 +145,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.measuredMarkupsFiducialNode = slicer.mrmlScene.GetNodeByID(measuredFiducialsNodeId)
     measuredFiducialsDisplayNode = self.measuredMarkupsFiducialNode.GetDisplayNode()
     measuredFiducialsDisplayNode.SetSelectedColor(0, 0.9, 0)
+    
+    #create folder node
+    self.folderNode = slicer.vtkMRMLSubjectHierarchyNode()
+    self.folderNode.CreateSubjectHierarchyNode(slicer.mrmlScene, None, slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder(), self.saveCalibrationBatchFolderNodeName, None)
+    
+    
 
     # Turn on slice intersections in 2D viewers
     compositeNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
@@ -403,6 +412,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     #self.step4_maskSegmentationSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onStep4_MaskSegmentationSelectionChanged)
     self.step1_loadImageFilesButton.connect('clicked()', self.onLoadNonDicomData)
     self.step1_saveCalibrationBatchButton.connect('clicked()', self.onSaveCalibrationBatchButton)
+    self.step1_loadSavedImageBatchButton.connect('clicked()', self.onLoadSavedImageBatchButton)
     
     #self.step1_showDicomBrowserButton.connect('clicked()', self.logic.onDicomLoad)
     self.step1_loadImageFilesButton.connect('clicked()', self.onLoadNonDicomData)
@@ -1000,7 +1010,14 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       
   
   def onSaveCalibrationBatchButton(self):
+    self.doseCalibrationVolumes = [selectedImage.currentNode() for selectedImage in self.step1_doseToImageFilmSelectorComboBoxList]
+    self.selectedImageValues_cGy = [doseSelection.value for doseSelection in self.step1_doseToImageSelector_cGySpinBoxList]
     print "onSaveCalibrationBatchButton"
+    self.folderNode.SetScene(slicer.mrmlScene)
+    
+  def onLoadSavedImageBatchButton(self):
+    slicer.mrmlScene = self.folderNode.GetScene()
+    print "onLoadSavedImageBatchButton pressed" 
     
   
   
