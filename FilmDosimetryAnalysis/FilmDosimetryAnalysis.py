@@ -107,6 +107,14 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.obiMarkupsFiducialNodeName = "OBI fiducials"
     self.measuredMarkupsFiducialNodeName = "MEASURED fiducials"
     self.saveCalibrationBatchFolderNodeName = "Calibration batch" 
+    self.saveDoseCalibrationVolumesName = "Dose calibration volumes"
+    
+    self.saveDoseCalibrationImageName = ["Film " + str(maxNumberCalibrationFilms + 1) for maxNumberCalibrationFilms in range(10)]
+    
+    self.saveSelectedImageValues_cGyName = "Save image values"
+    
+    
+    
     
 	
     # Declare member variables (selected at certain steps and then from then on for the workflow)
@@ -147,10 +155,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     measuredFiducialsDisplayNode.SetSelectedColor(0, 0.9, 0)
     
     #create folder node
-    self.folderNode = slicer.vtkMRMLSubjectHierarchyNode()
-    self.folderNode.CreateSubjectHierarchyNode(slicer.mrmlScene, None, slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder(), self.saveCalibrationBatchFolderNodeName, None)
+    self.folderNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, None, slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder(), self.saveCalibrationBatchFolderNodeName, None)
     
-    
+    #volumeSavingNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, self.folderNode, slicer.vtkMRMLSubjectHierarchyConstants.GetDICOMLevelSeries(), volumeNode.GetName(), volumeNode)
 
     # Turn on slice intersections in 2D viewers
     compositeNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
@@ -363,7 +370,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       
       self.doseToImageSelector_cGySpinBox = qt.QSpinBox()
       self.doseToImageSelector_cGySpinBox.minimum = 0
-      self.doseToImageSelector_cGySpinBox.maximum = 1000
+      self.doseToImageSelector_cGySpinBox.maximum = 10000
       self.step1_doseToImageSelector_cGySpinBoxList.append(self.doseToImageSelector_cGySpinBox)
       
       self.doseToImageSelectorLabelMiddle = qt.QLabel(' cGy : ')
@@ -1014,6 +1021,17 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.selectedImageValues_cGy = [doseSelection.value for doseSelection in self.step1_doseToImageSelector_cGySpinBoxList]
     print "onSaveCalibrationBatchButton"
     self.folderNode.SetScene(slicer.mrmlScene)
+    
+    #for selectedImage in self.step1_doseToImageFilmSelectorComboBoxList:
+    #volumeSavingNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, self.folderNode, slicer.vtkMRMLSubjectHierarchyConstants.GetDICOMLevelSeries(), volumeNode.GetName(), volumeNode)
+    volumeSavingNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, self.folderNode, slicer.vtkMRMLSubjectHierarchyConstants.GetDICOMLevelSeries(), "Flood_field", self.step1_floodFieldImageSelectorNode.currentNode())
+    volumeSavingNode.SetAttribute("dose", None)
+    
+    
+    for x in range (self.step1_numberOfCalibrationFilmsSpinBox.value):
+      volumeSavingNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, self.folderNode, slicer.vtkMRMLSubjectHierarchyConstants.GetDICOMLevelSeries(), str(self.step1_doseToImageSelector_cGySpinBoxList[0].value), self.step1_doseToImageFilmSelectorComboBoxList[x].currentNode())
+      volumeSavingNode.SetAttribute("dose", str(self.step1_doseToImageSelector_cGySpinBoxList[x].value))
+    
     
   def onLoadSavedImageBatchButton(self):
     slicer.mrmlScene = self.folderNode.GetScene()
