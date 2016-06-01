@@ -1,4 +1,5 @@
 import os
+import shutil 
 import unittest
 import numpy
 import vtk, qt, ctk, slicer
@@ -121,10 +122,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.mode = None
     
     #TODO add constant for the volume 
-    self.doseCalibrationVolumes = [] #AR constant for film image selection in film/dose saving
-    self.selectedImageValues_cGy = [] #AR constant for dose selection in film/dose saving 
     
-    #self.exportMrmlScene = slicer.vtkMRMLScene() #scene for saving - replace with self.self.exportMrmlScene
+    #selectedImageValues_cGy = [] #AR constant for dose selection in film/dose saving 
+    
+    #exportMrmlScene = slicer.vtkMRMLScene() #scene for saving - replace with self.exportMrmlScene
     
     
     self.planCtVolumeNode = None
@@ -153,15 +154,18 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     if self.measuredMarkupsFiducialNode is None:
       measuredFiducialsNodeId = self.markupsLogic.AddNewFiducialNode(self.measuredMarkupsFiducialNodeName)
       self.measuredMarkupsFiducialNode = slicer.mrmlScene.GetNodeByID(measuredFiducialsNodeId)
-    measuredFiducialsDisplayNode = self.measuredMarkupsFiducialNode.GetDisplayNode()
-    measuredFiducialsDisplayNode.SetSelectedColor(0, 0.9, 0)
+    #measuredFiducialsDisplayNode = self.measuredMarkupsFiducialNode.GetDisplayNode()
+    #measuredFiducialsDisplayNode.SetSelectedColor(0, 0.9, 0)
     
     #create folder node
     self.folderNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, None, slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder(), self.saveCalibrationBatchFolderNodeName, None)
     self.calibrationVolumeDoseAttributeName = "Dose"
     self.floodFieldImageShNodeName = "FloodFieldImage"
     self.calibrationVolumeName = "CalibrationVolume" 
-    self.exportedSceneFileName = slicer.app.temporaryPath + "/self.exportMrmlScene.mrml" 
+    self.exportedSceneFileName = slicer.app.temporaryPath + "/exportMrmlScene.mrml" 
+    self.savedCalibrationVolumeFolderName = "savedCalibrationVolumes"
+    self.savedFolderPath = slicer.app.temporaryPath + "/" + self.savedCalibrationVolumeFolderName
+   
     
     #calibrationVolumeShNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, self.folderNode, slicer.vtkMRMLSubjectHierarchyConstants.GetDICOMLevelSeries(), volumeNode.GetName(), volumeNode)
 
@@ -206,6 +210,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     #self.step2_2_2_measuredFiducialSelectionCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_2_2_MeasuredFiducialCollectionSelected) 
     self.step1_loadImageFilesButton.disconnect('clicked()', self.onLoadNonDicomData)
     self.step1_numberOfCalibrationFilmsSpinBox.disconnect('valueChanged()', self.onstep1_numberOfCalibrationFilmsSpinBoxValueChanged)
+    self.step1_saveCalibrationBatchButton.disconnect('clicked()', self.onSaveCalibrationBatchButton)
     #self.step2_2_3_registerMeasuredToObiButton.disconnect('clicked()', self.onMeasuredToObiRegistration) 
     #self.step3_1_pddLoadDataButton.disconnect('clicked()', self.onLoadPddDataRead)    
     #self.step3_1_alignCalibrationCurvesButton.disconnect('clicked()', self.onAlignCalibrationCurves)  
@@ -495,13 +500,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     slicer.util.openAddDataDialog()
     
   #TODO current add connection event here
-  def onstep1_numberOfCalibrationFilmsSpinBoxValueChanged(self):
-    print "onstep1_numberOfCalibrationFilmsSpinBoxValueChanged has been called"
-    
-    print self.step1_calibrationVolumeLayoutList
-    
+  
+  def fillStep1CalibrationPanel(self,CalibrationVolumeQuantity):
+    print "fillStep1CalibrationPanel()"
     for doseToImageFormLayout in xrange(len(self.step1_calibrationVolumeLayoutList)-1,-1,-1):
-      print "at ", doseToImageFormLayout, " in list"
+      
       #print "deleting", " widget: " 
       #print self.step1_calibrationVolumeLayoutList[doseToImageFormLayout]
       self.step1_calibrationVolumeLayoutList[doseToImageFormLayout].deleteLater()
@@ -523,14 +526,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     
     self.step1_doseToImageRowLabelMiddle = qt.QLabel(' cGy :')
     
-    
-    #self.step1_middleBackgroundSubLayout.addLayout(self.step1_middleBackgroundSubLayout)
-    
-    # for imageSelectionFormRow in reversed(range(self.step1_middleBackgroundSubLayout.count())):
-      # self.step1_middleBackgroundSubLayout.itemAt(imageSelectionFormRow).widget().delete()
-    
-      # #print imageSelectionFormRow #TODO delete all child widgets
-    for doseToImageLayoutNumber in xrange (self.step1_numberOfCalibrationFilmsSpinBox.value):
+    for doseToImageLayoutNumber in xrange (CalibrationVolumeQuantity):
       self.step1_doseToImageRowLabelBefore = qt.QLabel('Calibration ')
       self.step1_calibrationVolumeSelectorLabelBeforeList.append(self.step1_doseToImageRowLabelBefore)
       
@@ -562,67 +558,136 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       
       self.step1_middleBackgroundSubLayout.addLayout(self.step1_doseToImageFormLayout)
     
-    
-    
-    
-    
-    for i in range(self.step1_middleBackgroundSubLayout.count()):
-      print i
+  
+  
+  
+  def onstep1_numberOfCalibrationFilmsSpinBoxValueChanged(self):
+    self.fillStep1CalibrationPanel(self.step1_numberOfCalibrationFilmsSpinBox.value)
+  
       
   
   def onSaveCalibrationBatchButton(self):
-  
-    #self.exportMrmlScene.Clear(0) 
-    self.doseCalibrationVolumes = [selectedImage.currentNode() for selectedImage in self.step1_calibrationVolumeSelectorComboBoxList]
-    self.selectedImageValues_cGy = [doseSelection.value for doseSelection in self.step1_calibrationVolumeSelector_cGySpinBoxList]
-    print "onSaveCalibrationBatchButton"
+    import os
+    import ntpath
+    
+    self.savedFolderPath = qt.QFileDialog.getExistingDirectory(0, 'Open dir')
     
     # # Create temporary scene for saving
-    self.exportMrmlScene = slicer.vtkMRMLScene()     #TODO check to see if it should be moved back/uncommented here
+    exportMrmlScene = slicer.vtkMRMLScene()     
+    
+    if (os.path.isfile(self.exportedSceneFileName) == False):
+      os.mkdir(self.savedFolderPath)
     
     
-    # # for selectedImage in self.step1_calibrationVolumeSelectorComboBoxList:
-    # #TODO: Save flood field
+    
+    
     floodFieldImageNode = self.step1_floodFieldImageSelectorNode.currentNode()
     floodFieldVolumeShNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, self.folderNode, slicer.vtkMRMLSubjectHierarchyConstants.GetDICOMLevelSeries(), self.floodFieldImageShNodeName, floodFieldImageNode)
     floodFieldVolumeShNode.SetAttribute(self.calibrationVolumeDoseAttributeName, None)
-    self.exportMrmlScene.AddNode(floodFieldImageNode)
-    self.exportMrmlScene.AddNode(floodFieldVolumeShNode)
+    exportMrmlScene.AddNode(floodFieldImageNode)
+    exportMrmlScene.AddNode(floodFieldVolumeShNode)
+    floodFieldStorageNode = slicer.util.getNode(floodFieldImageNode.GetStorageNodeID())
     
-    # #TODO rewrite this and make line 1039 work 
-    for currentCalibrationVolumeIndex in xrange(len(self.doseCalibrationVolumes)):
-      calibrationVolumeShNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, self.folderNode, slicer.vtkMRMLSubjectHierarchyConstants.GetDICOMLevelSeries(), self.calibrationVolumeName, self.doseCalibrationVolumes[currentCalibrationVolumeIndex])
-      calibrationVolumeShNode.SetAttribute(self.calibrationVolumeDoseAttributeName, str(self.step1_calibrationVolumeSelector_cGySpinBoxList[currentCalibrationVolumeIndex].value))
-      self.exportMrmlScene.AddNode(self.doseCalibrationVolumes[currentCalibrationVolumeIndex])
-      #self.exportMrmlScene.AddNode(calibrationVolumeShNode) #TODO this is the problem line 
-      self.exportMrmlScene.CopyNode(calibrationVolumeShNode) 
+    shutil.copy(floodFieldStorageNode.GetFileName(), self.savedFolderPath)
+    
+    for currentCalibrationVolumeIndex in xrange(len(self.step1_calibrationVolumeSelectorComboBoxList)):
+      #subject hierarchy
+      calibrationVolumeShNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, self.folderNode, slicer.vtkMRMLSubjectHierarchyConstants.GetDICOMLevelSeries(), self.calibrationVolumeName, self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationVolumeIndex].currentNode())
+      calibrationVolumeShNode.SetAttribute(self.calibrationVolumeDoseAttributeName, str(self.step1_calibrationVolumeSelector_cGySpinBoxList[currentCalibrationVolumeIndex].value)) #TODO change to real name
+      exportMrmlScene.AddNode(self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationVolumeIndex].currentNode()) #TODO why is the storage node None? 
+      exportMrmlScene.CopyNode(calibrationVolumeShNode) 
+      
+      
+      #volumeStorageNode saving 
+      currentVertex = self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationVolumeIndex].currentNode()
+      
+      volumeStorageNode = slicer.util.getNode(currentVertex.GetStorageNodeID())
+      #print volumeStorageNode
+      exportMrmlScene.CopyNode(volumeStorageNode)
+      
+      #TODO why change the file storage url to something that doesn't exist? 
+      #volumeStorageNode.SetFileName(self.calibrationVolumeName + ntpath.basename(volumeStorageNode.GetFileName())) #formerly known as ???
+      
+      #print "calibration volume name is ", self.calibrationVolumeName, "storage node basename is ", ntpath.basename(volumeStorageNode.GetFileName()
+      #print "file stored at ", volumeStorageNode.GetFileName()
+      
+      shutil.copy(volumeStorageNode.GetFileName(), self.savedFolderPath)
+      #TODO should file name be reset to the saved directory? 
 
+    #+ "/exportMrmlScene.mrml" 
     
-    self.exportMrmlScene.SetURL(self.exportedSceneFileName)  #TODO uncomment/change
-    self.exportMrmlScene.Commit()  #TODO uncomment
+    
+    
+    exportMrmlScene.SetURL(os.path.normpath(self.savedFolderPath + "/exportMrmlScene.mrml" ))  #TODO uncomment/change
+    exportMrmlScene.Commit()  #TODO uncomment
     # # Check if scene file has been created
+    
+
+    if os.path.isfile(exportMrmlScene.GetURL()) == True:
+      print "Calibration volume successfully saved"
+    else:
+      print "Calibration volume not successfully saved" 
     
     # import os
     # #os.file...... #python file operators
     
-    # #TODO: Remove nodes from export scene? - which?
     
+    exportMrmlScene.Clear(1)
    
     
     
     
   def onLoadSavedImageBatchButton(self):
-    #slicer.mrmlScene = self.folderNode.GetScene()
-    print "onLoadSavedImageBatchButton pressed" 
+    print "empty function"
+    # # # # #slicer.mrmlScene = self.folderNode.GetScene()
+    # print "onLoadSavedImageBatchButton pressed" 
     
-    extraMRMLScene = slicer.mrmlScene
-    slicer.mrmlScene.Clear(0)
+    # extraMRMLScene = slicer.mrmlScene
+    # slicer.mrmlScene.Clear(0)
+    
+    # slicer.mrmlScene = exportMrmlScene
+    
+    # #set contents of extra scene to present scene 
+    
+    # savedCalibrationVolumes = []
+    
+    # v = vtk.vtkCollection()
+    # v = slicer.mrmlScene.GetNodes()
+    # v.InitTraversal()
+    # nn = v.GetNextItemAsObject()
+    
+    # while nn!=None:
+      
+      
+      
+      # if (self.floodFieldImageShNodeName in nn.GetName()):
+      
+        # print "this is the flood field image"
+        
+      # if (self.calibrationVolumeName in nn.GetName()):
+        # print "this is a calibration volume"
+        # savedCalibrationVolumes.append(nn)
+  
+      # nn = v.GetNextItemAsObject()
+      
+    # print "there are ", len(savedCalibrationVolumes), " items"
+    
+    # self.fillStep1CalibrationPanel(len(savedCalibrationVolumes))
+    
+    # print savedCalibrationVolumes
+    
+    # c = vtk.vtkCollection()
+    
+    # savedCalibrationVolumes[0].GetAssociatedChildrenNodes(c)
+    # print c.GetNumberOfItems()
+    
+    # # for savedCalibrationVolumeIndex in xrange(len(self.step1_calibrationVolumeSelectorComboBoxList)):
+      # #TODO fix problem line
+      # # #self.step1_calibrationVolumeSelectorComboBoxList[savedCalibrationVolumeIndex].setCurrentNode(savedCalibrationVolumes[savedCalibrationVolumeIndex].currentNode()) 
+      # # currentCalibrationVolumeComboBox = self.step1_calibrationVolumeSelectorComboBoxList[savedCalibrationVolumeIndex]
     
     
-    slicer.mrmlScene = self.exportMrmlScene
     
-    
-    #set contents of extra scene to present scene 
   
   
   
@@ -1407,7 +1472,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     obiVolumeName = '0: Unknown'
     structureSetNodeName = '52: RTSTRUCT: CT_1'
     measuredVolumeName = 'lcv01_hr.vff'
-    calibrationVolumeName = 'lcv02_hr.vff'
+    #calibrationVolumeName = 'lcv02_hr.vff'
 
     planCTVolume = slicer.util.getNode(planCTVolumeName)
     self.doseToImageFilmSelector.setCurrentNode(planCTVolume)
@@ -1419,7 +1484,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.planStructuresSelector.setCurrentNode(structureSetNode)
     measuredVolume = slicer.util.getNode(measuredVolumeName)
     self.measuredVolumeSelector.setCurrentNode(measuredVolume)
-    calibrationVolume = slicer.util.getNode(calibrationVolumeName)
+    #calibrationVolume = slicer.util.getNode(calibrationVolumeName)
     self.numberOfCalibrationFilmsSelector.setCurrentNode(calibrationVolume)
     slicer.app.processEvents()
 
