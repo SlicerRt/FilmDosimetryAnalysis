@@ -105,8 +105,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     print('ZZZ 2')#TODO:
 
     # Set up constants
-    self.obiMarkupsFiducialNodeName = "OBI fiducials"
-    self.measuredMarkupsFiducialNodeName = "MEASURED fiducials"
+    #self.obiMarkupsFiducialNodeName = "OBI fiducials"
+    # self.measuredMarkupsFiducialNodeName = "MEASURED fiducials"
     self.saveCalibrationBatchFolderNodeName = "Calibration batch" 
     self.saveDoseCalibrationVolumesName = "Dose calibration volumes"
     
@@ -146,16 +146,16 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.markupsLogic = slicer.modules.markups.logic()
     
     # Create or get fiducial nodes
-    self.obiMarkupsFiducialNode = slicer.util.getNode(self.obiMarkupsFiducialNodeName)
-    if self.obiMarkupsFiducialNode is None:
-      obiFiducialsNodeId = self.markupsLogic.AddNewFiducialNode(self.obiMarkupsFiducialNodeName)
-      self.obiMarkupsFiducialNode = slicer.mrmlScene.GetNodeByID(obiFiducialsNodeId)
-    self.measuredMarkupsFiducialNode = slicer.util.getNode(self.measuredMarkupsFiducialNodeName)
-    if self.measuredMarkupsFiducialNode is None:
-      measuredFiducialsNodeId = self.markupsLogic.AddNewFiducialNode(self.measuredMarkupsFiducialNodeName)
-      self.measuredMarkupsFiducialNode = slicer.mrmlScene.GetNodeByID(measuredFiducialsNodeId)
-    #measuredFiducialsDisplayNode = self.measuredMarkupsFiducialNode.GetDisplayNode()
-    #measuredFiducialsDisplayNode.SetSelectedColor(0, 0.9, 0)
+    # self.obiMarkupsFiducialNode = slicer.util.getNode(self.obiMarkupsFiducialNodeName)
+    # if self.obiMarkupsFiducialNode is None:
+      # obiFiducialsNodeId = self.markupsLogic.AddNewFiducialNode(self.obiMarkupsFiducialNodeName)
+      # self.obiMarkupsFiducialNode = slicer.mrmlScene.GetNodeByID(obiFiducialsNodeId)
+    # self.measuredMarkupsFiducialNode = slicer.util.getNode(self.measuredMarkupsFiducialNodeName)
+    # if self.measuredMarkupsFiducialNode is None:
+      # measuredFiducialsNodeId = self.markupsLogic.AddNewFiducialNode(self.measuredMarkupsFiducialNodeName)
+      # self.measuredMarkupsFiducialNode = slicer.mrmlScene.GetNodeByID(measuredFiducialsNodeId)
+    # #measuredFiducialsDisplayNode = self.measuredMarkupsFiducialNode.GetDisplayNode()
+    # #measuredFiducialsDisplayNode.SetSelectedColor(0, 0.9, 0)
     
     #create folder node
     self.folderNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, None, slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder(), self.saveCalibrationBatchFolderNodeName, None)
@@ -338,21 +338,21 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     #TODO continue changing names to have step1_
 
     ##choose the flood field image
-    self.step1_floodFieldImageSelectorNodeLayout = qt.QHBoxLayout()
-    self.step1_floodFieldImageSelectorNode = slicer.qMRMLNodeComboBox()
-    self.step1_floodFieldImageSelectorNode.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    self.step1_floodFieldImageSelectorNode.addEnabled = False
-    self.step1_floodFieldImageSelectorNode.removeEnabled = False
-    self.step1_floodFieldImageSelectorNode.setMRMLScene( slicer.mrmlScene )
-    self.step1_floodFieldImageSelectorNode.setToolTip( "--pick the flood field image file-- CHANGE THIS." ) #TODO
-    self.step1_floodFieldImageSelectorNodeLabel = qt.QLabel('Flood field image: ')
+    self.step1_floodFieldImageSelectorComboBoxLayout = qt.QHBoxLayout()
+    self.step1_floodFieldImageSelectorComboBox = slicer.qMRMLNodeComboBox()
+    self.step1_floodFieldImageSelectorComboBox.nodeTypes = ["vtkMRMLScalarVolumeNode"]
+    self.step1_floodFieldImageSelectorComboBox.addEnabled = False
+    self.step1_floodFieldImageSelectorComboBox.removeEnabled = False
+    self.step1_floodFieldImageSelectorComboBox.setMRMLScene( slicer.mrmlScene )
+    self.step1_floodFieldImageSelectorComboBox.setToolTip( "--pick the flood field image file-- CHANGE THIS." ) #TODO
+    self.step1_floodFieldImageSelectorComboBoxLabel = qt.QLabel('Flood field image: ')
 
-    self.step1_floodFieldImageSelectorNodeLayout.addWidget(self.step1_floodFieldImageSelectorNodeLabel)
-    self.step1_floodFieldImageSelectorNodeLayout.addWidget(self.step1_floodFieldImageSelectorNode)
+    self.step1_floodFieldImageSelectorComboBoxLayout.addWidget(self.step1_floodFieldImageSelectorComboBoxLabel)
+    self.step1_floodFieldImageSelectorComboBoxLayout.addWidget(self.step1_floodFieldImageSelectorComboBox)
 
-    self.step1_topBackgroundSubLayout.addLayout(self.step1_floodFieldImageSelectorNodeLayout)
+    self.step1_topBackgroundSubLayout.addLayout(self.step1_floodFieldImageSelectorComboBoxLayout)
 
-    #self.step1_topBackgroundSubLayout.addRow('Flood field image: ', self.step1_floodFieldImageSelectorNode) #TODO what is this?
+    #self.step1_topBackgroundSubLayout.addRow('Flood field image: ', self.step1_floodFieldImageSelectorComboBox) #TODO what is this?
 
     ##
 
@@ -438,7 +438,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     #TODO add connection for step1_numberOfCalibrationFilmsSpinBox , add disconnect
     self.step1_numberOfCalibrationFilmsSpinBox.connect('valueChanged(int)', self.onstep1_numberOfCalibrationFilmsSpinBoxValueChanged)
 
-
+    self.sliceletPanelLayout.addStretch(1)  #AR current   
+    
     ################
     
 # ###step 2 button for testing
@@ -575,41 +576,58 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # # Create temporary scene for saving
     exportMrmlScene = slicer.vtkMRMLScene()     
     
-    if (os.path.isfile(self.exportedSceneFileName) == False):
-      os.mkdir(self.savedFolderPath)
+    # if (os.path.isdir(self.exportedSceneFileName) == False):
+      # os.mkdir(self.savedFolderPath)
+    
+    exportMrmlScene.AddNode(self.folderNode)
     
     
+    floodFieldImageVolumeNode = self.step1_floodFieldImageSelectorComboBox.currentNode()
+    floodFieldVolumeShNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, self.folderNode, slicer.vtkMRMLSubjectHierarchyConstants.GetDICOMLevelSeries(), self.floodFieldImageShNodeName, floodFieldImageVolumeNode)
+    #floodFieldVolumeShNode.SetAttribute(self.calibrationVolumeDoseAttributeName, None)
+    exportMrmlScene.AddNode(floodFieldImageVolumeNode)
+    exportMrmlScene.CopyNode(floodFieldVolumeShNode)
+    
+    #volume storage node saving 
+    floodFieldStorageNode = slicer.util.getNode(floodFieldImageVolumeNode.GetStorageNodeID())
+    exportMrmlScene.CopyNode(floodFieldStorageNode)
+    
+    #display node saving
+    floodFieldDisplayNode = slicer.util.getNode(floodFieldImageVolumeNode.GetDisplayNodeID())
+    exportMrmlScene.CopyNode(floodFieldDisplayNode)
     
     
-    floodFieldImageNode = self.step1_floodFieldImageSelectorNode.currentNode()
-    floodFieldVolumeShNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, self.folderNode, slicer.vtkMRMLSubjectHierarchyConstants.GetDICOMLevelSeries(), self.floodFieldImageShNodeName, floodFieldImageNode)
-    floodFieldVolumeShNode.SetAttribute(self.calibrationVolumeDoseAttributeName, None)
-    exportMrmlScene.AddNode(floodFieldImageNode)
-    exportMrmlScene.AddNode(floodFieldVolumeShNode)
-    floodFieldStorageNode = slicer.util.getNode(floodFieldImageNode.GetStorageNodeID())
     
     shutil.copy(floodFieldStorageNode.GetFileName(), self.savedFolderPath)
     
     for currentCalibrationVolumeIndex in xrange(len(self.step1_calibrationVolumeSelectorComboBoxList)):
       #subject hierarchy
-      calibrationVolumeShNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, self.folderNode, slicer.vtkMRMLSubjectHierarchyConstants.GetDICOMLevelSeries(), self.calibrationVolumeName, self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationVolumeIndex].currentNode())
+      currentCalibrationVolume = self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationVolumeIndex].currentNode()
+      calibrationVolumeShNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, self.folderNode, slicer.vtkMRMLSubjectHierarchyConstants.GetDICOMLevelSeries(), self.calibrationVolumeName, currentCalibrationVolume)
       calibrationVolumeShNode.SetAttribute(self.calibrationVolumeDoseAttributeName, str(self.step1_calibrationVolumeSelector_cGySpinBoxList[currentCalibrationVolumeIndex].value)) #TODO change to real name
-      exportMrmlScene.AddNode(self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationVolumeIndex].currentNode()) #TODO why is the storage node None? 
+      exportMrmlScene.AddNode(currentCalibrationVolume) 
       exportMrmlScene.CopyNode(calibrationVolumeShNode) 
-      
-      
+     
       #volumeStorageNode saving 
-      currentVertex = self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationVolumeIndex].currentNode()
-      
-      volumeStorageNode = slicer.util.getNode(currentVertex.GetStorageNodeID())
-      #print volumeStorageNode
+      volumeStorageNode = slicer.util.getNode(currentCalibrationVolume.GetStorageNodeID())
       exportMrmlScene.CopyNode(volumeStorageNode)
+      
+      #displayNode saving 
+      volumeDisplayNode = slicer.util.getNode(currentCalibrationVolume.GetDisplayNodeID())
+      exportMrmlScene.CopyNode(volumeDisplayNode)
+      
+      
+      
       
       #TODO why change the file storage url to something that doesn't exist? 
       #volumeStorageNode.SetFileName(self.calibrationVolumeName + ntpath.basename(volumeStorageNode.GetFileName())) #formerly known as ???
       
       #print "calibration volume name is ", self.calibrationVolumeName, "storage node basename is ", ntpath.basename(volumeStorageNode.GetFileName()
       #print "file stored at ", volumeStorageNode.GetFileName()
+      
+      calibrationVolumeSavingPath = os.path.normpath(self.savedFolderPath + "/" + ntpath.basename(volumeStorageNode.GetFileName()))
+      if os.path.isfile(calibrationVolumeSavingPath):
+        print "it already exists"
       
       shutil.copy(volumeStorageNode.GetFileName(), self.savedFolderPath)
       #TODO should file name be reset to the saved directory? 
@@ -624,9 +642,13 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     
 
     if os.path.isfile(exportMrmlScene.GetURL()) == True:
+      savedSuccessfullyLabel = qt.QLabel( "Calibration volume successfully saved")
+      self.step1_bottomBackgroundSubLayout.addWidget(savedSuccessfullyLabel)
       print "Calibration volume successfully saved"
     else:
       print "Calibration volume not successfully saved" 
+      savedUnsuccessfullyLabel = qt.QLabel( "Calibration volume save failed")
+      self.step1_bottomBackgroundSubLayout.addWidget(savedUnsuccessfullyLabel)
     
     # import os
     # #os.file...... #python file operators
@@ -695,7 +717,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Save selections to member variables when switching away from load data step
     if collapsed == True:
       self.planCtVolumeNode = self.doseToImageFilmSelector.currentNode()
-      self.planDoseVolumeNode = self.step1_floodFieldImageSelectorNode.currentNode()
+      self.planDoseVolumeNode = self.step1_floodFieldImageSelectorComboBox.currentNode()
       self.obiVolumeNode = self.obiSelector.currentNode()
       self.planStructuresNode = self.planStructuresSelector.currentNode()
       self.measuredVolumeNode = self.measuredVolumeSelector.currentNode()
@@ -798,22 +820,22 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     for slider in sliders:
       slider.singleStep = 0.5
 
-  def onMeasuredToObiRegistration(self):
-    errorRms = self.logic.registerObiToMeasured(self.obiMarkupsFiducialNode.GetID(), self.measuredMarkupsFiducialNode.GetID())
+  # def onMeasuredToObiRegistration(self):
+    # errorRms = self.logic.registerObiToMeasured(self.obiMarkupsFiducialNode.GetID(), self.measuredMarkupsFiducialNode.GetID())
     
-    # Show registration error on GUI
-    self.step2_2_3_measuredToObiFiducialRegistrationErrorLabel.setText(str(errorRms) + ' mm')
+    # # Show registration error on GUI
+    # self.step2_2_3_measuredToObiFiducialRegistrationErrorLabel.setText(str(errorRms) + ' mm')
 
-    # Apply transform to MEASURED volume
-    obiToMeasuredTransformNode = slicer.util.getNode(self.logic.obiToMeasuredTransformName)
-    self.measuredVolumeNode.SetAndObserveTransformNodeID(obiToMeasuredTransformNode.GetID())
+    # # Apply transform to MEASURED volume
+    # obiToMeasuredTransformNode = slicer.util.getNode(self.logic.obiToMeasuredTransformName)
+    # self.measuredVolumeNode.SetAndObserveTransformNodeID(obiToMeasuredTransformNode.GetID())
 
-    # Show both volumes in the 2D views
-    appLogic = slicer.app.applicationLogic()
-    selectionNode = appLogic.GetSelectionNode()
-    selectionNode.SetActiveVolumeID(self.obiVolumeNode.GetID())
-    selectionNode.SetSecondaryVolumeID(self.measuredVolumeNode.GetID())
-    appLogic.PropagateVolumeSelection() 
+    # # Show both volumes in the 2D views
+    # appLogic = slicer.app.applicationLogic()
+    # selectionNode = appLogic.GetSelectionNode()
+    # selectionNode.SetActiveVolumeID(self.obiVolumeNode.GetID())
+    # selectionNode.SetSecondaryVolumeID(self.measuredVolumeNode.GetID())
+    # appLogic.PropagateVolumeSelection() 
 
   def onLoadPddDataRead(self):  #TODO this is the thing to turn into the PNG
     fileName = qt.QFileDialog.getOpenFileName(0, 'Open PDD data file', '', 'CSV with COMMA ( *.csv )')
@@ -1477,7 +1499,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     planCTVolume = slicer.util.getNode(planCTVolumeName)
     self.doseToImageFilmSelector.setCurrentNode(planCTVolume)
     planDoseVolume = slicer.util.getNode(planDoseVolumeName)
-    self.step1_floodFieldImageSelectorNode.setCurrentNode(planDoseVolume)
+    self.step1_floodFieldImageSelectorComboBox.setCurrentNode(planDoseVolume)
     obiVolume = slicer.util.getNode(obiVolumeName)
     self.obiSelector.setCurrentNode(obiVolume)
     structureSetNode = slicer.util.getNode(structureSetNodeName)
@@ -1495,21 +1517,21 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Select fiducials
     #self.step1_2_doseToFilmCollapsibleButton.setChecked(True) 
-    obiFiducialsNode = slicer.util.getNode(self.obiMarkupsFiducialNodeName)
-    obiFiducialsNode.AddFiducial(76.4, 132.1, -44.8)
-    obiFiducialsNode.AddFiducial(173, 118.4, -44.8)
-    obiFiducialsNode.AddFiducial(154.9, 163.5, -44.8)
-    obiFiducialsNode.AddFiducial(77.4, 133.6, 23.9)
-    obiFiducialsNode.AddFiducial(172.6, 118.9, 23.9)
-    obiFiducialsNode.AddFiducial(166.5, 151.3, 23.9)
-    self.step2_2_2_measuredFiducialSelectionCollapsibleButton.setChecked(True)
-    measuredFiducialsNode = slicer.util.getNode(self.measuredMarkupsFiducialNodeName)
-    measuredFiducialsNode.AddFiducial(-92.25, -25.9, 26.2)
-    measuredFiducialsNode.AddFiducial(-31.9, -100.8, 26.2)
-    measuredFiducialsNode.AddFiducial(-15, -55.2, 26.2)
-    measuredFiducialsNode.AddFiducial(-92, -26.7, 94)
-    measuredFiducialsNode.AddFiducial(-32.7, -101, 94)
-    measuredFiducialsNode.AddFiducial(-15, -73.6, 94)
+    # obiFiducialsNode = slicer.util.getNode(self.obiMarkupsFiducialNodeName)
+    # obiFiducialsNode.AddFiducial(76.4, 132.1, -44.8)
+    # obiFiducialsNode.AddFiducial(173, 118.4, -44.8)
+    # obiFiducialsNode.AddFiducial(154.9, 163.5, -44.8)
+    # obiFiducialsNode.AddFiducial(77.4, 133.6, 23.9)
+    # obiFiducialsNode.AddFiducial(172.6, 118.9, 23.9)
+    # obiFiducialsNode.AddFiducial(166.5, 151.3, 23.9)
+    # self.step2_2_2_measuredFiducialSelectionCollapsibleButton.setChecked(True)
+    # measuredFiducialsNode = slicer.util.getNode(self.measuredMarkupsFiducialNodeName)
+    # measuredFiducialsNode.AddFiducial(-92.25, -25.9, 26.2)
+    # measuredFiducialsNode.AddFiducial(-31.9, -100.8, 26.2)
+    # measuredFiducialsNode.AddFiducial(-15, -55.2, 26.2)
+    # measuredFiducialsNode.AddFiducial(-92, -26.7, 94)
+    # measuredFiducialsNode.AddFiducial(-32.7, -101, 94)
+    # measuredFiducialsNode.AddFiducial(-15, -73.6, 94)
 
     # Perform fiducial registration
     self.step2_2_3_measuredToObiRegistrationCollapsibleButton.setChecked(True)
