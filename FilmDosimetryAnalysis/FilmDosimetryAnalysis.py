@@ -439,6 +439,25 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_numberOfCalibrationFilmsSpinBox.connect('valueChanged(int)', self.onstep1_numberOfCalibrationFilmsSpinBoxValueChanged)
 
     self.sliceletPanelLayout.addStretch(1)  #AR current   
+	
+	
+    @vtk.calldata_type(vtk.VTK_OBJECT)
+    def onNodeAddedCopyPasted(caller, event, calldata):
+      node = calldata
+      #print "in copypasted function, node is a ", type(node)
+      print "node is a ", node.GetClassName()
+      if (node.GetClassName() == "vtkMRMLSubjectHierarchyNode"):
+        print "this is a vtkMRMLSubjectHierarchyNode"
+        print "level is", node.GetLevel() 
+    
+    self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, onNodeAddedCopyPasted);
+    
+    
+    
+    
+    
+    
+    
     
     ################
     
@@ -503,7 +522,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   #TODO current add connection event here
   
   def fillStep1CalibrationPanel(self,CalibrationVolumeQuantity):
-    print "fillStep1CalibrationPanel()"
+    
     for doseToImageFormLayout in xrange(len(self.step1_calibrationVolumeLayoutList)-1,-1,-1):
       
       #print "deleting", " widget: " 
@@ -644,9 +663,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     if os.path.isfile(exportMrmlScene.GetURL()) == True:
       savedSuccessfullyLabel = qt.QLabel( "Calibration volume successfully saved")
       self.step1_bottomBackgroundSubLayout.addWidget(savedSuccessfullyLabel)
-      print "Calibration volume successfully saved"
+      
     else:
-      print "Calibration volume not successfully saved" 
+      
       savedUnsuccessfullyLabel = qt.QLabel( "Calibration volume save failed")
       self.step1_bottomBackgroundSubLayout.addWidget(savedUnsuccessfullyLabel)
     
