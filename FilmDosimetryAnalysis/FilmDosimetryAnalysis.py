@@ -61,6 +61,7 @@ class SliceletMainFrame(qt.QDialog):
 class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   def __init__(self, parent, developerMode=False, widgetClass=None):
     VTKObservationMixin.__init__(self)
+
     # Set up main frame
     self.parent = parent
     self.parent.setLayout(qt.QHBoxLayout())
@@ -95,41 +96,17 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step0_layoutSelectionCollapsibleButton.setProperty('collapsed', False)
 
     # Create module logic
-    #TODO add filmdosimetry logic later 
     self.logic = FilmDosimetryAnalysisLogic.FilmDosimetryAnalysisLogic()
 
+    # Declare member variables (selected at certain steps and then from then on for the workflow)    
+    self.folderNode = None
+
     # Set up constants
-    
     self.saveCalibrationBatchFolderNodeName = "Calibration batch"
     self.saveDoseCalibrationVolumesName = "Dose calibration volumes"
     self.saveDoseCalibrationImageName = ["Film " + str(maxNumberCalibrationFilms + 1) for maxNumberCalibrationFilms in range(10)]
-
-    # Declare member variables (selected at certain steps and then from then on for the workflow)
-    
-    self.mode = None
-
-    #TODO add constant for the volume
-
-    self.planCtVolumeNode = None
-    self.planDoseVolumeNode = None
-    self.planStructuresNode = None
-    self.obiVolumeNode = None
-    self.measuredVolumeNode = None
-    self.calibrationVolumeNode = None
-
-    self.obiMarkupsFiducialNode = None
-    self.measuredMarkupsFiducialNode = None
-    self.calibratedMeasuredVolumeNode = None
-    self.maskSegmentationNode = None
-    self.maskSegmentID = None
-    self.gammaVolumeNode = None
-
-    # Get markups logic
-    self.markupsLogic = slicer.modules.markups.logic()
-
-    #create folder node
-    self.folderNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, None, slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder(), self.saveCalibrationBatchFolderNodeName, None)
     self.calibrationVolumeDoseAttributeName = "Dose"
+    self.floodFieldAttributeValue = "FloodField"
     self.floodFieldImageShNodeName = "FloodFieldImage"
     self.calibrationVolumeName = "CalibrationVolume"
     self.exportedSceneFileName = slicer.app.temporaryPath + "/exportMrmlScene.mrml"
@@ -427,77 +404,81 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
 
   def onSaveCalibrationBatchButton(self):
-    #self.folderNode name saveCalibrationBatchFolderNodeName  
-  
     self.savedFolderPath = qt.QFileDialog.getExistingDirectory(0, 'Open dir')
 
-    # # Create temporary scene for saving
+    #TODO: Check if folder is empty. If not, warn user that all files be deleted. If they choose yes, remove all files from folder, otherwise return
+
+    # Create temporary scene for saving
     exportMrmlScene = slicer.vtkMRMLScene()
 
-    exportMrmlScene.AddNode(self.folderNode)
+    # Get folder node (create if not exists)
+    exportFolderNode = None
+    self.folderNode = slicer.util.getNode(self.saveCalibrationBatchFolderNodeName)
+    if self.folderNode is None:
+      self.folderNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, None, slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder(), self.saveCalibrationBatchFolderNodeName, None)
+    # Clone folder node to export scene
+    exportFolderNode = exportMrmlScene.CopyNode(self.folderNode)
 
-
+    # Get flood field image node
     floodFieldImageVolumeNode = self.step1_floodFieldImageSelectorComboBox.currentNode()
+    # Create flood field image subject hierarchy node, add it under folder node
     floodFieldVolumeShNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, self.folderNode, slicer.vtkMRMLSubjectHierarchyConstants.GetDICOMLevelSeries(), self.floodFieldImageShNodeName, floodFieldImageVolumeNode)
-    floodFieldVolumeShNode.SetAttribute(self.calibrationVolumeDoseAttributeName, -10) 
-    exportMrmlScene.AddNode(floodFieldImageVolumeNode)
-    exportMrmlScene.CopyNode(floodFieldVolumeShNode)
+    floodFieldVolumeShNode.SetAttribute(self.calibrationVolumeDoseAttributeName, self.floodFieldAttributeValue)
+    # Copy both image and SH to exported scene
+    exportFloodFieldImageVolumeNode = exportMrmlScene.CopyNode(floodFieldImageVolumeNode)
+    exportFloodFieldVolumeShNode = exportMrmlScene.CopyNode(floodFieldVolumeShNode)
+    exportFloodFieldVolumeShNode.SetParentNodeID(exportFolderNode.GetID())
 
-    #volume storage node saving
-    floodFieldStorageNode = slicer.util.getNode(floodFieldImageVolumeNode.GetStorageNodeID())
-    exportMrmlScene.CopyNode(floodFieldStorageNode)
+    # Export flood field image storage node
+    floodFieldStorageNode = floodFieldImageVolumeNode.GetStorageNode()
+    exportFloodFieldStorageNode = exportMrmlScene.CopyNode(floodFieldStorageNode)
+    exportFloodFieldImageVolumeNode.SetAndObserveStorageNodeID(exportFloodFieldStorageNode.GetID())
 
-    #display node saving
-    floodFieldDisplayNode = slicer.util.getNode(floodFieldImageVolumeNode.GetDisplayNodeID())
-    exportMrmlScene.CopyNode(floodFieldDisplayNode)
+    # Export flood field image display node
+    floodFieldDisplayNode = floodFieldImageVolumeNode.GetDisplayNode()
+    exportFloodFieldDisplayNode = exportMrmlScene.CopyNode(floodFieldDisplayNode)
+    exportFloodFieldImageVolumeNode.SetAndObserveDisplayNodeID(exportFloodFieldDisplayNode.GetID())
 
+    # Copy flood field image file to save folder
     shutil.copy(floodFieldStorageNode.GetFileName(), self.savedFolderPath)
 
     for currentCalibrationVolumeIndex in xrange(len(self.step1_calibrationVolumeSelectorComboBoxList)):
-      #subject hierarchy
+      # Get current calibration image node
       currentCalibrationVolume = self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationVolumeIndex].currentNode()
+      # Create calibration image subject hierarchy node, add it under folder node
       calibrationVolumeShNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, self.folderNode, slicer.vtkMRMLSubjectHierarchyConstants.GetDICOMLevelSeries(), self.calibrationVolumeName, currentCalibrationVolume)
-      calibrationVolumeShNode.SetAttribute(self.calibrationVolumeDoseAttributeName, str(self.step1_calibrationVolumeSelector_cGySpinBoxList[currentCalibrationVolumeIndex].value)) #TODO change to real name
-      exportMrmlScene.AddNode(currentCalibrationVolume)
-      exportMrmlScene.CopyNode(calibrationVolumeShNode)
+      doseLevelAttributeValue = self.step1_calibrationVolumeSelector_cGySpinBoxList[currentCalibrationVolumeIndex].value
+      calibrationVolumeShNode.SetAttribute(self.calibrationVolumeDoseAttributeName, str(doseLevelAttributeValue))
+      # Copy both image and SH to exported scene
+      exportCalibrationImageVolumeNode = exportMrmlScene.CopyNode(currentCalibrationVolume)
+      exportCalibrationVolumeShNode = exportMrmlScene.CopyNode(calibrationVolumeShNode)
+      exportCalibrationVolumeShNode.SetParentNodeID(exportFolderNode.GetID())
 
-      #volumeStorageNode saving
-      volumeStorageNode = slicer.util.getNode(currentCalibrationVolume.GetStorageNodeID())
-      exportMrmlScene.CopyNode(volumeStorageNode)
+      # Export calibration image storage node
+      calibrationStorageNode = currentCalibrationVolume.GetStorageNode()
+      exportCalibrationStorageNode = exportMrmlScene.CopyNode(calibrationStorageNode)
+      exportCalibrationImageVolumeNode.SetAndObserveStorageNodeID(exportCalibrationStorageNode.GetID())
 
-      #displayNode saving
-      volumeDisplayNode = slicer.util.getNode(currentCalibrationVolume.GetDisplayNodeID())
-      exportMrmlScene.CopyNode(volumeDisplayNode)
+      # Export calibration image display node
+      calibrationDisplayNode = currentCalibrationVolume.GetDisplayNode()
+      exportCalibrationDisplayNode = exportMrmlScene.CopyNode(calibrationDisplayNode)
+      exportCalibrationImageVolumeNode.SetAndObserveDisplayNodeID(exportCalibrationDisplayNode.GetID())
 
-      shutil.copy(volumeStorageNode.GetFileName(), self.savedFolderPath)
-      #TODO should file name be reset to the saved directory?
+      # Copy calibration image file to save folder
+      shutil.copy(calibrationStorageNode.GetFileName(), self.savedFolderPath)
 
-    #+ "/exportMrmlScene.mrml"
+    exportMrmlScene.SetURL(os.path.normpath(self.savedFolderPath + "/exportMrmlScene.mrml" ))
+    exportMrmlScene.Commit()
 
-
-
-    exportMrmlScene.SetURL(os.path.normpath(self.savedFolderPath + "/exportMrmlScene.mrml" ))  #TODO uncomment/change
-    exportMrmlScene.Commit()  #TODO uncomment
-    # # Check if scene file has been created
-
-
+    # Check if scene file has been created
     if os.path.isfile(exportMrmlScene.GetURL()) == True:
       savedSuccessfullyLabel = qt.QLabel( "Calibration volume successfully saved")
-      self.step1_bottomBackgroundSubLayout.addWidget(savedSuccessfullyLabel)
-
+      self.step1_bottomBackgroundSubLayout.addWidget(savedSuccessfullyLabel) #TODO: Add label in setup function, here just set text to the label
     else:
-
       savedUnsuccessfullyLabel = qt.QLabel( "Calibration volume save failed")
-      self.step1_bottomBackgroundSubLayout.addWidget(savedUnsuccessfullyLabel)
-
-    # import os
-    # #os.file...... #python file operators
-
+      self.step1_bottomBackgroundSubLayout.addWidget(savedUnsuccessfullyLabel) #TODO: Add label in setup function, here just set text to the label
 
     exportMrmlScene.Clear(1)
-
-
-
 
   def onLoadSavedImageBatchButton(self):
     
@@ -515,34 +496,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     success = slicer.mrmlScene.Import()
     print "success", success
     
-    
+    #TODO: Indentify flood field image by this attribute value (for attribute self.calibrationVolumeDoseAttributeName): self.floodFieldAttributeValue
     
     
     # use mrmlscene.import()
     
-    
-    
-    @vtk.calldata_type(vtk.VTK_OBJECT)
-    def onNodeAddedCopyPasted(caller, event, calldata):
-      node = calldata
-      #print "in copypasted function, node is a ", type(node)
-      #print "node is a ", node.GetClassName()
-      if (node.GetClassName() == "vtkMRMLSubjectHierarchyNode"):
-        #print "this is a vtkMRMLSubjectHierarchyNode"
-        nodeLevel = node.GetLevel()
-        #print "level is ", nodeLevel
-        if nodeLevel == "Folder":
-          print "found a Folder"
-          
-          
-          #print "older folder-level file from previous scene is ", self.folderNode
-          
-          #print "current node to replace it with is  is ", node
-          
-          self.folderNode = node 
-          
-          
-  
     print "now folderNode is ", self.folderNode 
 
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, onNodeAddedCopyPasted);
@@ -552,6 +510,25 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
  
     qt.QMessageBox.information(None, 'Line profiles values exported', message)
+
+  @vtk.calldata_type(vtk.VTK_OBJECT)
+  def onNodeAddedCopyPasted(caller, event, calldata):
+    node = calldata
+    #print "in copypasted function, node is a ", type(node)
+    #print "node is a ", node.GetClassName()
+    if (node.GetClassName() == "vtkMRMLSubjectHierarchyNode"):
+      #print "this is a vtkMRMLSubjectHierarchyNode"
+      nodeLevel = node.GetLevel()
+      #print "level is ", nodeLevel
+      if nodeLevel == "Folder":
+        print "found a Folder"
+        
+        
+        #print "older folder-level file from previous scene is ", self.folderNode
+        
+        #print "current node to replace it with is  is ", node
+        
+        self.folderNode = node 
 
   #
   # -------------------------
