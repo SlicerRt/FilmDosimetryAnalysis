@@ -100,7 +100,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Declare member variables (selected at certain steps and then from then on for the workflow)    
     self.folderNode = None
-
+    self.batchFolderToParse = None
     # Set up constants
     self.saveCalibrationBatchFolderNodeName = "Calibration batch"
     self.saveDoseCalibrationVolumesName = "Dose calibration volumes"
@@ -112,6 +112,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.exportedSceneFileName = slicer.app.temporaryPath + "/exportMrmlScene.mrml"
     self.savedCalibrationVolumeFolderName = "savedCalibrationVolumes"
     self.savedFolderPath = slicer.app.temporaryPath + "/" + self.savedCalibrationVolumeFolderName
+
+    # Set observations
+    self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
+    self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndImportEvent, self.onSceneEndImport)
 
     # Turn on slice intersections in 2D viewers
     compositeNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
@@ -402,7 +406,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   def onstep1_numberOfCalibrationFilmsSpinBoxValueChanged(self):
     self.fillStep1CalibrationPanel(self.step1_numberOfCalibrationFilmsSpinBox.value)
 
-
+  #------------------------------------------------
   def onSaveCalibrationBatchButton(self):
     self.savedFolderPath = qt.QFileDialog.getExistingDirectory(0, 'Open dir')
 
@@ -481,55 +485,33 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     exportMrmlScene.Clear(1)
 
   def onLoadSavedImageBatchButton(self):
-    
-    
-    #print "right now folderNode is ", self.folderNode
-    
-    
     savedFolderPath = qt.QFileDialog.getExistingDirectory(0, 'Open dir')  #TODO have it so it searches for the .mrml file in the saved folder
     
     savedMrmlSceneName = ntpath.basename(self.exportedSceneFileName)
     savedMrmlScenePath = os.path.normpath(savedFolderPath + "/" + savedMrmlSceneName)
-    #scene clear
-    slicer.mrmlScene.Clear(0)
-    slicer.mrmlScene.SetURL(savedMrmlScenePath)
-    success = slicer.mrmlScene.Import()
-    print "success", success
+    success = slicer.util.loadScene(savedMrmlScenePath)
     
     #TODO: Indentify flood field image by this attribute value (for attribute self.calibrationVolumeDoseAttributeName): self.floodFieldAttributeValue
-    
-    
-    # use mrmlscene.import()
-    
-    print "now folderNode is ", self.folderNode 
-
-    self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, onNodeAddedCopyPasted);
-    
-
   
-
- 
-    qt.QMessageBox.information(None, 'Line profiles values exported', message)
-
   @vtk.calldata_type(vtk.VTK_OBJECT)
-  def onNodeAddedCopyPasted(caller, event, calldata):
-    node = calldata
-    #print "in copypasted function, node is a ", type(node)
-    #print "node is a ", node.GetClassName()
-    if (node.GetClassName() == "vtkMRMLSubjectHierarchyNode"):
-      #print "this is a vtkMRMLSubjectHierarchyNode"
-      nodeLevel = node.GetLevel()
+  def onNodeAdded(self, caller, event, calldata):
+    addedNode = calldata
+    if addedNode.IsA("vtkMRMLSubjectHierarchyNode"):
+      nodeLevel = addedNode.GetLevel()
       #print "level is ", nodeLevel
-      if nodeLevel == "Folder":
-        print "found a Folder"
-        
-        
-        #print "older folder-level file from previous scene is ", self.folderNode
-        
-        #print "current node to replace it with is  is ", node
-        
-        self.folderNode = node 
+      if nodeLevel == slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder():
+        self.batchFolderToParse = addedNode 
+        print "ZZZ batchFolderToParse is ", self.batchFolderToParse
 
+                
+  def onSceneEndImport(self, caller,event):
+    print "onSceneEndImport"
+
+    #importedNodeCollection = vtk.vtkCollection()
+    
+    importedNodeCollection = slicer.mrmlScene.GetNodes()
+    print "there are ", importedNodeCollection.GetNumberOfItems(), " nodes in the Scene"    
+  
   #
   # -------------------------
   # Testing related functions
