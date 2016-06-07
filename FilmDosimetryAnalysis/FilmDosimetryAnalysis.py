@@ -79,7 +79,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # For testing only (it is only visible when in developer mode)
     self.selfTestButton = qt.QPushButton("Run self-test")
     self.sliceletPanelLayout.addWidget(self.selfTestButton)
-    
+
     if not developerMode:
       self.selfTestButton.setVisible(False)
 
@@ -98,7 +98,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Create module logic
     self.logic = FilmDosimetryAnalysisLogic.FilmDosimetryAnalysisLogic()
 
-    # Declare member variables (selected at certain steps and then from then on for the workflow)    
+    # Declare member variables (selected at certain steps and then from then on for the workflow)
     self.folderNode = None
     self.batchFolderToParse = None
     # Set up constants
@@ -144,12 +144,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   # Disconnect all connections made to the slicelet to enable the garbage collector to destruct the slicelet object on quit
   def disconnect(self):
-    
+
     self.step0_viewSelectorComboBox.disconnect('activated(int)', self.onViewSelect)
     self.step1_loadImageFilesButton.disconnect('clicked()', self.onLoadImageFilesButton)
     self.step1_numberOfCalibrationFilmsSpinBox.disconnect('valueChanged()', self.onstep1_numberOfCalibrationFilmsSpinBoxValueChanged)
     self.step1_saveCalibrationBatchButton.disconnect('clicked()', self.onSaveCalibrationBatchButton)
-   
+
 
   def setup_Step0_LayoutSelection(self):
     # Layout selection step
@@ -229,7 +229,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_topBackgroundSubLayout.addWidget(self.step1_AssignDataLabel)
 
     # number of calibration films node selector
-    self.step1_numberOfCalibrationFilmsSelectorLayout = qt.QHBoxLayout()   
+    self.step1_numberOfCalibrationFilmsSelectorLayout = qt.QHBoxLayout()
     self.step1_numberOfCalibrationFilmsSpinBox = qt.QSpinBox()
     self.step1_numberOfCalibrationFilmsSpinBox.value = 5
     self.step1_numberOfCalibrationFilmsSpinBox.maximum = 10
@@ -254,7 +254,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_floodFieldImageSelectorComboBoxLayout.addWidget(self.step1_floodFieldImageSelectorComboBox)
 
     self.step1_topBackgroundSubLayout.addLayout(self.step1_floodFieldImageSelectorComboBoxLayout)
-   
+
     self.step1_middleBackgroundSubLayout = qt.QVBoxLayout()
     self.step1_backgroundLayout.addLayout(self.step1_middleBackgroundSubLayout)
 
@@ -312,7 +312,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
 
 
-    self.step1_bottomBackgroundSubLayout.addStretch(1)  
+    self.step1_bottomBackgroundSubLayout.addStretch(1)
 
     # # Connections
     self.step1_loadImageFilesButton.connect('clicked()', self.onLoadImageFilesButton)
@@ -323,7 +323,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     #TODO add connection for step1_numberOfCalibrationFilmsSpinBox , add disconnect
     self.step1_numberOfCalibrationFilmsSpinBox.connect('valueChanged(int)', self.onstep1_numberOfCalibrationFilmsSpinBoxValueChanged)
 
-    self.sliceletPanelLayout.addStretch(1)  
+    self.sliceletPanelLayout.addStretch(1)
 
 
   #
@@ -348,25 +348,34 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     elif layoutIndex == 6:
        self.layoutWidget.setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutOneUpQuantitativeView)
 
- 
-  def onLoadImageFilesButton(self): 
+
+  def onLoadImageFilesButton(self):
     slicer.util.openAddDataDialog()
 
 
   def fillStep1CalibrationPanel(self,CalibrationVolumeQuantity):
 
     for doseToImageFormLayout in xrange(len(self.step1_calibrationVolumeLayoutList)-1,-1,-1):
-    
-      self.step1_calibrationVolumeLayoutList[doseToImageFormLayout].deleteLater()
-      self.step1_calibrationVolumeLayoutList.pop()
-      self.step1_calibrationVolumeSelectorLabelBeforeList[doseToImageFormLayout].deleteLater()
-      self.step1_calibrationVolumeSelectorLabelBeforeList.pop()
-      self.step1_calibrationVolumeSelector_cGySpinBoxList[doseToImageFormLayout].deleteLater()
-      self.step1_calibrationVolumeSelector_cGySpinBoxList.pop()
-      self.step1_calibrationVolumeSelector_cGyLabelList[doseToImageFormLayout].deleteLater()
-      self.step1_calibrationVolumeSelector_cGyLabelList.pop()
-      self.step1_calibrationVolumeSelectorComboBoxList[doseToImageFormLayout].deleteLater()
-      self.step1_calibrationVolumeSelectorComboBoxList.pop()
+
+      if self.step1_calibrationVolumeLayoutList[doseToImageFormLayout] != None:
+        self.step1_calibrationVolumeLayoutList[doseToImageFormLayout].deleteLater()
+        self.step1_calibrationVolumeLayoutList.pop()
+      
+      if self.step1_calibrationVolumeSelectorLabelBeforeList[doseToImageFormLayout] != None:
+        self.step1_calibrationVolumeSelectorLabelBeforeList[doseToImageFormLayout].deleteLater()
+        self.step1_calibrationVolumeSelectorLabelBeforeList.pop()
+      
+      if self.step1_calibrationVolumeSelector_cGySpinBoxList[doseToImageFormLayout] != None:
+        self.step1_calibrationVolumeSelector_cGySpinBoxList[doseToImageFormLayout].deleteLater()
+        self.step1_calibrationVolumeSelector_cGySpinBoxList.pop()
+      
+      if self.step1_calibrationVolumeSelector_cGyLabelList[doseToImageFormLayout] != None: 
+        self.step1_calibrationVolumeSelector_cGyLabelList[doseToImageFormLayout].deleteLater()
+        self.step1_calibrationVolumeSelector_cGyLabelList.pop()
+      
+      if self.step1_calibrationVolumeSelectorComboBoxList[doseToImageFormLayout] != None:       
+        self.step1_calibrationVolumeSelectorComboBoxList[doseToImageFormLayout].deleteLater()
+        self.step1_calibrationVolumeSelectorComboBoxList.pop()
 
     self.step1_doseToImageRowLabelMiddle = qt.QLabel(' cGy :')
 
@@ -382,7 +391,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.step1_doseToImage_cGyLabel = qt.QLabel(' cGy : ')
       self.step1_calibrationVolumeSelector_cGyLabelList.append(self.step1_doseToImage_cGyLabel)
 
-
       self.step1_doseToImageSelectorComboBox = slicer.qMRMLNodeComboBox()
       self.step1_doseToImageSelectorComboBox.nodeTypes = ["vtkMRMLScalarVolumeNode"]
       self.step1_doseToImageSelectorComboBox.addEnabled = False
@@ -391,16 +399,16 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.step1_doseToImageSelectorComboBox.setToolTip( "Choose the film image corresponding to the dose above" )
       self.step1_calibrationVolumeSelectorComboBoxList.append(self.step1_doseToImageSelectorComboBox)
 
-
       self.step1_doseToImageFormLayout = qt.QHBoxLayout()
       self.step1_doseToImageFormLayout.addWidget(self.step1_doseToImageRowLabelBefore)
       self.step1_doseToImageFormLayout.addWidget(self.step1_doseToImageRowSpinBox)
       self.step1_doseToImageFormLayout.addWidget(self.step1_doseToImage_cGyLabel)
       self.step1_doseToImageFormLayout.addWidget(self.step1_doseToImageSelectorComboBox)
+      
+      self.step1_middleBackgroundSubLayout.addLayout(self.step1_doseToImageFormLayout)
+
       self.step1_calibrationVolumeLayoutList.append(self.step1_doseToImageFormLayout)
 
-
-      self.step1_middleBackgroundSubLayout.addLayout(self.step1_doseToImageFormLayout)
 
 
   def onstep1_numberOfCalibrationFilmsSpinBoxValueChanged(self):
@@ -486,13 +494,13 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   def onLoadSavedImageBatchButton(self):
     savedFolderPath = qt.QFileDialog.getExistingDirectory(0, 'Open dir')  #TODO have it so it searches for the .mrml file in the saved folder
-    
+
     savedMrmlSceneName = ntpath.basename(self.exportedSceneFileName)
     savedMrmlScenePath = os.path.normpath(savedFolderPath + "/" + savedMrmlSceneName)
     success = slicer.util.loadScene(savedMrmlScenePath)
-    
+
     #TODO: Indentify flood field image by this attribute value (for attribute self.calibrationVolumeDoseAttributeName): self.floodFieldAttributeValue
-  
+
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def onNodeAdded(self, caller, event, calldata):
     addedNode = calldata
@@ -500,24 +508,48 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       nodeLevel = addedNode.GetLevel()
       #print "level is ", nodeLevel
       if nodeLevel == slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder():
-        self.batchFolderToParse = addedNode 
+        self.batchFolderToParse = addedNode
         print "ZZZ batchFolderToParse is ", self.batchFolderToParse
 
-                
+
   def onSceneEndImport(self, caller,event):
     print "onSceneEndImport"
 
-    #importedNodeCollection = vtk.vtkCollection()
+    importedNodeCollection = vtk.vtkCollection()
+
+    #importedNodeCollection = slicer.mrmlScene.GetNodes()
+    #print "there are ", importedNodeCollection.GetNumberOfItems(), " nodes in the Scene"
     
-    importedNodeCollection = slicer.mrmlScene.GetNodes()
-    print "there are ", importedNodeCollection.GetNumberOfItems(), " nodes in the Scene"    
-  
+    self.batchFolderToParse.GetAssociatedChildrenNodes(importedNodeCollection)
+    #arrange the GUI to "look loaded" 
+    #TODO why do those two give errors? 
+    self.fillStep1CalibrationPanel(importedNodeCollection.GetNumberOfItems()-1)
+    self.step1_numberOfCalibrationFilmsSpinBox.value = importedNodeCollection.GetNumberOfItems()-1
+    
+    sHNodeCollection = slicer.mrmlScene.GetNodesByClass('vtkMRMLSubjectHierarchyNode')
+    sHNodeCollection.InitTraversal()
+    currentNode = sHNodeCollection.GetNextItemAsObject()
+    
+    while currentNode!= None:
+      if (currentNode.GetName() == self.floodFieldImageShNodeName):
+        print "flood field"
+      
+      
+      
+      currentNode = sHNodeCollection.GetNextItemAsObject()
+    
+    
+    #slicer.util.getNode(self.saveCalibrationBatchFolderNodeName)
+    
+    
+    
+
   #
   # -------------------------
   # Testing related functions
   # -------------------------
   #
- 
+
 
 #
 # FilmDosimetryAnalysis
