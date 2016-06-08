@@ -358,31 +358,17 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   def fillStep1CalibrationPanel(self,CalibrationVolumeQuantity):
   
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
     for calibrationLayout in xrange(CalibrationVolumeQuantity):
       self.step1_calibrationVolumeSelectorLabelBeforeList[calibrationLayout].visible = True
       self.step1_calibrationVolumeSelector_cGySpinBoxList[calibrationLayout].visible = True
       self.step1_calibrationVolumeSelector_cGyLabelList[calibrationLayout].visible = True
       self.step1_calibrationVolumeSelectorComboBoxList[calibrationLayout].visible = True
     
-    
     for calibrationLayout in range(1,self.maxCalibrationVolumeSelectorsInt-CalibrationVolumeQuantity + 1):
       self.step1_calibrationVolumeSelectorLabelBeforeList[-calibrationLayout].visible = False
       self.step1_calibrationVolumeSelector_cGySpinBoxList[-calibrationLayout].visible = False
       self.step1_calibrationVolumeSelector_cGyLabelList[-calibrationLayout].visible = False
       self.step1_calibrationVolumeSelectorComboBoxList[-calibrationLayout].visible = False
-
 
 
   def onstep1_numberOfCalibrationFilmsSpinBoxValueChanged(self):
@@ -497,13 +483,35 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     childrenToParse = vtk.vtkCollection()
     self.batchFolderToParse.GetAssociatedChildrenNodes(childrenToParse)
     
-    calibrationVolumeNumber = childrenToParse.GetNumberOfItems()
+    calibrationVolumeNumber = childrenToParse.GetNumberOfItems() - 1
     print "number of items", calibrationVolumeNumber
-    
     self.fillStep1CalibrationPanel(calibrationVolumeNumber)
     
+    sHNodeCollection = slicer.mrmlScene.GetNodesByClass('vtkMRMLSubjectHierarchyNode')
+    sHNodeCollection.InitTraversal()
+    currentNode = sHNodeCollection.GetNextItemAsObject()
+    calibrationVolumeIndex = 0 
     
-    
+    while currentNode!= None:
+      if (self.floodFieldImageShNodeName in currentNode.GetName()):
+        print "flood field"
+        loadedFloodFieldScalarVolume = slicer.mrmlScene.GetNodeByID(currentNode.GetAssociatedNodeID())
+        print "changed flood field node"
+        self.step1_floodFieldImageSelectorComboBox.setCurrentNode(loadedFloodFieldScalarVolume)
+        
+      if (self.calibrationVolumeName in currentNode.GetName()):
+        #setting scalar volume to combobox
+        loadedCalibrationVolume = slicer.mrmlScene.GetNodeByID(currentNode.GetAssociatedNodeID())
+        self.step1_calibrationVolumeSelectorComboBoxList[calibrationVolumeIndex].setCurrentNode(loadedCalibrationVolume)
+        
+        #setting dose attribute to combobox
+        dose = int(currentNode.GetAttribute(self.calibrationVolumeDoseAttributeName))
+        self.step1_calibrationVolumeSelector_cGySpinBoxList[calibrationVolumeIndex].value = dose
+        print "dose is", dose
+        
+        
+        calibrationVolumeIndex +=1
+      currentNode = sHNodeCollection.GetNextItemAsObject()
    
    
     
