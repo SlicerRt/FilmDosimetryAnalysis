@@ -112,7 +112,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.savedFolderPath = slicer.app.temporaryPath + "/" + self.savedCalibrationVolumeFolderName
     
     self.maxCalibrationVolumeSelectorsInt = 10
-    
+    self.fileLoadingSuccessMessageHeader = "Calibration image loading"
+    self.floodFieldFailureMessage = "Flood field image failed to load"
+    self.calibrationVolumeLoadFailureMessage = "calibration volume failed to load"
 
     # Set observations
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
@@ -492,12 +494,18 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     currentNode = sHNodeCollection.GetNextItemAsObject()
     calibrationVolumeIndex = 0 
     
+    FloodFieldLoaded = False
+    CalibrationFilmsLoaded = False
+    
+    
     while currentNode!= None:
-      if (self.floodFieldImageShNodeName in currentNode.GetName()):
+      if currentNode.GetAttribute(self.calibrationVolumeDoseAttributeName) == self.floodFieldAttributeValue:
         print "flood field"
         loadedFloodFieldScalarVolume = slicer.mrmlScene.GetNodeByID(currentNode.GetAssociatedNodeID())
         print "changed flood field node"
         self.step1_floodFieldImageSelectorComboBox.setCurrentNode(loadedFloodFieldScalarVolume)
+        FloodFieldLoaded = True
+        
         
       if (self.calibrationVolumeName in currentNode.GetName()):
         #setting scalar volume to combobox
@@ -508,12 +516,34 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
         dose = int(currentNode.GetAttribute(self.calibrationVolumeDoseAttributeName))
         self.step1_calibrationVolumeSelector_cGySpinBoxList[calibrationVolumeIndex].value = dose
         print "dose is", dose
-        
+        CalibrationFilmsLoaded = True
         
         calibrationVolumeIndex +=1
       currentNode = sHNodeCollection.GetNextItemAsObject()
    
-   
+    self.folderNode = self.batchFolderToParse
+    self.batchFolderToParse = None 
+    
+    result = (CalibrationFilmsLoaded & FloodFieldLoaded)
+    
+    self.fileLoadingSuccessMessageHeader = "Calibration image loading"
+    self.floodFieldFailureMessage = "Flood field image failed to load"
+    self.calibrationVolumeLoadFailureMessage = "calibration volume failed to load"
+
+    #TODO fix placement of popup boxes on screen relative to load slider thing
+    
+    if result: 
+      qt.QMessageBox.information(None,self.fileLoadingSuccessMessageHeader , 'Success! Calibration values exported')
+    
+    
+    
+    
+    # if FloodFieldLoaded == False:
+      # qt.QMessageBox.warning(None, 'Warning', 'No flood field image.')
+    # if CalibrationFilmsLoaded == False:
+      # qt.QMessageBox.warning(None, 'Warning', 'No calibration film images.')
+
+    
     
   #
   # -------------------------
