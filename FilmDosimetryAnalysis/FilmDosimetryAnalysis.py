@@ -103,8 +103,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.batchFolderToParse = None
     # Set up constants
     self.saveCalibrationBatchFolderNodeName = "Calibration batch"
-    self.saveDoseCalibrationVolumesName = "Dose calibration volumes"
-    self.saveDoseCalibrationImageName = ["Film " + str(maxNumberCalibrationFilms + 1) for maxNumberCalibrationFilms in range(10)]
     self.calibrationVolumeDoseAttributeName = "Dose"
     self.floodFieldAttributeValue = "FloodField"
     self.floodFieldImageShNodeName = "FloodFieldImage"
@@ -523,16 +521,40 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.batchFolderToParse.GetAssociatedChildrenNodes(importedNodeCollection)
     #arrange the GUI to "look loaded" 
     #TODO why do those two give errors? 
-    self.fillStep1CalibrationPanel(importedNodeCollection.GetNumberOfItems()-1)
-    self.step1_numberOfCalibrationFilmsSpinBox.value = importedNodeCollection.GetNumberOfItems()-1
+    #self.fillStep1CalibrationPanel(importedNodeCollection.GetNumberOfItems()-1)
+    #self.step1_numberOfCalibrationFilmsSpinBox.value = importedNodeCollection.GetNumberOfItems()-1
+    
+    self.fillStep1CalibrationPanel(10) #TODO get rid of this line when those two ^ stop giving errors 
     
     sHNodeCollection = slicer.mrmlScene.GetNodesByClass('vtkMRMLSubjectHierarchyNode')
     sHNodeCollection.InitTraversal()
     currentNode = sHNodeCollection.GetNextItemAsObject()
     
+    calibrationVolumeIndex = 0 
+    
     while currentNode!= None:
-      if (currentNode.GetName() == self.floodFieldImageShNodeName):
+      if (self.floodFieldImageShNodeName in currentNode.GetName()):
         print "flood field"
+        loadedFloodFieldScalarVolume = slicer.mrmlScene.GetNodeByID(currentNode.GetAssociatedNodeID())
+        print "changed flood field node"
+        self.step1_floodFieldImageSelectorComboBox.setCurrentNode(loadedFloodFieldScalarVolume)
+        
+      if (self.calibrationVolumeName in currentNode.GetName()):
+        #setting scalar volume to combobox
+        loadedCalibrationVolume = slicer.mrmlScene.GetNodeByID(currentNode.GetAssociatedNodeID())
+        self.step1_calibrationVolumeSelectorComboBoxList[calibrationVolumeIndex].setCurrentNode(loadedCalibrationVolume)
+        
+        #setting dose attribute to combobox
+        dose = int(currentNode.GetAttribute(self.calibrationVolumeDoseAttributeName))
+        self.step1_calibrationVolumeSelector_cGySpinBoxList[calibrationVolumeIndex].value = dose
+        print "dose is", dose
+        
+        
+        
+        calibrationVolumeIndex +=1
+      
+        
+        
       
       
       
