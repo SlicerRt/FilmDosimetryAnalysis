@@ -110,6 +110,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.exportedSceneFileName = slicer.app.temporaryPath + "/exportMrmlScene.mrml"
     self.savedCalibrationVolumeFolderName = "savedCalibrationVolumes"
     self.savedFolderPath = slicer.app.temporaryPath + "/" + self.savedCalibrationVolumeFolderName
+    
+    self.maxCalibrationVolumeSelectorsInt = 10
+    
 
     # Set observations
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
@@ -262,9 +265,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_calibrationVolumeSelector_cGySpinBoxList = []
     self.step1_calibrationVolumeSelector_cGyLabelList = []
     self.step1_calibrationVolumeSelectorComboBoxList = []
+    
 
-
-    for doseToImageLayoutNumber in xrange(self.step1_numberOfCalibrationFilmsSpinBox.value):
+    for doseToImageLayoutNumber in xrange(self.maxCalibrationVolumeSelectorsInt):
       self.step1_doseToImageSelectorRowLayout = qt.QHBoxLayout()
       self.step1_mainCalibrationVolumeSelectorLabelBefore = qt.QLabel('Calibration ')
       self.step1_calibrationVolumeSelectorLabelBeforeList.append(self.step1_mainCalibrationVolumeSelectorLabelBefore)
@@ -297,6 +300,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     self.step1_bottomBackgroundSubLayout = qt.QVBoxLayout()
     self.step1_backgroundLayout.addLayout(self.step1_bottomBackgroundSubLayout)
+    
+    self.fillStep1CalibrationPanel(self.step1_numberOfCalibrationFilmsSpinBox.value)
 
     #calibration button
     self.step1_performCalibrationButton = qt.QPushButton("Perform calibration")
@@ -323,7 +328,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     self.sliceletPanelLayout.addStretch(1)
 
-
+  
   #
   # -----------------------
   # Event handler functions
@@ -352,60 +357,31 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
 
   def fillStep1CalibrationPanel(self,CalibrationVolumeQuantity):
-
-    for doseToImageFormLayout in xrange(len(self.step1_calibrationVolumeLayoutList)-1,-1,-1):
-
-      if self.step1_calibrationVolumeLayoutList[doseToImageFormLayout] != None:
-        self.step1_calibrationVolumeLayoutList[doseToImageFormLayout].deleteLater()
-        self.step1_calibrationVolumeLayoutList.pop()
-      
-      if self.step1_calibrationVolumeSelectorLabelBeforeList[doseToImageFormLayout] != None:
-        self.step1_calibrationVolumeSelectorLabelBeforeList[doseToImageFormLayout].deleteLater()
-        self.step1_calibrationVolumeSelectorLabelBeforeList.pop()
-      
-      if self.step1_calibrationVolumeSelector_cGySpinBoxList[doseToImageFormLayout] != None:
-        self.step1_calibrationVolumeSelector_cGySpinBoxList[doseToImageFormLayout].deleteLater()
-        self.step1_calibrationVolumeSelector_cGySpinBoxList.pop()
-      
-      if self.step1_calibrationVolumeSelector_cGyLabelList[doseToImageFormLayout] != None: 
-        self.step1_calibrationVolumeSelector_cGyLabelList[doseToImageFormLayout].deleteLater()
-        self.step1_calibrationVolumeSelector_cGyLabelList.pop()
-      
-      if self.step1_calibrationVolumeSelectorComboBoxList[doseToImageFormLayout] != None:       
-        self.step1_calibrationVolumeSelectorComboBoxList[doseToImageFormLayout].deleteLater()
-        self.step1_calibrationVolumeSelectorComboBoxList.pop()
-
-    self.step1_doseToImageRowLabelMiddle = qt.QLabel(' cGy :')
-
-    for doseToImageLayoutNumber in xrange (CalibrationVolumeQuantity):
-      self.step1_doseToImageRowLabelBefore = qt.QLabel('Calibration ')
-      self.step1_calibrationVolumeSelectorLabelBeforeList.append(self.step1_doseToImageRowLabelBefore)
-
-      self.step1_doseToImageRowSpinBox = qt.QSpinBox()
-      self.step1_doseToImageRowSpinBox.minimum = 0
-      self.step1_doseToImageRowSpinBox.maximum = 1000
-      self.step1_calibrationVolumeSelector_cGySpinBoxList.append(self.step1_doseToImageRowSpinBox)
-
-      self.step1_doseToImage_cGyLabel = qt.QLabel(' cGy : ')
-      self.step1_calibrationVolumeSelector_cGyLabelList.append(self.step1_doseToImage_cGyLabel)
-
-      self.step1_doseToImageSelectorComboBox = slicer.qMRMLNodeComboBox()
-      self.step1_doseToImageSelectorComboBox.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-      self.step1_doseToImageSelectorComboBox.addEnabled = False
-      self.step1_doseToImageSelectorComboBox.removeEnabled = False
-      self.step1_doseToImageSelectorComboBox.setMRMLScene( slicer.mrmlScene )
-      self.step1_doseToImageSelectorComboBox.setToolTip( "Choose the film image corresponding to the dose above" )
-      self.step1_calibrationVolumeSelectorComboBoxList.append(self.step1_doseToImageSelectorComboBox)
-
-      self.step1_doseToImageFormLayout = qt.QHBoxLayout()
-      self.step1_doseToImageFormLayout.addWidget(self.step1_doseToImageRowLabelBefore)
-      self.step1_doseToImageFormLayout.addWidget(self.step1_doseToImageRowSpinBox)
-      self.step1_doseToImageFormLayout.addWidget(self.step1_doseToImage_cGyLabel)
-      self.step1_doseToImageFormLayout.addWidget(self.step1_doseToImageSelectorComboBox)
-      
-      self.step1_middleBackgroundSubLayout.addLayout(self.step1_doseToImageFormLayout)
-
-      self.step1_calibrationVolumeLayoutList.append(self.step1_doseToImageFormLayout)
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+    for calibrationLayout in xrange(CalibrationVolumeQuantity):
+      self.step1_calibrationVolumeSelectorLabelBeforeList[calibrationLayout].visible = True
+      self.step1_calibrationVolumeSelector_cGySpinBoxList[calibrationLayout].visible = True
+      self.step1_calibrationVolumeSelector_cGyLabelList[calibrationLayout].visible = True
+      self.step1_calibrationVolumeSelectorComboBoxList[calibrationLayout].visible = True
+    
+    
+    for calibrationLayout in range(1,self.maxCalibrationVolumeSelectorsInt-CalibrationVolumeQuantity + 1):
+      self.step1_calibrationVolumeSelectorLabelBeforeList[-calibrationLayout].visible = False
+      self.step1_calibrationVolumeSelector_cGySpinBoxList[-calibrationLayout].visible = False
+      self.step1_calibrationVolumeSelector_cGyLabelList[-calibrationLayout].visible = False
+      self.step1_calibrationVolumeSelectorComboBoxList[-calibrationLayout].visible = False
 
 
 
@@ -501,71 +477,36 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def onNodeAdded(self, caller, event, calldata):
+    #print "is scene importing? ", slicer.mrmlScene.IsImporting()
+
     addedNode = calldata
+    
     if addedNode.IsA("vtkMRMLSubjectHierarchyNode"):
       nodeLevel = addedNode.GetLevel()
-      #print "level is ", nodeLevel
-      if nodeLevel == slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder():
+      print "level is ", nodeLevel
+      if (nodeLevel == slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder()):# & (slicer.mrmlScene.IsImporting()) :
+        print "condition is",(addedNode.GetLevel() == slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder()) & slicer.mrmlScene.IsImporting()
+
         self.batchFolderToParse = addedNode
         print "ZZZ batchFolderToParse is ", self.batchFolderToParse
-
+        print "batchFolderToParse found" 
 
   def onSceneEndImport(self, caller,event):
     print "onSceneEndImport"
-
-    importedNodeCollection = vtk.vtkCollection()
-
-    #importedNodeCollection = slicer.mrmlScene.GetNodes()
-    #print "there are ", importedNodeCollection.GetNumberOfItems(), " nodes in the Scene"
     
-    self.batchFolderToParse.GetAssociatedChildrenNodes(importedNodeCollection)
-    #arrange the GUI to "look loaded" 
-    #TODO why do those two give errors? 
-    #self.fillStep1CalibrationPanel(importedNodeCollection.GetNumberOfItems()-1)
-    #self.step1_numberOfCalibrationFilmsSpinBox.value = importedNodeCollection.GetNumberOfItems()-1
+    childrenToParse = vtk.vtkCollection()
+    self.batchFolderToParse.GetAssociatedChildrenNodes(childrenToParse)
     
-    self.fillStep1CalibrationPanel(10) #TODO get rid of this line when those two ^ stop giving errors 
+    calibrationVolumeNumber = childrenToParse.GetNumberOfItems()
+    print "number of items", calibrationVolumeNumber
     
-    sHNodeCollection = slicer.mrmlScene.GetNodesByClass('vtkMRMLSubjectHierarchyNode')
-    sHNodeCollection.InitTraversal()
-    currentNode = sHNodeCollection.GetNextItemAsObject()
-    
-    calibrationVolumeIndex = 0 
-    
-    while currentNode!= None:
-      if (self.floodFieldImageShNodeName in currentNode.GetName()):
-        print "flood field"
-        loadedFloodFieldScalarVolume = slicer.mrmlScene.GetNodeByID(currentNode.GetAssociatedNodeID())
-        print "changed flood field node"
-        self.step1_floodFieldImageSelectorComboBox.setCurrentNode(loadedFloodFieldScalarVolume)
-        
-      if (self.calibrationVolumeName in currentNode.GetName()):
-        #setting scalar volume to combobox
-        loadedCalibrationVolume = slicer.mrmlScene.GetNodeByID(currentNode.GetAssociatedNodeID())
-        self.step1_calibrationVolumeSelectorComboBoxList[calibrationVolumeIndex].setCurrentNode(loadedCalibrationVolume)
-        
-        #setting dose attribute to combobox
-        dose = int(currentNode.GetAttribute(self.calibrationVolumeDoseAttributeName))
-        self.step1_calibrationVolumeSelector_cGySpinBoxList[calibrationVolumeIndex].value = dose
-        print "dose is", dose
-        
-        
-        
-        calibrationVolumeIndex +=1
-      
-        
-        
-      
-      
-      
-      currentNode = sHNodeCollection.GetNextItemAsObject()
-    
-    
-    #slicer.util.getNode(self.saveCalibrationBatchFolderNodeName)
+    self.fillStep1CalibrationPanel(calibrationVolumeNumber)
     
     
     
-
+   
+   
+    
   #
   # -------------------------
   # Testing related functions
