@@ -464,8 +464,24 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   def onLoadSavedImageBatchButton(self):
     savedFolderPath = qt.QFileDialog.getExistingDirectory(0, 'Open dir')  # TODO have it so it searches for the .mrml file in the saved folder
+    
+    import glob
+    os.chdir(os.path.normpath(savedFolderPath))
+    mrmlFilesFound = 0
+    for potentialMrmlFile in glob.glob("*.mrml"):
+      mrmlFilesFound +=1
+      savedMrmlSceneName = potentialMrmlFile
+      print "globbed it"
+      
+    if mrmlFilesFound >1:
+      qt.QMessageBox.critical(None, 'Error', "More than one .mrml file found")
+    elif mrmlFilesFound <1:
+      qt.QMessageBox.critical(None, 'Error', "No .mrml files found")
 
-    savedMrmlSceneName = ntpath.basename(self.exportedSceneFileName)
+      #error message
+     
+      
+    #savedMrmlSceneName = ntpath.basename(self.exportedSceneFileName)
     savedMrmlScenePath = os.path.normpath(savedFolderPath + "/" + savedMrmlSceneName)
     success = slicer.util.loadScene(savedMrmlScenePath)
 
