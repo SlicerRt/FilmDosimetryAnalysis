@@ -193,12 +193,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_loadDataCollapsibleButton.text = "1. Load data"
     self.sliceletPanelLayout.addWidget(self.step1_loadDataCollapsibleButton)
 
-    #Step 1 main background layout
+    # Step 1 main background layout
     self.step1_backgroundLayout = qt.QVBoxLayout(self.step1_loadDataCollapsibleButton)
 
 
 
-    # step1_topBackgroundSubLayout
+    # Step 1 top third sub-layout
     self.step1_topBackgroundSubLayout = qt.QVBoxLayout()
     self.step1_backgroundLayout.addLayout(self.step1_topBackgroundSubLayout)
 
@@ -213,11 +213,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_loadImageFilesButton = qt.QPushButton("Load image files")
     self.step1_loadImageFilesButton.toolTip = "Load png film images."
     self.step1_loadImageFilesButton.name = "loadImageFilesButton"
-    #load saved image batch button
+    # Load saved image batch button
     self.step1_loadSavedImageBatchButton = qt.QPushButton("Load saved image batch")
     self.step1_loadSavedImageBatchButton.toolTip = "Load a batch of films with assigned doses."
     self.step1_loadSavedImageBatchButton.name = "loadSavedImageFilesButton"
-    #horizontal button layout
+    # Horizontal button layout
     self.step1_loadImageButtonLayout = qt.QHBoxLayout()
     self.step1_loadImageButtonLayout.addWidget(self.step1_loadImageFilesButton)
     self.step1_loadImageButtonLayout.addWidget(self.step1_loadSavedImageBatchButton)
@@ -231,7 +231,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_AssignDataLabel.wordWrap = True
     self.step1_topBackgroundSubLayout.addWidget(self.step1_AssignDataLabel)
 
-    # number of calibration films node selector
+    # Number of calibration films node selector
     self.step1_numberOfCalibrationFilmsSelectorLayout = qt.QHBoxLayout()
     self.step1_numberOfCalibrationFilmsSpinBox = qt.QSpinBox()
     self.step1_numberOfCalibrationFilmsSpinBox.value = 5
@@ -244,7 +244,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_topBackgroundSubLayout.addLayout(self.step1_numberOfCalibrationFilmsSelectorLayout)
 
 
-    ##choose the flood field image
+    # Choose the flood field image
     self.step1_floodFieldImageSelectorComboBoxLayout = qt.QHBoxLayout()
     self.step1_floodFieldImageSelectorComboBox = slicer.qMRMLNodeComboBox()
     self.step1_floodFieldImageSelectorComboBox.nodeTypes = ["vtkMRMLScalarVolumeNode"]
@@ -255,12 +255,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_floodFieldImageSelectorComboBoxLabel = qt.QLabel('Flood field image: ')
     self.step1_floodFieldImageSelectorComboBoxLayout.addWidget(self.step1_floodFieldImageSelectorComboBoxLabel)
     self.step1_floodFieldImageSelectorComboBoxLayout.addWidget(self.step1_floodFieldImageSelectorComboBox)
-
     self.step1_topBackgroundSubLayout.addLayout(self.step1_floodFieldImageSelectorComboBoxLayout)
 
     self.step1_middleBackgroundSubLayout = qt.QVBoxLayout()
     self.step1_backgroundLayout.addLayout(self.step1_middleBackgroundSubLayout)
-
 
     self.step1_calibrationVolumeLayoutList = []
     self.step1_calibrationVolumeSelectorLabelBeforeList = []
@@ -305,12 +303,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     self.fillStep1CalibrationPanel(self.step1_numberOfCalibrationFilmsSpinBox.value)
 
-    #calibration button
+    # Calibration button
     self.step1_performCalibrationButton = qt.QPushButton("Perform calibration")
     self.step1_performCalibrationButton.toolTip = "Finds the calibration function"
     self.step1_bottomBackgroundSubLayout.addWidget(self.step1_performCalibrationButton)
 
-    #Save batch button
+    # Save batch button
     self.step1_saveCalibrationBatchButton = qt.QPushButton("Save calibration batch")
     self.step1_saveCalibrationBatchButton.toolTip = "Saves current calibration batch"
     self.step1_bottomBackgroundSubLayout.addWidget(self.step1_saveCalibrationBatchButton)
@@ -319,13 +317,13 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     self.step1_bottomBackgroundSubLayout.addStretch(1)
 
-    # # Connections
+    # Connections
     self.step1_loadImageFilesButton.connect('clicked()', self.onLoadImageFilesButton)
     self.step1_saveCalibrationBatchButton.connect('clicked()', self.onSaveCalibrationBatchButton)
     self.step1_loadSavedImageBatchButton.connect('clicked()', self.onLoadSavedImageBatchButton)
 
     self.step1_loadImageFilesButton.connect('clicked()', self.onLoadImageFilesButton)
-    #TODO add connection for step1_numberOfCalibrationFilmsSpinBox , add disconnect
+    # TODO add connection for step1_numberOfCalibrationFilmsSpinBox , add disconnect
     self.step1_numberOfCalibrationFilmsSpinBox.connect('valueChanged(int)', self.onstep1_numberOfCalibrationFilmsSpinBoxValueChanged)
 
     self.sliceletPanelLayout.addStretch(1)
@@ -376,11 +374,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   def onstep1_numberOfCalibrationFilmsSpinBoxValueChanged(self):
     self.fillStep1CalibrationPanel(self.step1_numberOfCalibrationFilmsSpinBox.value)
 
-  #------------------------------------------------
+  #---------------------------------------------------------------------------------------------------------------------------------
   def onSaveCalibrationBatchButton(self):
     self.savedFolderPath = qt.QFileDialog.getExistingDirectory(0, 'Open dir')
 
-    #TODO: Check if folder is empty. If not, warn user that all files be deleted. If they choose yes, remove all files from folder, otherwise return
+    # TODO: Check if folder is empty. If not, warn user that all files be deleted. If they choose yes, remove all files from folder, otherwise return
 
     # Create temporary scene for saving
     exportMrmlScene = slicer.vtkMRMLScene()
@@ -415,8 +413,13 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Copy flood field image file to save folder
     shutil.copy(floodFieldStorageNode.GetFileName(), self.savedFolderPath)
-    #TODO Change vtkMRMLVolumeArchetypeStorageNode.SetFileName to new file
-
+    # TODO Change vtkMRMLVolumeArchetypeStorageNode.SetFileName to new file
+    print "exportFloodFieldStorageNode file path was", exportFloodFieldStorageNode.GetFileName()
+    exportFloodFieldStorageNode.SetFileName(os.path.normpath(self.savedFolderPath + '/' + ntpath.basename(floodFieldStorageNode.GetFileName())))
+    print "exportFloodFieldStorageNode file path is now", exportFloodFieldStorageNode.GetFileName()
+      
+    
+    
 
     for currentCalibrationVolumeIndex in xrange(self.step1_numberOfCalibrationFilmsSpinBox.value): 
       # Get current calibration image node
@@ -440,9 +443,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       exportCalibrationDisplayNode = exportMrmlScene.CopyNode(calibrationDisplayNode)
       exportCalibrationImageVolumeNode.SetAndObserveDisplayNodeID(exportCalibrationDisplayNode.GetID())
 
-      # Copy calibration image file to save folder
+      # Copy calibration image file to save folder, set location of exportCalibrationStorageNode file to new folder
+      print "exportCalibrationStorageNode file path was", exportCalibrationStorageNode.GetFileName()
+      exportCalibrationStorageNode.SetFileName(os.path.normpath(self.savedFolderPath + '/' + ntpath.basename(calibrationStorageNode.GetFileName())))
+      print "exportCalibrationStorageNode file path is now", exportCalibrationStorageNode.GetFileName()
       shutil.copy(calibrationStorageNode.GetFileName(), self.savedFolderPath)
-      #TODO Change vtkMRMLVolumeArchetypeStorageNode.SetFileName to new file
+
       
       
     exportMrmlScene.SetURL(os.path.normpath(self.savedFolderPath + "/exportMrmlScene.mrml" ))
@@ -450,40 +456,35 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Check if scene file has been created
     if os.path.isfile(exportMrmlScene.GetURL()) == True:
-      savedSuccessfullyLabel = qt.QLabel( "Calibration volume successfully saved")
-      self.step1_bottomBackgroundSubLayout.addWidget(savedSuccessfullyLabel) #TODO: Add label in setup function, here just set text to the label
+      qt.QMessageBox.information(None, "Calibration Volume Saving" , "Calibration volume successfully saved")
     else:
-      savedUnsuccessfullyLabel = qt.QLabel( "Calibration volume save failed")
-      self.step1_bottomBackgroundSubLayout.addWidget(savedUnsuccessfullyLabel) #TODO: Add label in setup function, here just set text to the label
+      qt.QMessageBox.information(None, "Calibration Volume Saving" , "Calibration volume save failed")
 
     exportMrmlScene.Clear(1)
 
   def onLoadSavedImageBatchButton(self):
-    savedFolderPath = qt.QFileDialog.getExistingDirectory(0, 'Open dir')  #TODO have it so it searches for the .mrml file in the saved folder
+    savedFolderPath = qt.QFileDialog.getExistingDirectory(0, 'Open dir')  # TODO have it so it searches for the .mrml file in the saved folder
 
     savedMrmlSceneName = ntpath.basename(self.exportedSceneFileName)
     savedMrmlScenePath = os.path.normpath(savedFolderPath + "/" + savedMrmlSceneName)
     success = slicer.util.loadScene(savedMrmlScenePath)
 
-    #TODO: Indentify flood field image by this attribute value (for attribute self.calibrationVolumeDoseAttributeName): self.floodFieldAttributeValue
+    # TODO: Indentify flood field image by this attribute value (for attribute self.calibrationVolumeDoseAttributeName): self.floodFieldAttributeValue
 
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def onNodeAdded(self, caller, event, calldata):
-    #print "is scene importing? ", slicer.mrmlScene.IsImporting()
-
     addedNode = calldata
 
     if slicer.mrmlScene.IsImporting() and addedNode.IsA("vtkMRMLSubjectHierarchyNode"):
       nodeLevel = addedNode.GetLevel()
-      #print "level is ", nodeLevel
       if (nodeLevel == slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder()):# & (slicer.mrmlScene.IsImporting()) :
-        #print "condition is",(addedNode.GetLevel() == slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder())
 
         self.batchFolderToParse = addedNode
-        #print "ZZZ batchFolderToParse is ", self.batchFolderToParse
         print "batchFolderToParse found"
 
   def onSceneEndImport(self, caller,event):
+    #TODO add error logging, errors for mrmlScene file not found 
+  
     print "onSceneEndImport"
 
     childrenToParse = vtk.vtkCollection()
@@ -498,29 +499,33 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     currentNode = sHNodeCollection.GetNextItemAsObject()
     calibrationVolumeIndex = 0
 
-    FloodFieldLoaded = False
-    CalibrationFilmsLoaded = False
-
+    floodFieldSHFound = False
+    CalibrationFilmsSHFound = False
+    fileNotFoundError = False
 
     while currentNode!= None:
       if currentNode.GetAttribute(self.calibrationVolumeDoseAttributeName) == self.floodFieldAttributeValue:
-        print "flood field"
-        loadedFloodFieldScalarVolume = slicer.mrmlScene.GetNodeByID(currentNode.GetAssociatedNodeID())
-        print "changed flood field node"
-        self.step1_floodFieldImageSelectorComboBox.setCurrentNode(loadedFloodFieldScalarVolume)
-        FloodFieldLoaded = True
-
+        floodFieldSHFound = True
+        if os.path.isfile(currentNode.GetAssociatedNode().GetStorageNode().GetFileName()) == True: #AR current - needs to be GetFileName() on volume node
+          loadedFloodFieldScalarVolume = slicer.mrmlScene.GetNodeByID(currentNode.GetAssociatedNodeID())
+          self.step1_floodFieldImageSelectorComboBox.setCurrentNode(loadedFloodFieldScalarVolume)
+        else:
+          fileNotFoundError = True
 
       if (self.calibrationVolumeName in currentNode.GetName()):
-        #setting scalar volume to combobox
-        loadedCalibrationVolume = slicer.mrmlScene.GetNodeByID(currentNode.GetAssociatedNodeID())
-        self.step1_calibrationVolumeSelectorComboBoxList[calibrationVolumeIndex].setCurrentNode(loadedCalibrationVolume)
+        CalibrationFilmsSHFound = True
 
-        #setting dose attribute to combobox
-        dose = int(currentNode.GetAttribute(self.calibrationVolumeDoseAttributeName))
-        self.step1_calibrationVolumeSelector_cGySpinBoxList[calibrationVolumeIndex].value = dose
-        print "dose is", dose
-        CalibrationFilmsLoaded = True
+        if os.path.isfile(currentNode.GetAssociatedNode().GetStorageNode().GetFileName()) == True: #AR current - needs to be GetFileName() on volume node
+          # Setting scalar volume to combobox
+          loadedCalibrationVolume = slicer.mrmlScene.GetNodeByID(currentNode.GetAssociatedNodeID())
+          self.step1_calibrationVolumeSelectorComboBoxList[calibrationVolumeIndex].setCurrentNode(loadedCalibrationVolume)
+
+          # Setting dose attribute to combobox
+          dose = int(currentNode.GetAttribute(self.calibrationVolumeDoseAttributeName))
+          self.step1_calibrationVolumeSelector_cGySpinBoxList[calibrationVolumeIndex].value = dose
+          print "dose is", dose
+        else:
+          fileNotFoundError = True
 
         calibrationVolumeIndex +=1
       currentNode = sHNodeCollection.GetNextItemAsObject()
@@ -528,26 +533,32 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.folderNode = self.batchFolderToParse
     self.batchFolderToParse = None
 
-    result = (CalibrationFilmsLoaded & FloodFieldLoaded)
+    result = CalibrationFilmsSHFound and floodFieldSHFound and (not fileNotFoundError)
 
     self.fileLoadingSuccessMessageHeader = "Calibration image loading"
     self.floodFieldFailureMessage = "Flood field image failed to load"
     self.calibrationVolumeLoadFailureMessage = "calibration volume failed to load"
+    self.fileNotFoundFailureMessage = "File not found for 1 or more calibration volumes"
 
-    #TODO fix placement of popup boxes on screen relative to load slider thing
+    # TODO fix placement of popup boxes on screen relative to load slider thing
 
+    # Error messages for issues with loading 
     if result:
       qt.QMessageBox.information(None,self.fileLoadingSuccessMessageHeader , 'Success! Calibration values exported')
+    else:
+      qt.QMessageBox.critical(None, 'Error', "Failed to load saved calibration batch.") 
+      
+    if fileNotFoundError:
+      qt.QMessageBox.critical(None, 'Error', "File not found for 1 or more calibration volumes saved")
+      slicer.mrmlScene.Clear(0)
+
+    if floodFieldSHFound == False:
+      qt.QMessageBox.warning(None, 'Warning', 'No flood field image.')
+    if CalibrationFilmsSHFound == False:
+      qt.QMessageBox.warning(None, 'Warning', 'No calibration film images.')
 
 
-
-
-    # if FloodFieldLoaded == False:
-      # qt.QMessageBox.warning(None, 'Warning', 'No flood field image.')
-    # if CalibrationFilmsLoaded == False:
-      # qt.QMessageBox.warning(None, 'Warning', 'No calibration film images.')
-
-
+#---------------------------------------------------------------------------------------------------------------------------------
 
   #
   # -------------------------
