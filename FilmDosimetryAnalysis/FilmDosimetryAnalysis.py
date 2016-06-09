@@ -110,7 +110,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.exportedSceneFileName = slicer.app.temporaryPath + "/exportMrmlScene.mrml"
     self.savedCalibrationVolumeFolderName = "savedCalibrationVolumes"
     self.savedFolderPath = slicer.app.temporaryPath + "/" + self.savedCalibrationVolumeFolderName
-    
+
     self.maxCalibrationVolumeSelectorsInt = 10
     self.fileLoadingSuccessMessageHeader = "Calibration image loading"
     self.floodFieldFailureMessage = "Flood field image failed to load"
@@ -267,7 +267,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_calibrationVolumeSelector_cGySpinBoxList = []
     self.step1_calibrationVolumeSelector_cGyLabelList = []
     self.step1_calibrationVolumeSelectorComboBoxList = []
-    
+
 
     for doseToImageLayoutNumber in xrange(self.maxCalibrationVolumeSelectorsInt):
       self.step1_doseToImageSelectorRowLayout = qt.QHBoxLayout()
@@ -302,7 +302,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     self.step1_bottomBackgroundSubLayout = qt.QVBoxLayout()
     self.step1_backgroundLayout.addLayout(self.step1_bottomBackgroundSubLayout)
-    
+
     self.fillStep1CalibrationPanel(self.step1_numberOfCalibrationFilmsSpinBox.value)
 
     #calibration button
@@ -330,7 +330,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     self.sliceletPanelLayout.addStretch(1)
 
-  
+
   #
   # -----------------------
   # Event handler functions
@@ -359,13 +359,13 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
 
   def fillStep1CalibrationPanel(self,CalibrationVolumeQuantity):
-  
+
     for calibrationLayout in xrange(CalibrationVolumeQuantity):
       self.step1_calibrationVolumeSelectorLabelBeforeList[calibrationLayout].visible = True
       self.step1_calibrationVolumeSelector_cGySpinBoxList[calibrationLayout].visible = True
       self.step1_calibrationVolumeSelector_cGyLabelList[calibrationLayout].visible = True
       self.step1_calibrationVolumeSelectorComboBoxList[calibrationLayout].visible = True
-    
+
     for calibrationLayout in range(1,self.maxCalibrationVolumeSelectorsInt-CalibrationVolumeQuantity + 1):
       self.step1_calibrationVolumeSelectorLabelBeforeList[-calibrationLayout].visible = False
       self.step1_calibrationVolumeSelector_cGySpinBoxList[-calibrationLayout].visible = False
@@ -415,8 +415,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Copy flood field image file to save folder
     shutil.copy(floodFieldStorageNode.GetFileName(), self.savedFolderPath)
+    #TODO Change vtkMRMLVolumeArchetypeStorageNode.SetFileName to new file
 
-    for currentCalibrationVolumeIndex in xrange(len(self.step1_calibrationVolumeSelectorComboBoxList)):
+
+    for currentCalibrationVolumeIndex in xrange(self.step1_numberOfCalibrationFilmsSpinBox.value): 
       # Get current calibration image node
       currentCalibrationVolume = self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationVolumeIndex].currentNode()
       # Create calibration image subject hierarchy node, add it under folder node
@@ -440,7 +442,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
       # Copy calibration image file to save folder
       shutil.copy(calibrationStorageNode.GetFileName(), self.savedFolderPath)
-
+      #TODO Change vtkMRMLVolumeArchetypeStorageNode.SetFileName to new file
+      
+      
     exportMrmlScene.SetURL(os.path.normpath(self.savedFolderPath + "/exportMrmlScene.mrml" ))
     exportMrmlScene.Commit()
 
@@ -468,36 +472,36 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     #print "is scene importing? ", slicer.mrmlScene.IsImporting()
 
     addedNode = calldata
-    
-    if addedNode.IsA("vtkMRMLSubjectHierarchyNode"):
+
+    if slicer.mrmlScene.IsImporting() and addedNode.IsA("vtkMRMLSubjectHierarchyNode"):
       nodeLevel = addedNode.GetLevel()
-      print "level is ", nodeLevel
+      #print "level is ", nodeLevel
       if (nodeLevel == slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder()):# & (slicer.mrmlScene.IsImporting()) :
-        print "condition is",(addedNode.GetLevel() == slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder()) & slicer.mrmlScene.IsImporting()
+        #print "condition is",(addedNode.GetLevel() == slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder())
 
         self.batchFolderToParse = addedNode
-        print "ZZZ batchFolderToParse is ", self.batchFolderToParse
-        print "batchFolderToParse found" 
+        #print "ZZZ batchFolderToParse is ", self.batchFolderToParse
+        print "batchFolderToParse found"
 
   def onSceneEndImport(self, caller,event):
     print "onSceneEndImport"
-    
+
     childrenToParse = vtk.vtkCollection()
     self.batchFolderToParse.GetAssociatedChildrenNodes(childrenToParse)
-    
+
     calibrationVolumeNumber = childrenToParse.GetNumberOfItems() - 1
     print "number of items", calibrationVolumeNumber
     self.fillStep1CalibrationPanel(calibrationVolumeNumber)
-    
+
     sHNodeCollection = slicer.mrmlScene.GetNodesByClass('vtkMRMLSubjectHierarchyNode')
     sHNodeCollection.InitTraversal()
     currentNode = sHNodeCollection.GetNextItemAsObject()
-    calibrationVolumeIndex = 0 
-    
+    calibrationVolumeIndex = 0
+
     FloodFieldLoaded = False
     CalibrationFilmsLoaded = False
-    
-    
+
+
     while currentNode!= None:
       if currentNode.GetAttribute(self.calibrationVolumeDoseAttributeName) == self.floodFieldAttributeValue:
         print "flood field"
@@ -505,46 +509,46 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
         print "changed flood field node"
         self.step1_floodFieldImageSelectorComboBox.setCurrentNode(loadedFloodFieldScalarVolume)
         FloodFieldLoaded = True
-        
-        
+
+
       if (self.calibrationVolumeName in currentNode.GetName()):
         #setting scalar volume to combobox
         loadedCalibrationVolume = slicer.mrmlScene.GetNodeByID(currentNode.GetAssociatedNodeID())
         self.step1_calibrationVolumeSelectorComboBoxList[calibrationVolumeIndex].setCurrentNode(loadedCalibrationVolume)
-        
+
         #setting dose attribute to combobox
         dose = int(currentNode.GetAttribute(self.calibrationVolumeDoseAttributeName))
         self.step1_calibrationVolumeSelector_cGySpinBoxList[calibrationVolumeIndex].value = dose
         print "dose is", dose
         CalibrationFilmsLoaded = True
-        
+
         calibrationVolumeIndex +=1
       currentNode = sHNodeCollection.GetNextItemAsObject()
-   
+
     self.folderNode = self.batchFolderToParse
-    self.batchFolderToParse = None 
-    
+    self.batchFolderToParse = None
+
     result = (CalibrationFilmsLoaded & FloodFieldLoaded)
-    
+
     self.fileLoadingSuccessMessageHeader = "Calibration image loading"
     self.floodFieldFailureMessage = "Flood field image failed to load"
     self.calibrationVolumeLoadFailureMessage = "calibration volume failed to load"
 
     #TODO fix placement of popup boxes on screen relative to load slider thing
-    
-    if result: 
+
+    if result:
       qt.QMessageBox.information(None,self.fileLoadingSuccessMessageHeader , 'Success! Calibration values exported')
-    
-    
-    
-    
+
+
+
+
     # if FloodFieldLoaded == False:
       # qt.QMessageBox.warning(None, 'Warning', 'No flood field image.')
     # if CalibrationFilmsLoaded == False:
       # qt.QMessageBox.warning(None, 'Warning', 'No calibration film images.')
 
-    
-    
+
+
   #
   # -------------------------
   # Testing related functions
