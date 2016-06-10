@@ -464,19 +464,24 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   def onLoadSavedImageBatchButton(self):
     savedFolderPath = qt.QFileDialog.getExistingDirectory(0, 'Open dir')  # TODO have it so it searches for the .mrml file in the saved folder
-    
+    #TODO put this all in a try/except 
     import glob
     os.chdir(os.path.normpath(savedFolderPath))
     mrmlFilesFound = 0
+    
+    savedMrmlSceneName = None 
     for potentialMrmlFile in glob.glob("*.mrml"):
       mrmlFilesFound +=1
       savedMrmlSceneName = potentialMrmlFile
-      print "globbed it"
       
     if mrmlFilesFound >1:
       qt.QMessageBox.critical(None, 'Error', "More than one .mrml file found")
+      logging.error("More than one .mrmlScene found in directory")
+      return
     elif mrmlFilesFound <1:
       qt.QMessageBox.critical(None, 'Error', "No .mrml files found")
+      logging.error("No .mrmlScene in directory")
+      return
 
       #error message
      
@@ -496,19 +501,20 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       if (nodeLevel == slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder()):# & (slicer.mrmlScene.IsImporting()) :
 
         self.batchFolderToParse = addedNode
-        print "batchFolderToParse found"
 
   def onSceneEndImport(self, caller,event):
-    #TODO add error logging, errors for mrmlScene file not found 
+    if self.batchFolderToParse == None:
+      qt.QMessageBox.critical(None, 'Error', "Wrong directory")
+      logging.error("No subjectHierarchy folders in directory, wrong saved directory")
+      return 
   
-    print "onSceneEndImport"
-
     childrenToParse = vtk.vtkCollection()
     self.batchFolderToParse.GetAssociatedChildrenNodes(childrenToParse)
 
     calibrationVolumeNumber = childrenToParse.GetNumberOfItems() - 1
-    print "number of items", calibrationVolumeNumber
     self.fillStep1CalibrationPanel(calibrationVolumeNumber)
+    
+    loadedFloodFieldScalarVolume = None
 
     sHNodeCollection = slicer.mrmlScene.GetNodesByClass('vtkMRMLSubjectHierarchyNode')
     sHNodeCollection.InitTraversal()
@@ -520,32 +526,45 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     fileNotFoundError = False
 
     while currentNode!= None:
-      if currentNode.GetAttribute(self.calibrationVolumeDoseAttributeName) == self.floodFieldAttributeValue:
-        floodFieldSHFound = True
-        if os.path.isfile(currentNode.GetAssociatedNode().GetStorageNode().GetFileName()) == True: #AR current - needs to be GetFileName() on volume node
-          loadedFloodFieldScalarVolume = slicer.mrmlScene.GetNodeByID(currentNode.GetAssociatedNodeID())
-          self.step1_floodFieldImageSelectorComboBox.setCurrentNode(loadedFloodFieldScalarVolume)
-        else:
-          fileNotFoundError = True
+      if currentNode.GetAncestorAtLevel('Folder') == self.batchFolderToParse:
+        if currentNode.GetAttribute(self.calibrationVolumeDoseAttributeName) == self.floodFieldAttributeValue :
+          floodFieldSHFound = True
+          if os.path.isfile(currentNode.GetAssociatedNode().GetStorageNode().GetFileName()) == True: 
+            if loadedFloodFieldScalarVolume is None:
+              loadedFloodFieldScalarVolume = slicer.mrmlScene.GetNodeByID(currentNode.GetAssociatedNodeID())
+              self.step1_floodFieldImageSelectorComboBox.setCurrentNode(loadedFloodFieldScalarVolume)
+            else:
+              qt.QMessageBox.critical(None, 'Error', "More than 1 flood field image found")
+              logging.error("More than one flood field image found")
+              slicer.mrmlScene.Clear(0)
+              return 
+              
+            
+          else:
+            fileNotFoundError = True
+            logging.error("No flood field image in directory")
+            
 
-      if (self.calibrationVolumeName in currentNode.GetName()):
-        CalibrationFilmsSHFound = True
+        if (self.calibrationVolumeName in currentNode.GetName()):
+          CalibrationFilmsSHFound = True
 
-        if os.path.isfile(currentNode.GetAssociatedNode().GetStorageNode().GetFileName()) == True: #AR current - needs to be GetFileName() on volume node
-          # Setting scalar volume to combobox
-          loadedCalibrationVolume = slicer.mrmlScene.GetNodeByID(currentNode.GetAssociatedNodeID())
-          self.step1_calibrationVolumeSelectorComboBoxList[calibrationVolumeIndex].setCurrentNode(loadedCalibrationVolume)
+          if os.path.isfile(currentNode.GetAssociatedNode().GetStorageNode().GetFileName()) == True: 
+            # Setting scalar volume to combobox
+            loadedCalibrationVolume = slicer.mrmlScene.GetNodeByID(currentNode.GetAssociatedNodeID())
+            self.step1_calibrationVolumeSelectorComboBoxList[calibrationVolumeIndex].setCurrentNode(loadedCalibrationVolume)
 
-          # Setting dose attribute to combobox
-          dose = int(currentNode.GetAttribute(self.calibrationVolumeDoseAttributeName))
-          self.step1_calibrationVolumeSelector_cGySpinBoxList[calibrationVolumeIndex].value = dose
-          print "dose is", dose
-        else:
-          fileNotFoundError = True
+            # Setting dose attribute to combobox
+            dose = int(currentNode.GetAttribute(self.calibrationVolumeDoseAttributeName))
+            self.step1_calibrationVolumeSelector_cGySpinBoxList[calibrationVolumeIndex].value = dose
+          else:
+            fileNotFoundError = True
+            logging.error("No calibration image in directory")
 
-        calibrationVolumeIndex +=1
+          calibrationVolumeIndex +=1
       currentNode = sHNodeCollection.GetNextItemAsObject()
 
+      
+      
     self.folderNode = self.batchFolderToParse
     self.batchFolderToParse = None
 
