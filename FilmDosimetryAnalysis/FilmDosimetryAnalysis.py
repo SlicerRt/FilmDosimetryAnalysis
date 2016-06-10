@@ -513,6 +513,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     calibrationVolumeNumber = childrenToParse.GetNumberOfItems() - 1
     self.fillStep1CalibrationPanel(calibrationVolumeNumber)
+    self.step1_numberOfCalibrationFilmsSpinBox.value = calibrationVolumeNumber
     
     loadedFloodFieldScalarVolume = None
 
@@ -579,7 +580,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Error messages for issues with loading 
     if result:
-      qt.QMessageBox.information(None,self.fileLoadingSuccessMessageHeader , 'Success! Calibration values exported')
+      qt.QMessageBox.information(None,self.fileLoadingSuccessMessageHeader , 'Success! Saved calibration values loaded')
     else:
       qt.QMessageBox.critical(None, 'Error', "Failed to load saved calibration batch.") 
       
