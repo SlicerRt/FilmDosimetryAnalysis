@@ -85,12 +85,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Initiate and group together all panels
     self.step0_layoutSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step1_loadDataCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.step1_CalibrationCollapsibleButton = ctk.ctkCollapsibleButton()
     self.testButton = ctk.ctkCollapsibleButton()
 
     self.collapsibleButtonsGroup = qt.QButtonGroup()
     self.collapsibleButtonsGroup.addButton(self.step0_layoutSelectionCollapsibleButton)
-    self.collapsibleButtonsGroup.addButton(self.step1_loadDataCollapsibleButton)
+    self.collapsibleButtonsGroup.addButton(self.step1_CalibrationCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.testButton)
 
     self.step0_layoutSelectionCollapsibleButton.setProperty('collapsed', False)
@@ -101,6 +101,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Declare member variables (selected at certain steps and then from then on for the workflow)
     self.folderNode = None
     self.batchFolderToParse = None
+    self.lastAddedRoiNode = None
     # Set up constants
     self.saveCalibrationBatchFolderNodeName = "Calibration batch"
     self.calibrationVolumeDoseAttributeName = "Dose"
@@ -138,22 +139,23 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Set up step panels
     self.setup_Step0_LayoutSelection()
-    self.setup_Step1_LoadData()
+    self.setup_step1_Calibration()
 
 
     if widgetClass:
       self.widget = widgetClass(self.parent)
     self.parent.show()
 
+  #------------------------------------------------------------------------------
   # Disconnect all connections made to the slicelet to enable the garbage collector to destruct the slicelet object on quit
   def disconnect(self):
-
     self.step0_viewSelectorComboBox.disconnect('activated(int)', self.onViewSelect)
     self.step1_loadImageFilesButton.disconnect('clicked()', self.onLoadImageFilesButton)
-    self.step1_numberOfCalibrationFilmsSpinBox.disconnect('valueChanged()', self.onstep1_numberOfCalibrationFilmsSpinBoxValueChanged)
+    self.step1_numberOfCalibrationFilmsSpinBox.disconnect('valueChanged()', self.onNumberOfCalibrationFilmsSpinBoxValueChanged)
     self.step1_saveCalibrationBatchButton.disconnect('clicked()', self.onSaveCalibrationBatchButton)
+    self.step1_loadCalibrationBatchButton.disconnect('clicked()', self.onloadCalibrationBatchButton)
 
-
+  #------------------------------------------------------------------------------
   def setup_Step0_LayoutSelection(self):
     # Layout selection step
     self.step0_layoutSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
@@ -186,50 +188,44 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step0_preclinicalModeRadioButton = qt.QRadioButton('Preclinical MRI readout')
     self.step0_modeSelectorLayout.addWidget(self.step0_preclinicalModeRadioButton, 0, 2)
 
-
-  def setup_Step1_LoadData(self):
+  #------------------------------------------------------------------------------
+  def setup_step1_Calibration(self):
     # Step 1: Load data panel
-    self.step1_loadDataCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step1_loadDataCollapsibleButton.text = "1. Load data"
-    self.sliceletPanelLayout.addWidget(self.step1_loadDataCollapsibleButton)
+    self.step1_CalibrationCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step1_CalibrationCollapsibleButton.text = "1. Calibration (optional)"
+    self.sliceletPanelLayout.addWidget(self.step1_CalibrationCollapsibleButton)
 
     # Step 1 main background layout
-    self.step1_backgroundLayout = qt.QVBoxLayout(self.step1_loadDataCollapsibleButton)
-
-
+    self.step1_calibrationLayout = qt.QVBoxLayout(self.step1_CalibrationCollapsibleButton)
 
     # Step 1 top third sub-layout
-    self.step1_topBackgroundSubLayout = qt.QVBoxLayout()
-    self.step1_backgroundLayout.addLayout(self.step1_topBackgroundSubLayout)
-
+    self.step1_topCalibrationSubLayout = qt.QVBoxLayout()
+    self.step1_calibrationLayout.addLayout(self.step1_topCalibrationSubLayout)
 
     # Load data label
-    self.step1_loadDataLabel = qt.QLabel("Load all image data involved in the workflow.\nCan either be a new batch of image files, or a saved image batch")
-    self.step1_loadDataLabel.wordWrap = True
-    self.step1_topBackgroundSubLayout.addWidget(self.step1_loadDataLabel)
-
+    self.step1_CalibrationLabel = qt.QLabel("Load all image data involved in the workflow.\nCan either be a new batch of image files, or a saved image batch")
+    self.step1_CalibrationLabel.wordWrap = True
+    self.step1_topCalibrationSubLayout.addWidget(self.step1_CalibrationLabel)
 
     # Load image data button
     self.step1_loadImageFilesButton = qt.QPushButton("Load image files")
     self.step1_loadImageFilesButton.toolTip = "Load png film images."
     self.step1_loadImageFilesButton.name = "loadImageFilesButton"
     # Load saved image batch button
-    self.step1_loadSavedImageBatchButton = qt.QPushButton("Load saved image batch")
-    self.step1_loadSavedImageBatchButton.toolTip = "Load a batch of films with assigned doses."
-    self.step1_loadSavedImageBatchButton.name = "loadSavedImageFilesButton"
+    self.step1_loadCalibrationBatchButton = qt.QPushButton("Load calibration batch")
+    self.step1_loadCalibrationBatchButton.toolTip = "Load a batch of films with assigned doses."
+    self.step1_loadCalibrationBatchButton.name = "loadCalibrationFilesButton"
     # Horizontal button layout
     self.step1_loadImageButtonLayout = qt.QHBoxLayout()
     self.step1_loadImageButtonLayout.addWidget(self.step1_loadImageFilesButton)
-    self.step1_loadImageButtonLayout.addWidget(self.step1_loadSavedImageBatchButton)
+    self.step1_loadImageButtonLayout.addWidget(self.step1_loadCalibrationBatchButton)
 
-
-    self.step1_topBackgroundSubLayout.addLayout(self.step1_loadImageButtonLayout)
-
+    self.step1_topCalibrationSubLayout.addLayout(self.step1_loadImageButtonLayout)
 
     # Assign data label
     self.step1_AssignDataLabel = qt.QLabel("Assign loaded data to roles.\nNote: If this selection is changed later then all the following steps need to be performed again")
     self.step1_AssignDataLabel.wordWrap = True
-    self.step1_topBackgroundSubLayout.addWidget(self.step1_AssignDataLabel)
+    self.step1_topCalibrationSubLayout.addWidget(self.step1_AssignDataLabel)
 
     # Number of calibration films node selector
     self.step1_numberOfCalibrationFilmsSelectorLayout = qt.QHBoxLayout()
@@ -241,8 +237,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_numberOfCalibrationFilmsLabelBefore = qt.QLabel('Number of calibration films is: ')
     self.step1_numberOfCalibrationFilmsSelectorLayout.addWidget(self.step1_numberOfCalibrationFilmsLabelBefore)
     self.step1_numberOfCalibrationFilmsSelectorLayout.addWidget(self.step1_numberOfCalibrationFilmsSpinBox)
-    self.step1_topBackgroundSubLayout.addLayout(self.step1_numberOfCalibrationFilmsSelectorLayout)
-
+    self.step1_topCalibrationSubLayout.addLayout(self.step1_numberOfCalibrationFilmsSelectorLayout)
 
     # Choose the flood field image
     self.step1_floodFieldImageSelectorComboBoxLayout = qt.QHBoxLayout()
@@ -255,17 +250,16 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_floodFieldImageSelectorComboBoxLabel = qt.QLabel('Flood field image: ')
     self.step1_floodFieldImageSelectorComboBoxLayout.addWidget(self.step1_floodFieldImageSelectorComboBoxLabel)
     self.step1_floodFieldImageSelectorComboBoxLayout.addWidget(self.step1_floodFieldImageSelectorComboBox)
-    self.step1_topBackgroundSubLayout.addLayout(self.step1_floodFieldImageSelectorComboBoxLayout)
+    self.step1_topCalibrationSubLayout.addLayout(self.step1_floodFieldImageSelectorComboBoxLayout)
 
-    self.step1_middleBackgroundSubLayout = qt.QVBoxLayout()
-    self.step1_backgroundLayout.addLayout(self.step1_middleBackgroundSubLayout)
+    self.step1_middleCalibrationSubLayout = qt.QVBoxLayout()
+    self.step1_calibrationLayout.addLayout(self.step1_middleCalibrationSubLayout)
 
     self.step1_calibrationVolumeLayoutList = []
     self.step1_calibrationVolumeSelectorLabelBeforeList = []
     self.step1_calibrationVolumeSelector_cGySpinBoxList = []
     self.step1_calibrationVolumeSelector_cGyLabelList = []
     self.step1_calibrationVolumeSelectorComboBoxList = []
-
 
     for doseToImageLayoutNumber in xrange(self.maxCalibrationVolumeSelectorsInt):
       self.step1_doseToImageSelectorRowLayout = qt.QHBoxLayout()
@@ -293,41 +287,48 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.step1_doseToImageSelectorRowLayout.addWidget(self.doseToImageSelectorLabelMiddle)
       self.step1_doseToImageSelectorRowLayout.addWidget(self.doseToImageFilmSelector)
 
-
       self.step1_calibrationVolumeLayoutList.append(self.step1_doseToImageSelectorRowLayout)
-      self.step1_middleBackgroundSubLayout.addLayout(self.step1_doseToImageSelectorRowLayout)
+      self.step1_middleCalibrationSubLayout.addLayout(self.step1_doseToImageSelectorRowLayout)
 
 
-    self.step1_bottomBackgroundSubLayout = qt.QVBoxLayout()
-    self.step1_backgroundLayout.addLayout(self.step1_bottomBackgroundSubLayout)
+    self.step1_bottomCalibrationSubLayout = qt.QVBoxLayout()
+    self.step1_calibrationLayout.addLayout(self.step1_bottomCalibrationSubLayout)
 
     self.fillStep1CalibrationPanel(self.step1_numberOfCalibrationFilmsSpinBox.value)
-
-    # Calibration button
-    self.step1_performCalibrationButton = qt.QPushButton("Perform calibration")
-    self.step1_performCalibrationButton.toolTip = "Finds the calibration function"
-    self.step1_bottomBackgroundSubLayout.addWidget(self.step1_performCalibrationButton)
 
     # Save batch button
     self.step1_saveCalibrationBatchButton = qt.QPushButton("Save calibration batch")
     self.step1_saveCalibrationBatchButton.toolTip = "Saves current calibration batch"
-    self.step1_bottomBackgroundSubLayout.addWidget(self.step1_saveCalibrationBatchButton)
+    self.step1_bottomCalibrationSubLayout.addWidget(self.step1_saveCalibrationBatchButton)
 
+    # Add empty row
+    self.step1_bottomCalibrationSubLayout.addWidget(qt.QLabel(''))
 
+    # Add ROI button
+    self.step1_addRoiButton = qt.QPushButton("Add region")
+    self.step1_addRoiButton.setIcon(qt.QIcon(":/Icons/AnnotationROIWithArrow.png"))
+    self.step1_addRoiButton.toolTip = "Add ROI (region of interest) that is considered when measuring dose in the calibration images\n\nOnce activated, click in the center of the region to be used for calibration, then do another click to one of the corners. After that the ROI appears and can be adjusted using the colored handles."
+    self.step1_bottomCalibrationSubLayout.addWidget(self.step1_addRoiButton)
+    
+    # Calibration button
+    self.step1_performCalibrationButton = qt.QPushButton("Perform calibration")
+    self.step1_performCalibrationButton.toolTip = "Finds the calibration function"
+    self.step1_bottomCalibrationSubLayout.addWidget(self.step1_performCalibrationButton)
 
-    self.step1_bottomBackgroundSubLayout.addStretch(1)
+    self.step1_bottomCalibrationSubLayout.addStretch(1)
 
     # Connections
     self.step1_loadImageFilesButton.connect('clicked()', self.onLoadImageFilesButton)
     self.step1_saveCalibrationBatchButton.connect('clicked()', self.onSaveCalibrationBatchButton)
-    self.step1_loadSavedImageBatchButton.connect('clicked()', self.onLoadSavedImageBatchButton)
-
-    self.step1_loadImageFilesButton.connect('clicked()', self.onLoadImageFilesButton)
-    # TODO add connection for step1_numberOfCalibrationFilmsSpinBox , add disconnect
-    self.step1_numberOfCalibrationFilmsSpinBox.connect('valueChanged(int)', self.onstep1_numberOfCalibrationFilmsSpinBoxValueChanged)
+    self.step1_loadCalibrationBatchButton.connect('clicked()', self.onloadCalibrationBatchButton)
+    self.step1_numberOfCalibrationFilmsSpinBox.connect('valueChanged(int)', self.onNumberOfCalibrationFilmsSpinBoxValueChanged)
+    self.step1_addRoiButton.connect('clicked()', self.onAddRoiButton)
 
     self.sliceletPanelLayout.addStretch(1)
 
+  #------------------------------------------------------------------------------
+  def setup_step2_CalculateDose(self):
+    pass #TODO: Implement
 
   #
   # -----------------------
@@ -335,6 +336,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   # -----------------------
   #
 
+  #------------------------------------------------------------------------------
   def onViewSelect(self, layoutIndex):
     if layoutIndex == 0:
        self.layoutWidget.setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpView)
@@ -351,13 +353,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     elif layoutIndex == 6:
        self.layoutWidget.setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutOneUpQuantitativeView)
 
-
+  #------------------------------------------------------------------------------
   def onLoadImageFilesButton(self):
     slicer.util.openAddDataDialog()
 
-
+  #------------------------------------------------------------------------------
   def fillStep1CalibrationPanel(self,CalibrationVolumeQuantity):
-
     for calibrationLayout in xrange(CalibrationVolumeQuantity):
       self.step1_calibrationVolumeSelectorLabelBeforeList[calibrationLayout].visible = True
       self.step1_calibrationVolumeSelector_cGySpinBoxList[calibrationLayout].visible = True
@@ -370,11 +371,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.step1_calibrationVolumeSelector_cGyLabelList[-calibrationLayout].visible = False
       self.step1_calibrationVolumeSelectorComboBoxList[-calibrationLayout].visible = False
 
-
-  def onstep1_numberOfCalibrationFilmsSpinBoxValueChanged(self):
+  #------------------------------------------------------------------------------
+  def onNumberOfCalibrationFilmsSpinBoxValueChanged(self):
     self.fillStep1CalibrationPanel(self.step1_numberOfCalibrationFilmsSpinBox.value)
 
-  #---------------------------------------------------------------------------------------------------------------------------------
+  #------------------------------------------------------------------------------
   def onSaveCalibrationBatchButton(self):
     self.savedFolderPath = qt.QFileDialog.getExistingDirectory(0, 'Open dir')
 
@@ -417,9 +418,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     print "exportFloodFieldStorageNode file path was", exportFloodFieldStorageNode.GetFileName()
     exportFloodFieldStorageNode.SetFileName(os.path.normpath(self.savedFolderPath + '/' + ntpath.basename(floodFieldStorageNode.GetFileName())))
     print "exportFloodFieldStorageNode file path is now", exportFloodFieldStorageNode.GetFileName()
-      
-    
-    
 
     for currentCalibrationVolumeIndex in xrange(self.step1_numberOfCalibrationFilmsSpinBox.value): 
       # Get current calibration image node
@@ -449,8 +447,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       print "exportCalibrationStorageNode file path is now", exportCalibrationStorageNode.GetFileName()
       shutil.copy(calibrationStorageNode.GetFileName(), self.savedFolderPath)
 
-      
-      
     exportMrmlScene.SetURL(os.path.normpath(self.savedFolderPath + "/exportMrmlScene.mrml" ))
     exportMrmlScene.Commit()
 
@@ -462,7 +458,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     exportMrmlScene.Clear(1)
 
-  def onLoadSavedImageBatchButton(self):
+  #------------------------------------------------------------------------------
+  def onloadCalibrationBatchButton(self):
     savedFolderPath = qt.QFileDialog.getExistingDirectory(0, 'Open dir')  # TODO have it so it searches for the .mrml file in the saved folder
     #TODO put this all in a try/except 
     import glob
@@ -492,6 +489,17 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # TODO: Indentify flood field image by this attribute value (for attribute self.calibrationVolumeDoseAttributeName): self.floodFieldAttributeValue
 
+  #------------------------------------------------------------------------------
+  def onAddRoiButton(self):
+    appLogic = slicer.app.applicationLogic()
+    selectionNode = appLogic.GetSelectionNode()
+    interactionNode = appLogic.GetInteractionNode()
+    
+    # Switch to ROI place mode
+    selectionNode.SetReferenceActivePlaceNodeClassName('vtkMRMLAnnotationROINode')
+    interactionNode.SwitchToSinglePlaceMode()
+  
+  #------------------------------------------------------------------------------
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def onNodeAdded(self, caller, event, calldata):
     addedNode = calldata
@@ -499,9 +507,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     if slicer.mrmlScene.IsImporting() and addedNode.IsA("vtkMRMLSubjectHierarchyNode"):
       nodeLevel = addedNode.GetLevel()
       if (nodeLevel == slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder()):# & (slicer.mrmlScene.IsImporting()) :
-
         self.batchFolderToParse = addedNode
+    if addedNode.IsA('vtkMRMLAnnotationROINode'):
+      self.lastAddedRoiNode = addedNode
 
+  #------------------------------------------------------------------------------
   def onSceneEndImport(self, caller,event):
     if self.batchFolderToParse == None:
       qt.QMessageBox.critical(None, 'Error', "Wrong directory")
@@ -539,13 +549,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
               logging.error("More than one flood field image found")
               slicer.mrmlScene.Clear(0)
               return 
-              
-            
           else:
             fileNotFoundError = True
             logging.error("No flood field image in directory")
             
-
         if (self.calibrationVolumeName in currentNode.GetName()):
           CalibrationFilmsSHFound = True
 
@@ -563,8 +570,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
           calibrationVolumeIndex +=1
       currentNode = sHNodeCollection.GetNextItemAsObject()
-
-      
       
     self.folderNode = self.batchFolderToParse
     self.batchFolderToParse = None
@@ -593,15 +598,13 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     if CalibrationFilmsSHFound == False:
       qt.QMessageBox.warning(None, 'Warning', 'No calibration film images.')
 
-
-#---------------------------------------------------------------------------------------------------------------------------------
-
   #
   # -------------------------
   # Testing related functions
   # -------------------------
   #
-
+  def onSelfTestButtonClicked(self):
+    pass #TODO: Add test
 
 #
 # FilmDosimetryAnalysis
