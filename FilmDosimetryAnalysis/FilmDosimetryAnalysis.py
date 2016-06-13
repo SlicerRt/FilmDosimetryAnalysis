@@ -1,4 +1,5 @@
 import os
+import math 
 import ntpath
 import shutil
 import unittest
@@ -9,6 +10,7 @@ import logging
 import FilmDosimetryAnalysisLogic
 import DataProbeLib
 from slicer.util import VTKObservationMixin
+
 
 #
 # Film dosimetry analysis slicelet
@@ -86,11 +88,14 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Initiate and group together all panels
     self.step0_layoutSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step1_CalibrationCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.step2_SelectROICollapsibleButton = ctk.ctkCollapsibleButton() #AR current 
     self.testButton = ctk.ctkCollapsibleButton()
 
     self.collapsibleButtonsGroup = qt.QButtonGroup()
     self.collapsibleButtonsGroup.addButton(self.step0_layoutSelectionCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step1_CalibrationCollapsibleButton)
+    #self.collapsibleButtonsGroup.addButton(self.step2_SelectROICollapsibleButton)
+
     self.collapsibleButtonsGroup.addButton(self.testButton)
 
     self.step0_layoutSelectionCollapsibleButton.setProperty('collapsed', False)
@@ -102,6 +107,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.folderNode = None
     self.batchFolderToParse = None
     self.lastAddedRoiNode = None
+    self.calibrationValues = []
+    self.opticalDensities = []
     # Set up constants
     self.saveCalibrationBatchFolderNodeName = "Calibration batch"
     self.calibrationVolumeDoseAttributeName = "Dose"
@@ -140,6 +147,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Set up step panels
     self.setup_Step0_LayoutSelection()
     self.setup_step1_Calibration()
+    self.setup_step2_CalculateDose()
 
 
     if widgetClass:
@@ -290,7 +298,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.step1_calibrationVolumeLayoutList.append(self.step1_doseToImageSelectorRowLayout)
       self.step1_middleCalibrationSubLayout.addLayout(self.step1_doseToImageSelectorRowLayout)
 
-
     self.step1_bottomCalibrationSubLayout = qt.QVBoxLayout()
     self.step1_calibrationLayout.addLayout(self.step1_bottomCalibrationSubLayout)
 
@@ -323,12 +330,14 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_loadCalibrationBatchButton.connect('clicked()', self.onloadCalibrationBatchButton)
     self.step1_numberOfCalibrationFilmsSpinBox.connect('valueChanged(int)', self.onNumberOfCalibrationFilmsSpinBoxValueChanged)
     self.step1_addRoiButton.connect('clicked()', self.onAddRoiButton)
+    self.step1_performCalibrationButton.connect('clicked()', self.onPerformCalibrationButton)
 
     self.sliceletPanelLayout.addStretch(1)
 
   #------------------------------------------------------------------------------
   def setup_step2_CalculateDose(self):
     pass #TODO: Implement
+
 
   #
   # -----------------------
@@ -500,6 +509,61 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     interactionNode.SwitchToSinglePlaceMode()
   
   #------------------------------------------------------------------------------
+  def onPerformCalibrationButton(self):
+    print "onPerformCalibrationButton"
+    if self.lastAddedRoiNode is None or not hasattr(slicer.modules, 'cropvolume'):
+      #TODO: Error about missing ROI
+      return
+      
+    print "should be looping through ", self.step1_numberOfCalibrationFilmsSpinBox.value, " things" 
+    
+    #find mean value for flood field 
+    
+    floodFieldCalibrationVolume = self.step1_floodFieldImageSelectorComboBox.currentNode()
+    imageStat = vtk.vtkImageAccumulate()
+    imageStat.SetInputData(floodFieldCalibrationVolume.GetImageData())
+    imageStat.Update()
+    meanValueFloodField = imageStat.GetMean()[0]
+    self.calibrationValues.append([self.floodFieldAttributeValue, meanValueFloodField])
+    
+    
+
+    for currentCalibrationVolumeIndex in xrange(self.step1_numberOfCalibrationFilmsSpinBox.value):
+      print "at ", currentCalibrationVolumeIndex, " in loop"     
+      # Get current calibration image node
+      currentCalibrationVolume = self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationVolumeIndex].currentNode()
+      currentCalibrationVolumeDose = self.step1_calibrationVolumeSelector_cGySpinBoxList[currentCalibrationVolumeIndex].value
+   
+      # Crop calibration images by last defined ROI
+      cropVolumeLogic = slicer.modules.cropvolume.logic()
+      cropVolumeLogic.CropVoxelBased(self.lastAddedRoiNode, currentCalibrationVolume, currentCalibrationVolume)
+      
+      # Measure dose value as average of the cropped calibration images 
+      #self.calibrationValues[imageDose_cGy] = measuredValueInRoi    
+      
+      imageStat = vtk.vtkImageAccumulate()
+      imageStat.SetInputData(currentCalibrationVolume.GetImageData())
+      imageStat.Update()
+      meanValue = imageStat.GetMean()[0]
+      self.calibrationValues.append([currentCalibrationVolumeDose, meanValue])
+      # Optical density calculation 
+      opticalDensity = math.log10(meanValueFloodField/meanValue)
+      self.opticalDensities.append([currentCalibrationVolumeDose, opticalDensity])
+      
+      
+      
+      
+    print "calibration values ", self.calibrationValues
+    print "optical densities ", self.opticalDensities
+    
+    
+    
+      
+    # Fit curve to calibration values
+    
+    # Store and show calibration function
+  
+  #------------------------------------------------------------------------------
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def onNodeAdded(self, caller, event, calldata):
     addedNode = calldata
@@ -508,6 +572,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       nodeLevel = addedNode.GetLevel()
       if (nodeLevel == slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder()):# & (slicer.mrmlScene.IsImporting()) :
         self.batchFolderToParse = addedNode
+    
     if addedNode.IsA('vtkMRMLAnnotationROINode'):
       self.lastAddedRoiNode = addedNode
 
