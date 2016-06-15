@@ -10,6 +10,7 @@ import logging
 import FilmDosimetryAnalysisLogic
 import DataProbeLib
 from slicer.util import VTKObservationMixin
+from vtk.util import numpy_support
 
 
 #
@@ -108,6 +109,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.batchFolderToParse = None
     self.lastAddedRoiNode = None
     self.calibrationValues = []
+    self.measuredOpticalDensities = []
     self.opticalDensities = []
     # Set up constants
     self.saveCalibrationBatchFolderNodeName = "Calibration batch"
@@ -118,11 +120,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.exportedSceneFileName = slicer.app.temporaryPath + "/exportMrmlScene.mrml"
     self.savedCalibrationVolumeFolderName = "savedCalibrationVolumes"
     self.savedFolderPath = slicer.app.temporaryPath + "/" + self.savedCalibrationVolumeFolderName
-
     self.maxCalibrationVolumeSelectorsInt = 10
     self.fileLoadingSuccessMessageHeader = "Calibration image loading"
     self.floodFieldFailureMessage = "Flood field image failed to load"
     self.calibrationVolumeLoadFailureMessage = "calibration volume failed to load"
+    self.opticalDensityCurve = None
 
     # Set observations
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
@@ -525,11 +527,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     imageStat.Update()
     meanValueFloodField = imageStat.GetMean()[0]
     self.calibrationValues.append([self.floodFieldAttributeValue, meanValueFloodField])
-    
+    self.measuredOpticalDensities = []
     
 
     for currentCalibrationVolumeIndex in xrange(self.step1_numberOfCalibrationFilmsSpinBox.value):
-      print "at ", currentCalibrationVolumeIndex, " in loop"     
       # Get current calibration image node
       currentCalibrationVolume = self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationVolumeIndex].currentNode()
       currentCalibrationVolumeDose = self.step1_calibrationVolumeSelector_cGySpinBoxList[currentCalibrationVolumeIndex].value
@@ -545,24 +546,31 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       imageStat.SetInputData(currentCalibrationVolume.GetImageData())
       imageStat.Update()
       meanValue = imageStat.GetMean()[0]
-      self.calibrationValues.append([currentCalibrationVolumeDose, meanValue])
+      self.calibrationValues.append([meanValue, currentCalibrationVolumeDose])
       # Optical density calculation 
       opticalDensity = math.log10(meanValueFloodField/meanValue)
-      self.opticalDensities.append([currentCalibrationVolumeDose, opticalDensity])
       
-      
-      
-      
-    print "calibration values ", self.calibrationValues
-    print "optical densities ", self.opticalDensities
-    
-    
+      #x = optical density, y = dose  
+      self.measuredOpticalDensities.append([opticalDensity, currentCalibrationVolumeDose])
     
       
-    # Fit curve to calibration values
+    #print "calibration values ", self.calibrationValues
+    print "x = optical density, y = dose  "
     
-    # Store and show calibration function
+    self.measuredOpticalDensities.sort(key=lambda doseODPair: doseODPair[1])
+    print "optical densities ", self.measuredOpticalDensities
+   
+    self.createCalibrationCurvesWindow()
+    self.showCalibrationCurves()
   
+  #------------------------------------------------------------------------------
+  def fitOpticalDensityFunction(self, doseVSOpticalDensityNestedList): 
+    print "fitOpticalDensityFunction"
+    x = [ODEntry[0] for ODEntry in doseVSOpticalDensityNestedList]
+    y = [ODEntry[1] for ODEntry in doseVSOpticalDensityNestedList]
+    self.opticalDensityCurve = numpy.polyfit(x,y,3)
+    opticalDensityToDosePolynomialFunction = numpy.poly1d(self.opticalDensityCurve)
+    return opticalDensityToDosePolynomialFunction
   #------------------------------------------------------------------------------
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def onNodeAdded(self, caller, event, calldata):
@@ -663,6 +671,81 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     if CalibrationFilmsSHFound == False:
       qt.QMessageBox.warning(None, 'Warning', 'No calibration film images.')
 
+  #------------------------------------------------------------------------------
+  def createCalibrationCurvesWindow(self):
+    # Set up window to be used for displaying data
+    self.calibrationCurveChartView = vtk.vtkContextView()
+    self.calibrationCurveChartView.GetRenderer().SetBackground(1,1,1)
+    self.calibrationCurveChart = vtk.vtkChartXY()
+    self.calibrationCurveChartView.GetScene().AddItem(self.calibrationCurveChart)
+    
+  def showCalibrationCurves(self):
+    # Create CALIBRATION dose vs. optical density plot 
+    self.calibrationCurveDataTable = vtk.vtkTable()
+    calibrationNumberOfRows = len(self.measuredOpticalDensities)
+
+    opticalDensityArray = vtk.vtkDoubleArray()
+    opticalDensityArray.SetName("optical density")
+    self.calibrationCurveDataTable.AddColumn(opticalDensityArray)
+    dose_cGyCalibrationCurveArray = vtk.vtkDoubleArray()
+    dose_cGyCalibrationCurveArray.SetName("dose (cGy) (measured)")
+    self.calibrationCurveDataTable.AddColumn(dose_cGyCalibrationCurveArray)
+    self.calibrationCurveDataTable.SetNumberOfRows(calibrationNumberOfRows)
+    
+    for rowIndex in xrange(calibrationNumberOfRows):
+      self.calibrationCurveDataTable.SetValue(rowIndex, 0, self.measuredOpticalDensities[rowIndex][0]) 
+      self.calibrationCurveDataTable.SetValue(rowIndex, 1, self.measuredOpticalDensities[rowIndex][1])
+
+    if hasattr(self, 'calibrationMeanOpticalAttenuationLine' ):
+      self.calibrationCurveChart.RemovePlotInstance(self.calibrationMeanOpticalAttenuationLine) 
+    self.calibrationMeanOpticalAttenuationLine = self.calibrationCurveChart.AddPlot(vtk.vtkChart.POINTS)
+    self.calibrationMeanOpticalAttenuationLine.SetInputData(self.calibrationCurveDataTable, 0, 1)
+    self.calibrationMeanOpticalAttenuationLine.SetColor(0, 0, 255, 255) 
+    self.calibrationMeanOpticalAttenuationLine.SetWidth(2.0)
+
+    # Create and populate the calculated dose/OD curve 
+    doseFromOpticalDensityFunction = self.fitOpticalDensityFunction(self.measuredOpticalDensities) 
+    opticalDensityList = [round(-0.9 + 0.01*opticalDensityIncrement,2) for opticalDensityIncrement in range(120)]
+    self.opticalDensities = []
+    
+    for calculatedEntryIndex in xrange(120):
+      newEntry = [opticalDensityList[calculatedEntryIndex], doseFromOpticalDensityFunction(opticalDensityList[calculatedEntryIndex])]
+      self.opticalDensities.append(newEntry)
+    
+    # Create plot for dose calibration fitted curve 
+    self.opticalDensityToDoseFunctionTable = vtk.vtkTable()
+    opticalDensityNumberOfRows = len(self.opticalDensities)
+    opticalDensityCalculatedArray = vtk.vtkDoubleArray()
+    opticalDensityCalculatedArray.SetName("opticalDensities")
+    self.opticalDensityToDoseFunctionTable.AddColumn(opticalDensityCalculatedArray)
+    dose_cGyCalculatedArray = vtk.vtkDoubleArray()
+    dose_cGyCalculatedArray.SetName("optical density calculated")
+    self.opticalDensityToDoseFunctionTable.AddColumn(dose_cGyCalculatedArray)
+
+    self.opticalDensityToDoseFunctionTable.SetNumberOfRows(opticalDensityNumberOfRows)
+    for opticalDensityIncrement in xrange(opticalDensityNumberOfRows):
+      self.opticalDensityToDoseFunctionTable.SetValue(opticalDensityIncrement, 0, self.opticalDensities[opticalDensityIncrement][0])
+      self.opticalDensityToDoseFunctionTable.SetValue(opticalDensityIncrement, 1, self.opticalDensities[opticalDensityIncrement][1])
+      
+    if hasattr(self, 'calculatedDoseLine'):
+      self.calibrationCurveChart.RemovePlotInstance(self.calculatedDoseLine)
+    self.calculatedDoseLine = self.calibrationCurveChart.AddPlot(vtk.vtkChart.LINE)
+    self.calculatedDoseLine.SetInputData(self.opticalDensityToDoseFunctionTable, 0, 1)
+    self.calculatedDoseLine.SetColor(255, 0, 0, 255)
+    self.calculatedDoseLine.SetWidth(2.0)
+
+    # Show chart
+    self.calibrationCurveChart.GetAxis(1).SetTitle('Optical Density| x - axis')
+    self.calibrationCurveChart.GetAxis(0).SetTitle('Dose (cGy)   |y-axis')
+    self.calibrationCurveChart.SetShowLegend(True)
+    self.calibrationCurveChart.SetTitle('Dose (cGy) vs. Optical Density')
+    self.calibrationCurveChartView.GetInteractor().Initialize()
+    self.calibrationCurveChartView.GetRenderWindow().SetSize(800,550)
+    self.calibrationCurveChartView.GetRenderWindow().SetWindowName('Dose (cGy) vs. Optical Density chart')
+    self.calibrationCurveChartView.GetRenderWindow().Start()
+    
+  #------------------------------------------------------------------------------
+  
   #
   # -------------------------
   # Testing related functions
