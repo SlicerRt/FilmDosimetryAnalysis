@@ -740,11 +740,74 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calibrationCurveChart.SetShowLegend(True)
     self.calibrationCurveChart.SetTitle('Dose (cGy) vs. Optical Density')
     self.calibrationCurveChartView.GetInteractor().Initialize()
-    self.calibrationCurveChartView.GetRenderWindow().SetSize(800,550)
-    self.calibrationCurveChartView.GetRenderWindow().SetWindowName('Dose (cGy) vs. Optical Density chart')
-    self.calibrationCurveChartView.GetRenderWindow().Start()
+    self.renderWindow = self.calibrationCurveChartView.GetRenderWindow()
+    self.renderWindow.SetSize(800,550)
+    self.renderWindow.SetWindowName('Dose (cGy) vs. Optical Density chart')
+    self.renderWindow.Start()
     
   #------------------------------------------------------------------------------
+  # def meanSquaredError(self,applyFitFunction, opticalDensityArray): #MSE function for polynomial fitting
+    # sumMeanSquaredError = 0
+    # for i in xrange(len(opticalDensityArray)):
+      # sumMeanSquaredError += (opticalDensityArray[i][1] - applyFitFunction(opticalDensityArray[i][0]))**2
+      # #print "sumMeanSquaredError is ", sumMeanSquaredError
+    # return sumMeanSquaredError/(len(opticalDensityArray))
+    
+  def meanSquaredError(self, n, coeff):
+    sumMeanSquaredError = 0
+    for i in xrange(len(self.measuredOpticalDensities)):
+      newY = self.applyFitFunction(self.measuredOpticalDensities[i][0], n, coeff)   
+      #print "  (self.measuredOpticalDensities[i][1]): ", (self.measuredOpticalDensities[i][1], "newY: ", newY)    
+      sumMeanSquaredError += ((self.measuredOpticalDensities[i][1] - newY)**2) #TODO forgot to square this omfg
+      #print "sumMeanSquaredError is ", sumMeanSquaredError
+    return sumMeanSquaredError/(len(self.measuredOpticalDensities))
+    
+  def applyFitFunction(self, OD, n, coeff):
+    return coeff[0] + coeff[1]*OD + coeff[2]*(OD**n)
+    
+  def findCoefficients(self,n):
+    # Calculate matrix A 
+    #print "findCoefficients"
+    matrixA = []
+    for row in xrange(len(self.measuredOpticalDensities)):
+      OD = self.measuredOpticalDensities[row][0]
+      matrixA.append([1,OD,OD**n]) 
+    matrixA = numpy.asmatrix(matrixA)
+    #print matrixA
+    # Calculate vector b
+    b = []
+    for row in xrange(len(self.measuredOpticalDensities)):
+      b+= [self.measuredOpticalDensities[row][1]]
+        #print "b is ", b
+        # Find x
+    x = numpy.linalg.lstsq(matrixA,b)
+    coefficients = x[0].tolist()
+    ##print "the coefficients to lstsq is ", coefficients 
+    return coefficients 
+        
+  def nonnegativeOD(self,OD):
+    minOD = min([od[0] for od in OD])
+    for x in xrange(len(OD)):
+      OD[x][0] -= minOD
+    return OD
+  
+  def findBestExponentValue(self):
+    bestN = [] #entries are [MSE, n, answer]
+    
+    for n in xrange(200,501): #TODO second term should be 401
+      n/=100.0
+      coeff = self.findCoefficients(n)
+      MSE = self.meanSquaredError(n,coeff)
+      #print "new entry is: ", [MSE, n, coeff]
+      bestN.append([MSE, n, coeff])
+    
+    bestN.sort(key=lambda bestNentry: bestNentry[1]) #TODO there is an error in here 
+    bestN.reverse()
+    return bestN[0] 
+
+    
+  
+  
   
   #
   # -------------------------
