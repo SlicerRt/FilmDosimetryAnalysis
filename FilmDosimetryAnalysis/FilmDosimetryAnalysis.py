@@ -110,7 +110,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.lastAddedRoiNode = None
     self.calibrationValues = []
     self.measuredOpticalDensities = []
-    self.opticalDensities = []
     # Set up constants
     self.saveCalibrationBatchFolderNodeName = "Calibration batch"
     self.calibrationVolumeDoseAttributeName = "Dose"
@@ -124,7 +123,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.fileLoadingSuccessMessageHeader = "Calibration image loading"
     self.floodFieldFailureMessage = "Flood field image failed to load"
     self.calibrationVolumeLoadFailureMessage = "calibration volume failed to load"
-    self.opticalDensityCurve = None
+    self.opticalDensityCurve = None #where polyfit is stored
+    self.bestCoefficients = None #the best coefficients from Kevin's function, [n, [a,b,c]]
 
     # Set observations
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
@@ -512,12 +512,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   
   #------------------------------------------------------------------------------
   def onPerformCalibrationButton(self):
-    print "onPerformCalibrationButton"
+    #print "onPerformCalibrationButton"
     if self.lastAddedRoiNode is None or not hasattr(slicer.modules, 'cropvolume'):
       #TODO: Error about missing ROI
       return
       
-    print "should be looping through ", self.step1_numberOfCalibrationFilmsSpinBox.value, " things" 
+    #print "should be looping through ", self.step1_numberOfCalibrationFilmsSpinBox.value, " things" 
     
     #find mean value for flood field 
     
@@ -528,6 +528,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     meanValueFloodField = imageStat.GetMean()[0]
     self.calibrationValues.append([self.floodFieldAttributeValue, meanValueFloodField])
     self.measuredOpticalDensities = []
+    #TODO check this OD calculation 
     
 
     for currentCalibrationVolumeIndex in xrange(self.step1_numberOfCalibrationFilmsSpinBox.value):
@@ -555,10 +556,13 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     
       
     #print "calibration values ", self.calibrationValues
-    print "x = optical density, y = dose  "
+    #print "x = optical density, y = dose  "
     
+    #######ASK KEVIN
+    #self.measuredOpticalDensities = self.nonNegativeOpticalDensity(self.measuredOpticalDensities) #TODO ask Kevin if this is an appropriate way of dealing with negative OD!
+
     self.measuredOpticalDensities.sort(key=lambda doseODPair: doseODPair[1])
-    print "optical densities ", self.measuredOpticalDensities
+    #print "optical densities ", self.measuredOpticalDensities
    
     self.createCalibrationCurvesWindow()
     self.showCalibrationCurves()
@@ -702,19 +706,58 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calibrationMeanOpticalAttenuationLine.SetInputData(self.calibrationCurveDataTable, 0, 1)
     self.calibrationMeanOpticalAttenuationLine.SetColor(0, 0, 255, 255) 
     self.calibrationMeanOpticalAttenuationLine.SetWidth(2.0)
+    #-----
+    # # Create and populate the calculated dose/OD curve with function 
+    # #call function to find best coefficients
+    
+    # doseFromOpticalDensityFunction = self.fitOpticalDensityFunction(self.measuredOpticalDensities) 
+    # opticalDensityList = [round(-0.9 + 0.01*opticalDensityIncrement,2) for opticalDensityIncrement in range(120)]
+    # opticalDensities = []
+    
+    # for calculatedEntryIndex in xrange(120):
+      # newEntry = [opticalDensityList[calculatedEntryIndex], doseFromOpticalDensityFunction(opticalDensityList[calculatedEntryIndex])]
+      # opticalDensities.append(newEntry)
+    
+    # # Create plot for dose calibration fitted curve 
+    # self.opticalDensityToDoseFunctionTable = vtk.vtkTable()
+    # opticalDensityNumberOfRows = len(opticalDensities)
+    # opticalDensityCalculatedArray = vtk.vtkDoubleArray()
+    # opticalDensityCalculatedArray.SetName("opticalDensities")
+    # self.opticalDensityToDoseFunctionTable.AddColumn(opticalDensityCalculatedArray)
+    # dose_cGyCalculatedArray = vtk.vtkDoubleArray()
+    # dose_cGyCalculatedArray.SetName("optical density calculated")
+    # self.opticalDensityToDoseFunctionTable.AddColumn(dose_cGyCalculatedArray)
 
-    # Create and populate the calculated dose/OD curve 
-    doseFromOpticalDensityFunction = self.fitOpticalDensityFunction(self.measuredOpticalDensities) 
-    opticalDensityList = [round(-0.9 + 0.01*opticalDensityIncrement,2) for opticalDensityIncrement in range(120)]
-    self.opticalDensities = []
+    # self.opticalDensityToDoseFunctionTable.SetNumberOfRows(opticalDensityNumberOfRows)
+    # for opticalDensityIncrement in xrange(opticalDensityNumberOfRows):
+      # self.opticalDensityToDoseFunctionTable.SetValue(opticalDensityIncrement, 0, opticalDensities[opticalDensityIncrement][0])
+      # self.opticalDensityToDoseFunctionTable.SetValue(opticalDensityIncrement, 1, opticalDensities[opticalDensityIncrement][1])
+      
+    # if hasattr(self, 'calculatedDoseLine'):
+      # self.calibrationCurveChart.RemovePlotInstance(self.calculatedDoseLine)
+    # self.calculatedDoseLine = self.calibrationCurveChart.AddPlot(vtk.vtkChart.LINE)
+    # self.calculatedDoseLine.SetInputData(self.opticalDensityToDoseFunctionTable, 0, 1)
+    # self.calculatedDoseLine.SetColor(255, 0, 0, 255)
+    # self.calculatedDoseLine.SetWidth(2.0)
+    
+    #-----
+    # Create and populate the calculated dose/OD curve with K function 
+    #call function to find best coefficients
+    
+    self.measuredOpticalDensities = self.nonNegativeOpticalDensity(self.measuredOpticalDensities)
+    
+    self.bestCoefficients = self.findBestFunctionCoefficients()
+    
+    opticalDensityList = [round(0 + 0.01*opticalDensityIncrement,2) for opticalDensityIncrement in range(120)]
+    opticalDensities = []
     
     for calculatedEntryIndex in xrange(120):
-      newEntry = [opticalDensityList[calculatedEntryIndex], doseFromOpticalDensityFunction(opticalDensityList[calculatedEntryIndex])]
-      self.opticalDensities.append(newEntry)
+      newEntry = [opticalDensityList[calculatedEntryIndex], self.applyFitFunction(opticalDensityList[calculatedEntryIndex], self.bestCoefficients[1], self.bestCoefficients[2])]
+      opticalDensities.append(newEntry)  #AR here 
     
     # Create plot for dose calibration fitted curve 
     self.opticalDensityToDoseFunctionTable = vtk.vtkTable()
-    opticalDensityNumberOfRows = len(self.opticalDensities)
+    opticalDensityNumberOfRows = len(opticalDensities)
     opticalDensityCalculatedArray = vtk.vtkDoubleArray()
     opticalDensityCalculatedArray.SetName("opticalDensities")
     self.opticalDensityToDoseFunctionTable.AddColumn(opticalDensityCalculatedArray)
@@ -724,8 +767,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     self.opticalDensityToDoseFunctionTable.SetNumberOfRows(opticalDensityNumberOfRows)
     for opticalDensityIncrement in xrange(opticalDensityNumberOfRows):
-      self.opticalDensityToDoseFunctionTable.SetValue(opticalDensityIncrement, 0, self.opticalDensities[opticalDensityIncrement][0])
-      self.opticalDensityToDoseFunctionTable.SetValue(opticalDensityIncrement, 1, self.opticalDensities[opticalDensityIncrement][1])
+      self.opticalDensityToDoseFunctionTable.SetValue(opticalDensityIncrement, 0, opticalDensities[opticalDensityIncrement][0])
+      self.opticalDensityToDoseFunctionTable.SetValue(opticalDensityIncrement, 1, opticalDensities[opticalDensityIncrement][1])
       
     if hasattr(self, 'calculatedDoseLine'):
       self.calibrationCurveChart.RemovePlotInstance(self.calculatedDoseLine)
@@ -733,6 +776,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calculatedDoseLine.SetInputData(self.opticalDensityToDoseFunctionTable, 0, 1)
     self.calculatedDoseLine.SetColor(255, 0, 0, 255)
     self.calculatedDoseLine.SetWidth(2.0)
+    
+    
 
     # Show chart
     self.calibrationCurveChart.GetAxis(1).SetTitle('Optical Density| x - axis')
@@ -746,12 +791,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.renderWindow.Start()
     
   #------------------------------------------------------------------------------
-  # def meanSquaredError(self,applyFitFunction, opticalDensityArray): #MSE function for polynomial fitting
-    # sumMeanSquaredError = 0
-    # for i in xrange(len(opticalDensityArray)):
-      # sumMeanSquaredError += (opticalDensityArray[i][1] - applyFitFunction(opticalDensityArray[i][0]))**2
-      # #print "sumMeanSquaredError is ", sumMeanSquaredError
-    # return sumMeanSquaredError/(len(opticalDensityArray))
+  def meanSquaredErrorPoly(self,applyFitFunction, opticalDensityArray): #MSE function for polynomial fitting
+    sumMeanSquaredError = 0
+    for i in xrange(len(opticalDensityArray)):
+      sumMeanSquaredError += (opticalDensityArray[i][1] - applyFitFunction(opticalDensityArray[i][0]))**2
+      #print "sumMeanSquaredError is ", sumMeanSquaredError
+    return sumMeanSquaredError/(len(opticalDensityArray))
     
   def meanSquaredError(self, n, coeff):
     sumMeanSquaredError = 0
@@ -782,28 +827,26 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
         # Find x
     x = numpy.linalg.lstsq(matrixA,b)
     coefficients = x[0].tolist()
-    ##print "the coefficients to lstsq is ", coefficients 
     return coefficients 
         
-  def nonnegativeOD(self,OD):
+  def nonNegativeOpticalDensity(self,OD):
     minOD = min([od[0] for od in OD])
     for x in xrange(len(OD)):
       OD[x][0] -= minOD
     return OD
   
-  def findBestExponentValue(self):
+  def findBestFunctionCoefficients(self):
     bestN = [] #entries are [MSE, n, answer]
     
-    for n in xrange(200,501): #TODO second term should be 401
+    for n in xrange(100,401): 
       n/=100.0
       coeff = self.findCoefficients(n)
       MSE = self.meanSquaredError(n,coeff)
-      #print "new entry is: ", [MSE, n, coeff]
       bestN.append([MSE, n, coeff])
     
-    bestN.sort(key=lambda bestNentry: bestNentry[1]) #TODO there is an error in here 
-    bestN.reverse()
-    return bestN[0] 
+    bestN.sort(key=lambda bestNEntry: bestNEntry[0]) #TODO there is an error in here 
+    self.bestCoefficients = bestN[0]
+    return bestN[0]
 
     
   
