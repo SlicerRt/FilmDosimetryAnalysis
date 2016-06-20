@@ -512,20 +512,22 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   
   #------------------------------------------------------------------------------
   def onPerformCalibrationButton(self):
-    #print "onPerformCalibrationButton"
+    print "onPerformCalibrationButton \n"
     if self.lastAddedRoiNode is None or not hasattr(slicer.modules, 'cropvolume'):
       #TODO: Error about missing ROI
       return
       
-    #print "should be looping through ", self.step1_numberOfCalibrationFilmsSpinBox.value, " things" 
-    
-    #find mean value for flood field 
-    
+    # Get flood field image node 
     floodFieldCalibrationVolume = self.step1_floodFieldImageSelectorComboBox.currentNode()
+    # Crop flood field volume by last defined ROI 
+    cropVolumeLogic = slicer.modules.cropvolume.logic()
+    cropVolumeLogic.CropVoxelBased(self.lastAddedRoiNode, floodFieldCalibrationVolume, floodFieldCalibrationVolume)
+    
     imageStat = vtk.vtkImageAccumulate()
     imageStat.SetInputData(floodFieldCalibrationVolume.GetImageData())
     imageStat.Update()
     meanValueFloodField = imageStat.GetMean()[0]
+    print "meanValueFloodField from imageStat: ", meanValueFloodField
     self.calibrationValues.append([self.floodFieldAttributeValue, meanValueFloodField])
     self.measuredOpticalDensities = []
     #TODO check this OD calculation 
@@ -547,19 +549,19 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       imageStat.SetInputData(currentCalibrationVolume.GetImageData())
       imageStat.Update()
       meanValue = imageStat.GetMean()[0]
+      
       self.calibrationValues.append([meanValue, currentCalibrationVolumeDose])
       # Optical density calculation 
       opticalDensity = math.log10(meanValueFloodField/meanValue)
       
+      if opticalDensity < 0.0:
+        opticalDensity = 0.0
+      
       #x = optical density, y = dose  
       self.measuredOpticalDensities.append([opticalDensity, currentCalibrationVolumeDose])
-    
+      print "meanValue from imageStat: ", meanValue, "associated dose is ", currentCalibrationVolumeDose
       
-    #print "calibration values ", self.calibrationValues
-    #print "x = optical density, y = dose  "
-    
-    #######ASK KEVIN
-    #self.measuredOpticalDensities = self.nonNegativeOpticalDensity(self.measuredOpticalDensities) #TODO ask Kevin if this is an appropriate way of dealing with negative OD!
+   
 
     self.measuredOpticalDensities.sort(key=lambda doseODPair: doseODPair[1])
     #print "optical densities ", self.measuredOpticalDensities
@@ -744,7 +746,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Create and populate the calculated dose/OD curve with K function 
     #call function to find best coefficients
     
-    self.measuredOpticalDensities = self.nonNegativeOpticalDensity(self.measuredOpticalDensities)
+    
     
     self.bestCoefficients = self.findBestFunctionCoefficients()
     
@@ -813,27 +815,25 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   def findCoefficients(self,n):
     # Calculate matrix A 
     #print "findCoefficients"
-    matrixA = []
+    functionTermsMatrix = []
+    #opticalDensity
     for row in xrange(len(self.measuredOpticalDensities)):
-      OD = self.measuredOpticalDensities[row][0]
-      matrixA.append([1,OD,OD**n]) 
-    matrixA = numpy.asmatrix(matrixA)
-    #print matrixA
-    # Calculate vector b
-    b = []
+      opticalDensity = self.measuredOpticalDensities[row][0]
+      functionTermsMatrix.append([1,opticalDensity,opticalDensity**n]) 
+    functionTermsMatrix = numpy.asmatrix(functionTermsMatrix)
+    #print functionTermsMatrix
+    # Calculate constant term coefficient vector 
+    # functionOpticalDensityTerms
+    functionOpticalDensityTerms = []
     for row in xrange(len(self.measuredOpticalDensities)):
-      b+= [self.measuredOpticalDensities[row][1]]
-        #print "b is ", b
+      functionOpticalDensityTerms+= [self.measuredOpticalDensities[row][1]]
+        #print "functionOpticalDensityTerms is ", functionOpticalDensityTerms
         # Find x
-    x = numpy.linalg.lstsq(matrixA,b)
-    coefficients = x[0].tolist()
+        #functionConstantTerms
+    functionConstantTerms = numpy.linalg.lstsq(functionTermsMatrix,functionOpticalDensityTerms)
+    coefficients = functionConstantTerms[0].tolist()
     return coefficients 
         
-  def nonNegativeOpticalDensity(self,OD):
-    minOD = min([od[0] for od in OD])
-    for x in xrange(len(OD)):
-      OD[x][0] -= minOD
-    return OD
   
   def findBestFunctionCoefficients(self):
     bestN = [] #entries are [MSE, n, answer]
@@ -846,6 +846,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     
     bestN.sort(key=lambda bestNEntry: bestNEntry[0]) #TODO there is an error in here 
     self.bestCoefficients = bestN[0]
+    #print "best 10 coefficients are: \n", bestN[0:10]
+    
     return bestN[0]
 
     
