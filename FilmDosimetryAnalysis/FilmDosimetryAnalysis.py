@@ -89,13 +89,13 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Initiate and group together all panels
     self.step0_layoutSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step1_CalibrationCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step2_SelectROICollapsibleButton = ctk.ctkCollapsibleButton() #AR current 
+    self.step2_inputExperimentalDataCollapsibleButton = ctk.ctkCollapsibleButton() 
     self.testButton = ctk.ctkCollapsibleButton()
 
     self.collapsibleButtonsGroup = qt.QButtonGroup()
     self.collapsibleButtonsGroup.addButton(self.step0_layoutSelectionCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step1_CalibrationCollapsibleButton)
-    #self.collapsibleButtonsGroup.addButton(self.step2_SelectROICollapsibleButton)
+    self.collapsibleButtonsGroup.addButton(self.step2_inputExperimentalDataCollapsibleButton)
 
     self.collapsibleButtonsGroup.addButton(self.testButton)
 
@@ -149,7 +149,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Set up step panels
     self.setup_Step0_LayoutSelection()
     self.setup_step1_Calibration()
-    self.setup_step2_CalculateDose()
+    self.setup_step2_inputExperimentalData()
+    self.setup_step2_inputExperimentalData()
 
 
     if widgetClass:
@@ -334,13 +335,86 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_addRoiButton.connect('clicked()', self.onAddRoiButton)
     self.step1_performCalibrationButton.connect('clicked()', self.onPerformCalibrationButton)
 
-    self.sliceletPanelLayout.addStretch(1)
+    self.sliceletPanelLayout.addStretch(1) # TODO this may need to be moved 
 
   #------------------------------------------------------------------------------
-  def setup_step2_CalculateDose(self):
-    pass #TODO: Implement
+  def setup_step2_inputExperimentalData(self):
+  # Step 2: Load data panel
+    self.step2_inputExperimentalDataCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step2_inputExperimentalDataCollapsibleButton.text = "2. Input experimental film data"
+    self.sliceletPanelLayout.addWidget(self.step2_inputExperimentalDataCollapsibleButton)
+    
+    self.step2_loadExperimentalDataCollapsibleButtonLayout = qt.QFormLayout(self.step2_inputExperimentalDataCollapsibleButton)
+    self.step2_loadExperimentalDataCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
+    self.step2_loadExperimentalDataCollapsibleButtonLayout.setSpacing(4)
 
+    # Load data label
+    self.step2_LoadDataLabel = qt.QLabel("Load all DICOM data involved in the workflow.\nNote: Can return to this step later if more data needs to be loaded")
+    self.step2_LoadDataLabel.wordWrap = True
+    self.step2_loadExperimentalDataCollapsibleButtonLayout.addRow(self.step2_LoadDataLabel)
 
+    # Load DICOM data button
+    self.step2_showDicomBrowserButton = qt.QPushButton("Load DICOM data")
+    self.step2_showDicomBrowserButton.toolTip = "Load planning data (CT, dose, structures)"
+    self.step2_showDicomBrowserButton.name = "showDicomBrowserButton"
+    self.step2_loadExperimentalDataCollapsibleButtonLayout.addRow(self.step2_showDicomBrowserButton)
+
+    # Load non-DICOM data button
+    self.step2_loadNonDicomDataButton = qt.QPushButton("Load experimental film data from file")
+    self.step2_loadNonDicomDataButton.toolTip = "Load experimental film image from PNG, etc."
+    self.step2_loadNonDicomDataButton.name = "loadNonDicomDataButton"
+    self.step2_loadExperimentalDataCollapsibleButtonLayout.addRow(self.step2_loadNonDicomDataButton)
+    
+    # Add empty row
+    self.step2_loadExperimentalDataCollapsibleButtonLayout.addRow(' ', None)
+    
+    # Assign loaded data to roles
+    self.step2_AssignDataLabel = qt.QLabel("Assign loaded data to roles.\nNote: If this selection is changed later then all the following steps need to be performed again")
+    self.step2_AssignDataLabel.wordWrap = True
+    self.step2_loadExperimentalDataCollapsibleButtonLayout.addWidget(self.step2_AssignDataLabel)
+    
+    # Choose the experimental flood field image
+    self.step2_floodFieldImageSelectorComboBox = slicer.qMRMLNodeComboBox()
+    self.step2_floodFieldImageSelectorComboBox.nodeTypes = ["vtkMRMLScalarVolumeNode"]
+    self.step2_floodFieldImageSelectorComboBox.addEnabled = False
+    self.step2_floodFieldImageSelectorComboBox.removeEnabled = False
+    self.step2_floodFieldImageSelectorComboBox.setMRMLScene( slicer.mrmlScene )
+    self.step2_floodFieldImageSelectorComboBox.setToolTip( "--pick the experimental flood field image file--." ) #TODO
+    self.step2_loadExperimentalDataCollapsibleButtonLayout.addRow('Experimental flood field image: ', self.step2_floodFieldImageSelectorComboBox  )
+ 
+    # Choose the experimental film image
+    self.step2_experimentalFilmSelectorComboBox = slicer.qMRMLNodeComboBox()
+    self.step2_experimentalFilmSelectorComboBox.nodeTypes = ["vtkMRMLScalarVolumeNode"]
+    self.step2_experimentalFilmSelectorComboBox.addEnabled = False
+    self.step2_experimentalFilmSelectorComboBox.removeEnabled = False
+    self.step2_experimentalFilmSelectorComboBox.setMRMLScene( slicer.mrmlScene )
+    self.step2_experimentalFilmSelectorComboBox.setToolTip( "--pick the experimental film image file--." ) #TODO
+    self.step2_loadExperimentalDataCollapsibleButtonLayout.addRow('Experimental film image: ', self.step2_experimentalFilmSelectorComboBox  )
+    
+    # PLANDOSE node selector
+    self.planDoseSelector = slicer.qMRMLNodeComboBox()
+    self.planDoseSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
+    self.planDoseSelector.addEnabled = False
+    self.planDoseSelector.removeEnabled = False
+    self.planDoseSelector.setMRMLScene( slicer.mrmlScene )
+    self.planDoseSelector.setToolTip( "Pick the planning dose volume." )
+    self.step2_loadExperimentalDataCollapsibleButtonLayout.addRow('Plan dose volume: ', self.planDoseSelector)
+    
+    # Experimental film resolution mm/pixel
+    self.step2_resolutionLineEdit = qt.QLineEdit()
+    self.step2_resolutionLineEdit.toolTip = "Experimental film resultion (mm/pixel)"
+    self.step2_loadExperimentalDataCollapsibleButtonLayout.addRow('Resolution (pixel/mm): ', self.step2_resolutionLineEdit)
+    
+    # Get plane for RT plan
+    self.step2_getPlaneButton = qt.QPushButton("Get plane for RT plan")
+    self.step2_getPlaneButton.toolTip = "Get plane for experimental film image"
+    self.step2_getPlaneButton.name = "getPlaneButton"
+    self.step2_loadExperimentalDataCollapsibleButtonLayout.addRow(self.step2_getPlaneButton)
+    
+    
+    
+    
+    self.sliceletPanelLayout.addStretch(1) # TODO this gets moved to whichever is the current last panel 
   #
   # -----------------------
   # Event handler functions
@@ -793,12 +867,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.renderWindow.Start()
     
   #------------------------------------------------------------------------------
-  def meanSquaredErrorPoly(self,applyFitFunction, opticalDensityArray): #MSE function for polynomial fitting
-    sumMeanSquaredError = 0
-    for i in xrange(len(opticalDensityArray)):
-      sumMeanSquaredError += (opticalDensityArray[i][1] - applyFitFunction(opticalDensityArray[i][0]))**2
-      #print "sumMeanSquaredError is ", sumMeanSquaredError
-    return sumMeanSquaredError/(len(opticalDensityArray))
+  # def meanSquaredErrorPoly(self,applyFitFunction, opticalDensityArray): #MSE function for polynomial fitting
+    # sumMeanSquaredError = 0
+    # for i in xrange(len(opticalDensityArray)):
+      # sumMeanSquaredError += (opticalDensityArray[i][1] - applyFitFunction(opticalDensityArray[i][0]))**2
+      # #print "sumMeanSquaredError is ", sumMeanSquaredError
+    # return sumMeanSquaredError/(len(opticalDensityArray))
     
   def meanSquaredError(self, n, coeff):
     sumMeanSquaredError = 0
@@ -838,8 +912,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   def findBestFunctionCoefficients(self):
     bestN = [] #entries are [MSE, n, answer]
     
-    for n in xrange(100,401): 
-      n/=100.0
+    for n in xrange(1000,4001): 
+      n/=1000.0
       coeff = self.findCoefficients(n)
       MSE = self.meanSquaredError(n,coeff)
       bestN.append([MSE, n, coeff])
@@ -847,6 +921,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     bestN.sort(key=lambda bestNEntry: bestNEntry[0]) #TODO there is an error in here 
     self.bestCoefficients = bestN[0]
     #print "best 10 coefficients are: \n", bestN[0:10]
+    print "best coefficients ", bestN[0]
     
     return bestN[0]
 
