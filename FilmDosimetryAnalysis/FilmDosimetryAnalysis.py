@@ -118,6 +118,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calibrationVolumeName = "CalibrationVolume"
     self.exportedSceneFileName = slicer.app.temporaryPath + "/exportMrmlScene.mrml"
     self.savedCalibrationVolumeFolderName = "savedCalibrationVolumes"
+    self.calibrationFunctionName = "DoseVSopticalDensity" 
     self.savedFolderPath = slicer.app.temporaryPath + "/" + self.savedCalibrationVolumeFolderName
     self.maxCalibrationVolumeSelectorsInt = 10
     self.fileLoadingSuccessMessageHeader = "Calibration image loading"
@@ -209,7 +210,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   def setup_step1_Calibration(self):
     # Step 1: Load data panel
     self.step1_CalibrationCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step1_CalibrationCollapsibleButton.text = "1. Calibration (optional)"
+    self.step1_CalibrationCollapsibleButton.text = "1. Calibration"
     self.sliceletPanelLayout.addWidget(self.step1_CalibrationCollapsibleButton)
 
     # Step 1 main background layout
@@ -344,7 +345,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_2_calibrationRoutineLayout.setContentsMargins(12,4,4,4)
     self.step1_2_calibrationRoutineLayout.setSpacing(4)
     
-        # Add ROI button
+    # Add ROI button
     self.step1_addRoiButton = qt.QPushButton("Add region")
     self.step1_addRoiButton.setIcon(qt.QIcon(":/Icons/AnnotationROIWithArrow.png"))
     self.step1_addRoiButton.toolTip = "Add ROI (region of interest) that is considered when measuring dose in the calibration images\n\nOnce activated, click in the center of the region to be used for calibration, then do another click to one of the corners. After that the ROI appears and can be adjusted using the colored handles."
@@ -359,6 +360,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # TODO add a function for onValueChanged or whatever
     self.step1_calibrationFunctionLabel = qt.QLabel('Optical density to dose calibration function: ')
     self.step1_2_calibrationRoutineLayout.addWidget(self.step1_calibrationFunctionLabel)
+    
+    self.blankLabel = qt.QLabel('')
+    self.step1_2_calibrationRoutineLayout.addWidget(self.blankLabel)
         
     # Dose calibration function input fields
     self.step1_calibrationFunctionLayout = qt.QGridLayout() 
@@ -386,8 +390,19 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_calibrationFunctionLayout.addWidget(self.step1_calibrationFunctionOrder2LineEdit,0,5)
     self.step1_calibrationFunctionLayout.addWidget(self.step1_calibrationFunctionOrder2Label,0,6)
     self.step1_calibrationFunctionLayout.addWidget(self.step1_calibrationFunctionOrder3LineEdit,1,1)
-    
     self.step1_2_calibrationRoutineLayout.addLayout(self.step1_calibrationFunctionLayout)
+    
+    self.step1_2_calibrationRoutineLayout.addWidget(self.blankLabel)
+    
+    # Save calibration function button
+    self.step1_saveCalibrationButton = qt.QPushButton("Save calibration function")
+    self.step1_saveCalibrationButton.toolTip = "Save calibration function for later use"
+    self.step1_2_calibrationRoutineLayout.addWidget(self.step1_saveCalibrationButton)
+    
+    # Load calibration function button
+    self.step1_loadCalibrationButton = qt.QPushButton("Load calibration function")
+    self.step1_loadCalibrationButton.toolTip = "Loads calibration function \n Function can also be added into text fields"
+    self.step1_2_calibrationRoutineLayout.addWidget(self.step1_loadCalibrationButton)
     
 
     self.step1_bottomCalibrationSubLayout.addStretch(1)
@@ -735,16 +750,17 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # TODO fix bug in here 
   def onTextChanged(self):
     print "onTextChanged"
-    print type(float(self.step1_calibrationFunctionOrder0LineEdit.text))
-    print "entry to change is ", self.bestCoefficients[2][0]
+    #print type(float(self.step1_calibrationFunctionOrder0LineEdit.text))
+    #print "entry to change is ", self.bestCoefficients[2][0]
+    if not (self.step1_calibrationFunctionOrder0LineEdit.text == ''):
+      self.bestCoefficients[2][0] = round(float(self.step1_calibrationFunctionOrder0LineEdit.text),5)
+    if not (self.step1_calibrationFunctionOrder1LineEdit.text  == ''):  
+      self.bestCoefficients[2][1] = round(float(self.step1_calibrationFunctionOrder1LineEdit.text),5)
+    if not (self.step1_calibrationFunctionOrder2LineEdit.text == ''):
+      self.bestCoefficients[2][2] = round(float(self.step1_calibrationFunctionOrder2LineEdit.text),5)
+    if not (self.step1_calibrationFunctionOrder3LineEdit.text == ''):
+      self.bestCoefficients[1] = round(float(self.step1_calibrationFunctionOrder3LineEdit.text ),5)
     
-    try: 
-      self.bestCoefficients[2][0] = float(self.step1_calibrationFunctionOrder0LineEdit.text)
-      self.bestCoefficients[2][1] = float(self.step1_calibrationFunctionOrder1LineEdit.text)
-      self.bestCoefficients[2][2] = float(self.step1_calibrationFunctionOrder2LineEdit.text)
-      self.bestCoefficients[1] = float(self.step1_calibrationFunctionOrder3LineEdit.text ) 
-    except ValueError:
-      print "couldn't do it sorry babs" 
   #------------------------------------------------------------------------------
   def fitOpticalDensityFunction(self, doseVSOpticalDensityNestedList): 
     print "fitOpticalDensityFunction"
@@ -936,13 +952,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.renderWindow.Start()
     
   #------------------------------------------------------------------------------
-  # def meanSquaredErrorPoly(self,applyFitFunction, opticalDensityArray): #MSE function for polynomial fitting
-    # sumMeanSquaredError = 0
-    # for i in xrange(len(opticalDensityArray)):
-      # sumMeanSquaredError += (opticalDensityArray[i][1] - applyFitFunction(opticalDensityArray[i][0]))**2
-      # #print "sumMeanSquaredError is ", sumMeanSquaredError
-    # return sumMeanSquaredError/(len(opticalDensityArray))
-    
+
   def meanSquaredError(self, n, coeff):
     sumMeanSquaredError = 0
     for i in xrange(len(self.measuredOpticalDensities)):
@@ -999,7 +1009,50 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     
     return bestN[0]
 
+  #------------------------------------------------------------------------------
+  # def exportCalibrationToCSV(self):
+    # import csv
+   
+    # self.outputDir = qt.QFileDialog.getExistingDirectory(0, 'Open dir')
+    # if not os.access(self.outputDir, os.F_OK):
+      # os.mkdir(self.outputDir)
+
+    # # Assemble file name for calibration curve points file
+    # from time import gmtime, strftime
+    # fileName = self.outputDir + '/' + strftime("%Y%m%d_%H%M%S_", gmtime()) + self.calibrationFunctionName
+
+    # # Write calibration curve points CSV file
+    # message = ''
+    # if self.opticalAttenuationVsDoseFunction != None:
+      # message = 'Optical attenuation to dose values saved in file\n' + fileName + '\n\n'
+      # with open(fileName, 'w') as fp:
+        # csvWriter = csv.writer(fp, delimiter=',', lineterminator='\n')
+        # data = [['OpticalAttenuation','Dose']]
+        # for oaVsDosePoint in self.opticalAttenuationVsDoseFunction:
+          # data.append(oaVsDosePoint)
+        # csvWriter.writerows(data)
+
+    # # Assemble file name for polynomial coefficients
+    # if not hasattr(self, 'calibrationPolynomialCoefficients'):
+      # message += 'Calibration polynomial has not been fitted to the curve yet!\nClick Fit polynomial in step 4/B to do the fitting.\n'
+      # return message
+    # fileName = self.outputDir + '/' + strftime("%Y%m%d_%H%M%S_", gmtime()) + 'CalibrationPolynomialCoefficients.csv'
+
+    # # Write calibration curve points CSV file
+    # message += 'Calibration polynomial coefficients saved in file\n' + fileName + '\n'
+    # with open(fileName, 'w') as fp:
+      # csvWriter = csv.writer(fp, delimiter=',', lineterminator='\n')
+      # data = [['Order','Coefficient']]
+      # numOfOrders = len(self.calibrationPolynomialCoefficients)
+      # # Highest order first in the coefficients list
+      # for orderIndex in xrange(numOfOrders):
+        # data.append([numOfOrders-orderIndex-1, self.calibrationPolynomialCoefficients[orderIndex]])
+      # if hasattr(self,'fittingResiduals'):
+        # data.append(['Residuals', self.fittingResiduals[0]])
+      # csvWriter.writerows(data)
     
+    # return message  
+  
   
   
   
