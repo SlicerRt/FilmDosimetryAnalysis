@@ -118,7 +118,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calibrationVolumeName = "CalibrationVolume"
     self.exportedSceneFileName = slicer.app.temporaryPath + "/exportMrmlScene.mrml"
     self.savedCalibrationVolumeFolderName = "savedCalibrationVolumes"
-    self.calibrationFunctionName = "DoseVSopticalDensity" 
+    self.calibrationFunctionFileName = "doseVSopticalDensity.txt" 
     self.savedFolderPath = slicer.app.temporaryPath + "/" + self.savedCalibrationVolumeFolderName
     self.maxCalibrationVolumeSelectorsInt = 10
     self.fileLoadingSuccessMessageHeader = "Calibration image loading"
@@ -1010,48 +1010,36 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     return bestN[0]
 
   #------------------------------------------------------------------------------
-  # def exportCalibrationToCSV(self):
-    # import csv
+  def exportCalibrationToCSV(self):
+    import csv
    
-    # self.outputDir = qt.QFileDialog.getExistingDirectory(0, 'Open dir')
-    # if not os.access(self.outputDir, os.F_OK):
-      # os.mkdir(self.outputDir)
+    self.outputDir = qt.QFileDialog.getExistingDirectory(0, 'Open dir')
+    if not os.access(self.outputDir, os.F_OK):
+      os.mkdir(self.outputDir)
 
-    # # Assemble file name for calibration curve points file
-    # from time import gmtime, strftime
-    # fileName = self.outputDir + '/' + strftime("%Y%m%d_%H%M%S_", gmtime()) + self.calibrationFunctionName
-
-    # # Write calibration curve points CSV file
-    # message = ''
-    # if self.opticalAttenuationVsDoseFunction != None:
-      # message = 'Optical attenuation to dose values saved in file\n' + fileName + '\n\n'
-      # with open(fileName, 'w') as fp:
-        # csvWriter = csv.writer(fp, delimiter=',', lineterminator='\n')
-        # data = [['OpticalAttenuation','Dose']]
-        # for oaVsDosePoint in self.opticalAttenuationVsDoseFunction:
-          # data.append(oaVsDosePoint)
-        # csvWriter.writerows(data)
-
-    # # Assemble file name for polynomial coefficients
-    # if not hasattr(self, 'calibrationPolynomialCoefficients'):
-      # message += 'Calibration polynomial has not been fitted to the curve yet!\nClick Fit polynomial in step 4/B to do the fitting.\n'
-      # return message
-    # fileName = self.outputDir + '/' + strftime("%Y%m%d_%H%M%S_", gmtime()) + 'CalibrationPolynomialCoefficients.csv'
-
-    # # Write calibration curve points CSV file
-    # message += 'Calibration polynomial coefficients saved in file\n' + fileName + '\n'
-    # with open(fileName, 'w') as fp:
-      # csvWriter = csv.writer(fp, delimiter=',', lineterminator='\n')
-      # data = [['Order','Coefficient']]
-      # numOfOrders = len(self.calibrationPolynomialCoefficients)
-      # # Highest order first in the coefficients list
-      # for orderIndex in xrange(numOfOrders):
-        # data.append([numOfOrders-orderIndex-1, self.calibrationPolynomialCoefficients[orderIndex]])
-      # if hasattr(self,'fittingResiduals'):
-        # data.append(['Residuals', self.fittingResiduals[0]])
-      # csvWriter.writerows(data)
+    # Assemble file name for calibration curve points file
+    from time import gmtime, strftime
+    fileName = self.outputDir + '/' + strftime("%Y%m%d_%H%M%S_", gmtime()) + self.calibrationFunctionFileName
     
-    # return message  
+    if not os.path.isfile(fileName):
+      f = open(fileName, 'w')
+      f.close()
+    f = open(fileName, 'r+')
+    f.seek(0)
+    f.truncate()
+    self.recSave(f, self.bestCoefficients) 
+    f.close()
+  
+  def recSave(self, f, lis):
+    for x in lis:
+      if x is not None:
+        if type(x) is not list:
+          #print x
+          f.write(str(x) + '\n')
+        else:
+          self.recSave(f, x)
+
+
   
   
   
