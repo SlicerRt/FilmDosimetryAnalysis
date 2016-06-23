@@ -357,7 +357,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_2_calibrationRoutineLayout.addWidget(self.step1_performCalibrationButton)
     
     # Calibration function 
-    # TODO add a function for onValueChanged or whatever
     self.step1_calibrationFunctionLabel = qt.QLabel('Optical density to dose calibration function: ')
     self.step1_2_calibrationRoutineLayout.addWidget(self.step1_calibrationFunctionLabel)
     
@@ -377,7 +376,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_calibrationFunctionOrder1Label = qt.QLabel(' OD + ')
     self.step1_calibrationFunctionOrder2LineEdit = qt.QLineEdit()
     self.step1_calibrationFunctionOrder2LineEdit.maximumWidth = 64
-    self.step1_calibrationFunctionOrder2Label = qt.QLabel(' OD ^ ') #TODO add another lineedit
+    self.step1_calibrationFunctionOrder2Label = qt.QLabel(' OD ^ ') 
     self.step1_calibrationFunctionOrder3LineEdit = qt.QLineEdit()
     self.step1_calibrationFunctionOrder3LineEdit.maximumWidth = 64
     
@@ -423,8 +422,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_calibrationFunctionOrder1LineEdit.connect('textChanged(QString)', self.onTextChanged)
     self.step1_calibrationFunctionOrder2LineEdit.connect('textChanged(QString)', self.onTextChanged)
     self.step1_calibrationFunctionOrder3LineEdit.connect('textChanged(QString)', self.onTextChanged)
-    
-    #TODO add onvaluechanged events for all of the lineEdits, fill LineEdits when calibration is performed
+    self.step1_loadCalibrationButton.connect('clicked()', self.onLoadCalibrationFunctionButton) 
     
 
     self.sliceletPanelLayout.addStretch(1) # TODO this may need to be moved 
@@ -746,12 +744,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_calibrationFunctionOrder3LineEdit.text = str(self.bestCoefficients[1])
     
 #------------------------------------------------------------------------------
-    
-    # TODO fix bug in here 
+     
   def onTextChanged(self):
-    print "onTextChanged"
-    #print type(float(self.step1_calibrationFunctionOrder0LineEdit.text))
-    #print "entry to change is ", self.bestCoefficients[2][0]
     if not (self.step1_calibrationFunctionOrder0LineEdit.text == ''):
       self.bestCoefficients[2][0] = round(float(self.step1_calibrationFunctionOrder0LineEdit.text),5)
     if not (self.step1_calibrationFunctionOrder1LineEdit.text  == ''):  
@@ -960,7 +954,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       #print "  (self.measuredOpticalDensities[i][1]): ", (self.measuredOpticalDensities[i][1], "newY: ", newY)    
       sumMeanSquaredError += ((self.measuredOpticalDensities[i][1] - newY)**2) #TODO forgot to square this omfg
       #print "sumMeanSquaredError is ", sumMeanSquaredError
-    return sumMeanSquaredError/(len(self.measuredOpticalDensities))
+    return round(sumMeanSquaredError/(len(self.measuredOpticalDensities)),5)
     
   def applyFitFunction(self, OD, n, coeff):
     return coeff[0] + coeff[1]*OD + coeff[2]*(OD**n)
@@ -1011,6 +1005,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   def exportCalibrationToCSV(self):
+  
+  #TODO change name, create success message 
     import csv
    
     self.outputDir = qt.QFileDialog.getExistingDirectory(0, 'Open dir')
@@ -1039,11 +1035,29 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
         else:
           self.recSave(f, x)
 
+  def onLoadCalibrationFunctionButton(self):
+    savedFilePath = qt.QFileDialog.getOpenFileName(0, 'Open file')
+    self.loadCalibrationFunction(savedFilePath)
+          
+  def loadCalibrationFunction(self, fileName):
+    print "loadCalibrationFunction"
+    f = open(fileName, 'r+')
+    content = f.readlines()
+    if len(content)!= 5:
+      qt.QMessageBox.critical(None, 'Error', "Invalid function file")
+      
+    self.bestCoefficients[0] = float(content[0].rstrip())
+    self.bestCoefficients[1] = float(content[1].rstrip())
+    self.step1_calibrationFunctionOrder3LineEdit.text = content[1].rstrip()
+    self.bestCoefficients[2][0] = float(content[2].rstrip())
+    self.step1_calibrationFunctionOrder0LineEdit.text = content[2].rstrip()
+    self.bestCoefficients[2][1] = float(content[3].rstrip())
+    self.step1_calibrationFunctionOrder1LineEdit.text = content[3].rstrip()
+    self.bestCoefficients[2][2] = float(content[4].rstrip()) 
+    self.step1_calibrationFunctionOrder2LineEdit.text = content[4].rstrip()
 
-  
-  
-  
-  
+    f.close()
+    
   #
   # -------------------------
   # Testing related functions
