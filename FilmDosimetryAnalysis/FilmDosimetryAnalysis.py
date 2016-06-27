@@ -455,6 +455,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step2_loadNonDicomDataButton.name = "loadNonDicomDataButton"
     self.step2_loadExperimentalDataCollapsibleButtonLayout.addRow(self.step2_loadNonDicomDataButton)
     
+    # Add ROI button
+    self.step2_addRoiButton = qt.QPushButton("Add region")
+    self.step2_addRoiButton.setIcon(qt.QIcon(":/Icons/AnnotationROIWithArrow.png"))
+    self.step2_addRoiButton.toolTip = "Add ROI (region of interest) that is considered when measuring dose in the calibration images\n\nOnce activated, click in the center of the region to be used for calibration, then do another click to one of the corners. After that the ROI appears and can be adjusted using the colored handles."
+    self.step2_loadExperimentalDataCollapsibleButtonLayout.addWidget(self.step2_addRoiButton)
+    
     # Add empty row
     self.step2_loadExperimentalDataCollapsibleButtonLayout.addRow(' ', None)
     
@@ -507,6 +513,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Connections
     self.step2_loadNonDicomDataButton.connect('clicked()', self.onLoadImageFilesButton)  
     self.step2_showDicomBrowserButton.connect('clicked()', self.onDicomLoad)  
+    self.step2_addRoiButton.connect('clicked()', self.onAddRoiButton)
+
   #
   # -----------------------
   # Event handler functions
