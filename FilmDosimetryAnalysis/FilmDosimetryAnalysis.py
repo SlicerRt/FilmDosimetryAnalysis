@@ -90,12 +90,14 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step0_layoutSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step1_CalibrationCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step2_inputExperimentalDataCollapsibleButton = ctk.ctkCollapsibleButton() 
+    self.step3_applyCalibrationCollapsibleButton = ctk.ctkCollapsibleButton()
     self.testButton = ctk.ctkCollapsibleButton()
 
     self.collapsibleButtonsGroup = qt.QButtonGroup()
     self.collapsibleButtonsGroup.addButton(self.step0_layoutSelectionCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step1_CalibrationCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step2_inputExperimentalDataCollapsibleButton)
+    self.collapsibleButtonsGroup.addButton(self.step3_applyCalibrationCollapsibleButton)
 
     self.collapsibleButtonsGroup.addButton(self.testButton)
 
@@ -151,7 +153,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.setup_Step0_LayoutSelection()
     self.setup_step1_Calibration()
     self.setup_step2_inputExperimentalData()
-    self.setup_step2_inputExperimentalData()
+    self.setup_step3_applyCalibration()
 
 
     if widgetClass:
@@ -172,6 +174,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_calibrationFunctionOrder3LineEdit.disconnect('textChanged()', self.onTextChanged)
     self.step2_loadNonDicomDataButton.disconnect('clicked()', self.onLoadImageFilesButton)
     self.step2_showDicomBrowserButton.disconnect('clicked()', self.onDicomLoad)  
+    self.step3_applyCalibrationButton.disconnect('clicked()', self.onApplyCalibrationButton) 
 
   #------------------------------------------------------------------------------
   def setup_Step0_LayoutSelection(self):
@@ -273,8 +276,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_floodFieldImageSelectorComboBoxLayout = qt.QHBoxLayout()
     self.step1_floodFieldImageSelectorComboBox = slicer.qMRMLNodeComboBox()
     self.step1_floodFieldImageSelectorComboBox.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    self.step1_floodFieldImageSelectorComboBox.addEnabled = False
-    self.step1_floodFieldImageSelectorComboBox.removeEnabled = False
+    self.step1_floodFieldImageSelectorComboBox.addEnabled = True
+    self.step1_floodFieldImageSelectorComboBox.removeEnabled = True
     self.step1_floodFieldImageSelectorComboBox.setMRMLScene( slicer.mrmlScene )
     self.step1_floodFieldImageSelectorComboBox.setToolTip( "--pick the flood field image file-- CHANGE THIS." ) #TODO
     self.step1_floodFieldImageSelectorComboBoxLabel = qt.QLabel('Flood field image: ')
@@ -422,8 +425,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_calibrationFunctionOrder2LineEdit.connect('textChanged(QString)', self.onTextChanged)
     self.step1_calibrationFunctionOrder3LineEdit.connect('textChanged(QString)', self.onTextChanged)
     self.step1_loadCalibrationButton.connect('clicked()', self.onLoadCalibrationFunctionButton) 
-    
-    self.sliceletPanelLayout.addStretch(1) # TODO this may need to be moved 
 
   #------------------------------------------------------------------------------
   def setup_step2_inputExperimentalData(self):
@@ -507,16 +508,33 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step2_getPlaneButton = qt.QPushButton("Get plane for RT plan")
     self.step2_getPlaneButton.toolTip = "Get plane for experimental film image"
     self.step2_getPlaneButton.name = "getPlaneButton"
-    self.step2_loadExperimentalDataCollapsibleButtonLayout.addWidget(self.step2_getPlaneButton)
-    
-    
-    self.sliceletPanelLayout.addStretch(1) # TODO this gets moved to whichever is the current last panel 
+    self.step2_loadExperimentalDataCollapsibleButtonLayout.addWidget(self.step2_getPlaneButton) 
     
     # Connections
     self.step2_loadNonDicomDataButton.connect('clicked()', self.onLoadImageFilesButton)  
     self.step2_showDicomBrowserButton.connect('clicked()', self.onDicomLoad)  
     self.step2_addRoiButton.connect('clicked()', self.onAddRoiButton)
-
+    
+    
+  #------------------------------------------------------------------------------
+  def setup_step3_applyCalibration(self):
+  # Step 2: Load data panel
+    self.step3_applyCalibrationCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step3_applyCalibrationCollapsibleButton.text = "3. Apply calibration"
+    self.sliceletPanelLayout.addWidget(self.step3_applyCalibrationCollapsibleButton)
+    
+    self.step3_applyCalibrationCollapsibleButtonLayout = qt.QVBoxLayout(self.step3_applyCalibrationCollapsibleButton)
+    self.step3_applyCalibrationCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
+    self.step3_applyCalibrationCollapsibleButtonLayout.setSpacing(4)
+    self.sliceletPanelLayout.addStretch(1) # TODO this may need to be moved 
+    
+    # Apply calibration button
+    self.step3_applyCalibrationButton = qt.QPushButton("Apply calibration function")
+    self.step3_applyCalibrationButton.toolTip = "Apply calibration to experimental film."
+    self.step3_applyCalibrationCollapsibleButtonLayout.addWidget(self.step3_applyCalibrationButton)
+    
+    # Connections
+    self.step3_applyCalibrationButton.connect('clicked()', self.onApplyCalibrationButton) 
   #
   # -----------------------
   # Event handler functions
@@ -1078,9 +1096,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     print "volumeMatrix shape is :", volumeMatrix.shape 
     return volumeMatrix
     
-  def onCalculateDoseFromFilm(self):
+  def calulateDoseFromFilm(self, experimentalFilmVolume):
   
-    print "onCalculateDoseFromFilm"
+    print "calulateDoseFromFilm"
       
     if self.lastAddedRoiNode is None or not hasattr(slicer.modules, 'cropvolume'):
       #TODO: Error about missing ROI
@@ -1098,17 +1116,34 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     meanValueFloodField = imageStat.GetMean()[0]
     print "meanValueFloodField from imageStat: ", meanValueFloodField
     
-    
-    
-    experimentalFilmVolume = self.step2_experimentalFilmSelectorComboBox.currentNode()
     experimentalFilmMatrix = self.volumeToMatrix(experimentalFilmVolume)
     
     print "got experimentalFilmMatrix"
 
-     ###TODO  the problem is that the wrong nodes are being used in the flood and experimental film part 
-    
-    
+     ###TODO  every element in the step2_loadExperimentalDataCollapsibleButtonLayout is non-responsive 
+      
+    doseMatrix = numpy.zeros(shape = experimentalFilmMatrix.shape)
+     
+    for experimentalFilmRow in range(len(experimentalFilmMatrix)):
+      for experimentalFilmPixel in range(len(experimentalFilmRow)):
+        # Find pixel optical density
+        doseMatrix[experimentalFilmRow][experimentalFilmPixel] = math.log10(meanValueFloodField/experimentalFilmMatrix[experimentalFilmRow][experimentalFilmPixel])
+        
+        #[MSE, n, coeff]
+        doseMatrix[experimentalFilmRow][experimentalFilmPixel] = self.applyFitFunction( doseMatrix[experimentalFilmRow][experimentalFilmPixel], self.bestCoefficients[1], self.bestCoefficients[2])
+        
+        
+        
+        # Find dose from function 
   
+  def onApplyCalibrationButton(self):
+    print "onApplyCalibrationButton"
+    experimentalFilmVolume = self.step2_experimentalFilmSelectorComboBox.currentNode()
+    #TODO register film to DICOM plan 
+    
+    #self.calulateDoseFromFilm(experimentalFilmVolume)
+    
+    
     
   
     
