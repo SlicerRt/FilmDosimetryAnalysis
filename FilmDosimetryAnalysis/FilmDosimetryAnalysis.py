@@ -448,7 +448,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step2_floodFieldImageSelectorComboBox.addEnabled = False
     self.step2_floodFieldImageSelectorComboBox.removeEnabled = False
     self.step2_floodFieldImageSelectorComboBox.setMRMLScene( slicer.mrmlScene )
-    self.step2_floodFieldImageSelectorComboBox.setToolTip( "--select the flood field image file--" ) #TODO
+    self.step2_floodFieldImageSelectorComboBox.setToolTip( "--select the flood field image file--" ) 
     self.step2_floodFieldImageSelectorComboBoxLabel = qt.QLabel('Experimental Flood field image: ')
     self.step2_floodFieldImageSelectorComboBoxLayout.addWidget(self.step2_floodFieldImageSelectorComboBoxLabel)
     self.step2_floodFieldImageSelectorComboBoxLayout.addWidget(self.step2_floodFieldImageSelectorComboBox)
@@ -753,7 +753,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   def onPerformCalibrationButton(self):
     print "onPerformCalibrationButton \n"
     if self.lastAddedRoiNode is None or not hasattr(slicer.modules, 'cropvolume'):
-      #TODO: Error about missing ROI
+      qt.QMessageBox.critical(None, 'Error', "Missing ROI selector")
       return
 
     # Get flood field image node
@@ -954,10 +954,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calibrationCurveDataTable = vtk.vtkTable()
     calibrationNumberOfRows = len(self.measuredOpticalDensities)
 
-    opticalDensityArray = vtk.vtkDoubleArray()
+    opticalDensityArray = vtk.vtkcalculatedDoseDoubleArray()
     opticalDensityArray.SetName("optical density")
     self.calibrationCurveDataTable.AddColumn(opticalDensityArray)
-    dose_cGyCalibrationCurveArray = vtk.vtkDoubleArray()
+    dose_cGyCalibrationCurveArray = vtk.vtkcalculatedDoseDoubleArray()
     dose_cGyCalibrationCurveArray.SetName("dose (cGy) (measured)")
     self.calibrationCurveDataTable.AddColumn(dose_cGyCalibrationCurveArray)
     self.calibrationCurveDataTable.SetNumberOfRows(calibrationNumberOfRows)
@@ -991,10 +991,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Create plot for dose calibration fitted curve
     self.opticalDensityToDoseFunctionTable = vtk.vtkTable()
     opticalDensityNumberOfRows = len(opticalDensities)
-    opticalDensityCalculatedArray = vtk.vtkDoubleArray()
+    opticalDensityCalculatedArray = vtk.vtkcalculatedDoseDoubleArray()
     opticalDensityCalculatedArray.SetName("opticalDensities")
     self.opticalDensityToDoseFunctionTable.AddColumn(opticalDensityCalculatedArray)
-    dose_cGyCalculatedArray = vtk.vtkDoubleArray()
+    dose_cGyCalculatedArray = vtk.vtkcalculatedDoseDoubleArray()
     dose_cGyCalculatedArray.SetName("optical density calculated")
     self.opticalDensityToDoseFunctionTable.AddColumn(dose_cGyCalculatedArray)
 
@@ -1029,15 +1029,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     sumMeanSquaredError = 0
     for i in xrange(len(self.measuredOpticalDensities)):
       newY = self.applyFitFunction(self.measuredOpticalDensities[i][0], n, coeff)
-      #print "  (self.measuredOpticalDensities[i][1]): ", (self.measuredOpticalDensities[i][1], "newY: ", newY)
-      sumMeanSquaredError += ((self.measuredOpticalDensities[i][1] - newY)**2) #TODO forgot to square this omfg
-      #print "sumMeanSquaredError is ", sumMeanSquaredError
+      sumMeanSquaredError += ((self.measuredOpticalDensities[i][1] - newY)**2) 
     return round(sumMeanSquaredError/(len(self.measuredOpticalDensities)),5)
 
-  def applyFitFunction(self, OD, bestCoefficients):
-    #(self, OD, n, coeff)
-    n = bestCoefficients[1]
-    coeff = bestCoefficients[2]
+  def applyFitFunction(self, OD, n, coeff):
     return coeff[0] + coeff[1]*OD + coeff[2]*(OD**n)
 
   def findCoefficients(self,n):
@@ -1141,44 +1136,62 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
 
-  def volumeToMatrix(self, currentVolume):
+  def volumeToNumpyArray2D(self, currentVolume):
     volumeData = currentVolume.GetImageData()
     volumeDataScalars = volumeData.GetPointData().GetScalars()
     numpyArrayVolume = numpy_support.vtk_to_numpy(volumeDataScalars)
-    volumeMatrix = numpyArrayVolume.reshape(volumeData.GetExtent()[3] + 1 , volumeData.GetExtent()[1] + 1 ) # both terms had +1
-    print "volumeMatrix shape is :", volumeMatrix.shape
-    return volumeMatrix
+    volumeArray2D = numpyArrayVolume.reshape(volumeData.GetExtent()[3] + 1 , volumeData.GetExtent()[1] + 1 )
+    return volumeArray2D
+    
+  #do the opposite of this
+  def numpyArray2DToVolume(self, oldVolumeArray2D):
+    newScalarVolume = slicer.vtkMRMLScalarVolumeNode()
+    oldVolumeArray = numpy.ravel(oldVolumeArray2D)
+    newVolumeScalars = numpy_support.numpy_to_vtk(oldVolumeArray)
+    newVolumeScalarsCopy = vtk.vtkUnsignedShortArray()
+    newVolumeScalarsCopy.DeepCopy(newVolumeScalars)
+    newImageData = vtk.vtkImageData()
+    newImageData.GetPointData().SetScalars(newVolumeScalarsCopy)
+    newScalarVolume.SetAndObserveImageData(newImageData)
+    #print('Image data converted from numpy: ')
+    #print newImageData
+    return newScalarVolume
+  
+  
 
   def calculateDoseFromFilm(self):
-  
-    experimentalFilmMatrix = self.volumeToMatrix(self.step2_experimentalFilmSelectorComboBox.currentNode())
-    floodFieldMatrix = self.volumeToMatrix(self.step2_floodFieldImageSelectorComboBox.currentNode())
-    doseMatrix = numpy.zeros(shape = floodFieldMatrix.shape)
+    #TODO this should be done in simpleITK 
+    experimentalFilmArray2D = self.volumeToNumpyArray2D(self.step2_experimentalFilmSelectorComboBox.currentNode())
+    floodFieldArray2D = self.volumeToNumpyArray2D(self.step2_floodFieldImageSelectorComboBox.currentNode())
+    doseArray2D = numpy.zeros(shape = floodFieldArray2D.shape)
       
     inexcept = 0
-    for rowIndex in xrange(len(experimentalFilmMatrix)):
-      for columnIndex in xrange(len(experimentalFilmMatrix[0])):
+    for rowIndex in xrange(len(experimentalFilmArray2D)):
+      for columnIndex in xrange(len(experimentalFilmArray2D[0])):
         opticalDensity = 0
         try:
-          opticalDensity = math.log10(floodFieldMatrix[rowIndex][columnIndex]/experimentalFilmMatrix[rowIndex][columnIndex])
+          opticalDensity = math.log10(floodFieldArray2D[rowIndex][columnIndex]/experimentalFilmArray2D[rowIndex][columnIndex])
         except:
           inexcept+=1
           opticalDensity = 0
-        doseMatrix[rowIndex][columnIndex] = self.applyFitFunction(opticalDensity, self.bestCoefficients)
-        if doseMatrix[rowIndex][columnIndex] <0.0:
-          doseMatrix[rowIndex][columnIndex] = 0.0
+        doseArray2D[rowIndex][columnIndex] = self.applyFitFunction(opticalDensity, self.bestCoefficients[1],self.bestCoefficients[2] )
+        if doseArray2D[rowIndex][columnIndex] <0.0:
+          doseArray2D[rowIndex][columnIndex] = 0.0
   
-    
-    dose_vtkDoubleArray = numpy_support.numpy_to_vtk(doseMatrix)
-    return dose_vtkDoubleArray
+    return doseArray2D
     
 
   def onApplyCalibrationButton(self):
     print "onApplyCalibrationButton"
-    
-    #TODO register film to DICOM plan
 
-    doseMatrix = self.calculateDoseFromFilm()
+    calculatedDoseDoubleArray = self.calculateDoseFromFilm()
+    calculatedDoseDoubleArray = numpy.rint(calculatedDoseDoubleArray)
+    calculatedDoseDoubleArray = calculatedDoseDoubleArray.astype(int)
+    castIntArrayVolume = self.numpyArray2DToVolume(calculatedDoseDoubleArray)
+    castIntArrayVolume.GetImageData().SetExtent(self.step2_experimentalFilmSelectorComboBox.currentNode().GetImageData().GetExtent())
+    slicer.mrmlScene.AddNode(castIntArrayVolume)
+    castIntArrayVolume.CreateDefaultDisplayNodes()
+
 
   def calculateOpticalDensity(self,IFlood, IFilm):
     print "IFlood ", IFlood, "IFilm ", IFilm
