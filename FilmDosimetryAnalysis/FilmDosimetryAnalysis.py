@@ -114,6 +114,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.folderNode = None
     self.batchFolderToParse = None
     self.lastAddedRoiNode = None
+    self.calculatedDoseNode = None
     self.calibrationValues = []
     self.measuredOpticalDensities = []
     # Set up constants
@@ -471,15 +472,15 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # PLANDOSE node selector
     self.step2_planDoseSelectorComboBoxLayout = qt.QHBoxLayout()
-    self.planDoseSelector = slicer.qMRMLNodeComboBox()
-    self.planDoseSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    self.planDoseSelector.addEnabled = False
-    self.planDoseSelector.removeEnabled = False
-    self.planDoseSelector.setMRMLScene( slicer.mrmlScene )
-    self.planDoseSelector.setToolTip( "Pick the planning dose volume." )
+    self.step2_planDoseSelector = slicer.qMRMLNodeComboBox()
+    self.step2_planDoseSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
+    self.step2_planDoseSelector.addEnabled = False
+    self.step2_planDoseSelector.removeEnabled = False
+    self.step2_planDoseSelector.setMRMLScene( slicer.mrmlScene )
+    self.step2_planDoseSelector.setToolTip( "Pick the planning dose volume." )
     self.step2_planDoseSelectorComboBoxLabel = qt.QLabel('Dose volume: ') 
     self.step2_planDoseSelectorComboBoxLayout.addWidget(self.step2_planDoseSelectorComboBoxLabel)
-    self.step2_planDoseSelectorComboBoxLayout.addWidget(self.planDoseSelector)
+    self.step2_planDoseSelectorComboBoxLayout.addWidget(self.step2_planDoseSelector)
     self.step2_loadExperimentalDataCollapsibleButtonLayout.addLayout(self.step2_planDoseSelectorComboBoxLayout)
     
     # Enter plane position
@@ -820,7 +821,28 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     
     self.step1_2_performCalibrationFunctionLabel.text = calibrationFunctionString
     
+  def cropPlanByROI(self):  #TODO, change to be just (self), get planDose from self.step2_planDoseSelector.currentNode()
+    planDose = self.step2_planDoseSelector.currentNode()
+    roiNode = slicer.vtkMRMLAnnotationROINode()
+    slicer.mrmlScene.AddNode(roiNode)
+    planDoseBounds = [0]*6
+    planDose.GetRASBounds(planDoseBounds)  
+    roiBounds = [0]*6
+    planDoseCenter = [(planDoseBounds[0]+planDoseBounds[1])/2, (planDoseBounds[2]+planDoseBounds[3])/2, (planDoseBounds[4]+planDoseBounds[5])/2]
+    newRadiusROI = [abs(planDoseBounds[1]-planDoseBounds[0])/2, 0.5*planDose.GetSpacing()[1], abs(planDoseBounds[5]-planDoseBounds[4])/2]
+    roiNode.SetXYZ(planDoseCenter)
+    roiNode.SetRadiusXYZ(newRadiusROI)
+    # TODO why does the cropVolume radius not match ROI radius??
+    cropParams = slicer.vtkMRMLCropVolumeParametersNode()
+    cropParams.SetInputVolumeNodeID(planDose.GetID())
+    cropParams.SetROINodeID(roiNode.GetID())
+    cropParams.SetVoxelBased(True)
+    cropLogic = slicer.modules.cropvolume.logic()
+    cropLogic.Apply(cropParams)
 
+    return croppedNode 
+
+    
 #------------------------------------------------------------------------------
 
   def onTextChanged(self):
@@ -1161,6 +1183,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   def calculateDoseFromFilm(self):
     #TODO this should be done in simpleITK 
+    #TODO test to see if images are same size
     experimentalFilmArray2D = self.volumeToNumpyArray2D(self.step2_experimentalFilmSelectorComboBox.currentNode())
     floodFieldArray2D = self.volumeToNumpyArray2D(self.step2_floodFieldImageSelectorComboBox.currentNode())
     doseArray2D = numpy.zeros(shape = floodFieldArray2D.shape)
@@ -1189,9 +1212,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     calculatedDoseDoubleArray = calculatedDoseDoubleArray.astype(int)
     castIntArrayVolume = self.numpyArray2DToVolume(calculatedDoseDoubleArray)
     castIntArrayVolume.GetImageData().SetExtent(self.step2_experimentalFilmSelectorComboBox.currentNode().GetImageData().GetExtent())
+    # Copy orientation 
+    castIntArrayVolume.CopyOrientation(self.step2_experimentalFilmSelectorComboBox.currentNode())
+    self.calculatedDoseNode = castIntArrayVolume
     slicer.mrmlScene.AddNode(castIntArrayVolume)
     castIntArrayVolume.CreateDefaultDisplayNodes()
-
+    
 
   def calculateOpticalDensity(self,IFlood, IFilm):
     print "IFlood ", IFlood, "IFilm ", IFilm
