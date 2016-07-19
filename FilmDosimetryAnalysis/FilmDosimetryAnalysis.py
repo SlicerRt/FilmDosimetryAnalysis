@@ -116,6 +116,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.lastAddedRoiNode = None
     self.calculatedDoseNode = None
     self.calculatedDoseExperimentalFilmVolume = None 
+    self.inputDICOMDoseVolume = None
     self.calibrationValues = []
     self.measuredOpticalDensities = []
     # Set up constants
@@ -134,7 +135,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calibrationVolumeLoadFailureMessage = "calibration volume failed to load"
     self.opticalDensityCurve = None #where polyfit is stored
     self.bestCoefficients = [0,0,[0,0,0]] #the best coefficients from Kevin's function, [n, [a,b,c]]
-    self.resolutionMM_ToPixel = ""
+    self.resolutionMM_ToPixel = None
 
     # Set observations
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
@@ -572,7 +573,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Experimental film resolution mm/pixel
     self.step4_resolutionLineEdit = qt.QLineEdit()
     self.step4_resolutionLineEdit.toolTip = "Experimental film resultion (mm/pixel)"
-    self.step4_resolutionLabel = qt.QLabel('Resolution (mm/pixel):')
+    self.step4_resolutionLabel = qt.QLabel('Experimental Film Resolution (mm/pixel):')
     self.step4_resolutionQHBoxLayout = qt.QHBoxLayout()
     self.step4_resolutionQHBoxLayout.addWidget(self.step4_resolutionLabel)
     self.step4_resolutionQHBoxLayout.addWidget(self.step4_resolutionLineEdit)
@@ -859,7 +860,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     cropLogic = slicer.modules.cropvolume.logic()
     cropLogic.Apply(cropParams)
     croppedNode = slicer.mrmlScene.GetNodeByID( cropParams.GetOutputVolumeNodeID() )
-    return croppedNode 
+    self.inputDICOMDoseVolume = croppedNode
   
 
 
@@ -1268,6 +1269,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   def onPerformRegistrationButtonClicked(self):
     print "onPerformRegistrationButtonClicked"
     
+    if    self.resolutionMM_ToPixel is None:
+      qt.QMessageBox.critical(None, 'Error', "A mm/pixel resolution for the experimental film must be selected")
+      return 
+      
+    self.step2_planDoseSelector.currentNode().GetDisplayNode().AutoWindowLevelOn()
     # Slice the experimental film volume into five thin slices
     
     
@@ -1279,14 +1285,22 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     slicer.cli.run(slicer.modules.resamplescalarvolume, None, resampleParameters, wait_for_completion=True)
         
     # Set spacing of the experimental film volume
-    
+    self.calculatedDoseExperimentalFilmVolume.SetSpacing(self.resolutionMM_ToPixel, self.resolutionMM_ToPixel, self.resolutionMM_ToPixel)
     
     # Rotate the experimental film volume 
     
+    rotationTransform = vtk.vtkTransform()
+    rotationTransform.RotateWXYZ(90,[1,0,0])
+    rotationTransformMRML = slicer.vtkMRMLLinearTransformNode()
+    rotationTransformMRML.SetMatrixTransformToParent(rotationTransform.GetMatrix())
+    slicer.mrmlScene.AddNode(rotationTransformMRML)
+    self.calculatedDoseExperimentalFilmVolume.SetAndObserveTransformNodeID(rotationTransformMRML.GetID())
+    print "rotated" 
     # Crop the dose volume by the ROI
+    self.cropDoseByROI()
     
     # perform registration on that volume 
-
+    movingVolume = self.inputDICOMDoseVolume
     
 
 
