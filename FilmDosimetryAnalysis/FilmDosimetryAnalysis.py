@@ -116,7 +116,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.lastAddedRoiNode = None
     self.calculatedDoseNode = None
     self.calculatedDoseExperimentalFilmVolume = None 
+    self.calculatedDoseExperimentalFilmVolumeName = "calculatedDoseExperimentalFilmVolume"
     self.inputDICOMDoseVolume = None
+    self.croppedResampledDICOMDoseVolume = None 
+    self.croppedResampledDICOMDoseVolumeName = "croppedResampledDICOMDoseVolume"
     self.calibrationValues = []
     self.measuredOpticalDensities = []
     # Set up constants
@@ -849,6 +852,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     doseVolumeCenter = [(doseVolumeBounds[0]+doseVolumeBounds[1])/2, (doseVolumeBounds[2]+doseVolumeBounds[3])/2, (doseVolumeBounds[4]+doseVolumeBounds[5])/2]
     print "center of the ROI - doseVolumeCenter: ", doseVolumeCenter 
     newRadiusROI = [abs(doseVolumeBounds[1]-doseVolumeBounds[0])/2, 0.5*doseVolume.GetSpacing()[1], abs(doseVolumeBounds[5]-doseVolumeBounds[4])/2]
+    print "newRadiusROI : ", newRadiusROI
     
     roiNode.SetXYZ(doseVolumeCenter)
     roiNode.SetRadiusXYZ(newRadiusROI)
@@ -856,7 +860,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     cropParams = slicer.vtkMRMLCropVolumeParametersNode()
     cropParams.SetInputVolumeNodeID(doseVolume.GetID())
     cropParams.SetROINodeID(roiNode.GetID())
-    cropParams.SetVoxelBased(True)
+    cropParams.SetVoxelBased(False) #TODO if this doesn't work, set this back to True 
     cropLogic = slicer.modules.cropvolume.logic()
     cropLogic.Apply(cropParams)
     croppedNode = slicer.mrmlScene.GetNodeByID( cropParams.GetOutputVolumeNodeID() )
@@ -1214,7 +1218,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       for columnIndex in xrange(len(experimentalFilmArray2D[0])):
         opticalDensity = 0
         try:
-          opticalDensity = math.log10((1.0 * floodFieldArray2D[rowIndex][columnIndex])/experimentalFilmArray2D[rowIndex][columnIndex])
+        #TODO current - multiply floodFieldArray2D by 1.0 to convert back to double 
+          opticalDensity = math.log10((1.0* floodFieldArray2D[rowIndex][columnIndex])/experimentalFilmArray2D[rowIndex][columnIndex])
         except:
           inexcept+=1
           opticalDensity = 0
@@ -1231,6 +1236,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   def onApplyCalibrationButton(self):
     print "onApplyCalibrationButton"
     #TODO get the output volume, and call it something so it's accessible later!
+    
+    #TODO have an error message for if bestCoefficients is empty 
     
     # TODO uncomment those if it doesn't work!!
     calculatedDoseDoubleArray = self.calculateDoseFromFilm()
@@ -1267,6 +1274,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     
     
   def onPerformRegistrationButtonClicked(self):
+  
+  # TODO merge step 3 and step 4
     print "onPerformRegistrationButtonClicked"
     
     if    self.resolutionMM_ToPixel is None:
@@ -1274,11 +1283,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       return 
       
     self.step2_planDoseSelector.currentNode().GetDisplayNode().AutoWindowLevelOn()
-    # Slice the experimental film volume into five thin slices
     
     
-    # TODO all that works, now it has to be done with the calculated dose volumes 
+    # Resample calculated dose volume from experimental film 
     self.calculatedDoseExperimentalFilmVolume = slicer.vtkMRMLScalarVolumeNode()
+    self.calculatedDoseExperimentalFilmVolume.SetName("calculatedDoseExperimentalFilmVolumeName")
     slicer.mrmlScene.AddNode(self.calculatedDoseExperimentalFilmVolume)
     experimentalFilmNode = self.calculatedDoseNode
     resampleParameters = {'outputPixelSpacing':'1,1,0.2', 'interpolationType':'linear', 'InputVolume':experimentalFilmNode.GetID(), 'OutputVolume':self.calculatedDoseExperimentalFilmVolume.GetID()}
@@ -1299,8 +1308,21 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Crop the dose volume by the ROI
     self.cropDoseByROI()
     
+    # Resample cropped dose volume 
+    #self.inputDICOMDoseVolume
+    
+    self.croppedResampledDICOMDoseVolume = slicer.vtkMRMLScalarVolumeNode()
+    self.croppedResampledDICOMDoseVolume.SetName(self.croppedResampledDICOMDoseVolumeName)
+    slicer.mrmlScene.AddNode(self.croppedResampledDICOMDoseVolume)
+    resampleParameters = {'outputPixelSpacing':'2,0.4,2', 'interpolationType':'linear', 'InputVolume':self.inputDICOMDoseVolume.GetID(), 'OutputVolume':self.croppedResampledDICOMDoseVolume.GetID()}
+    slicer.cli.run(slicer.modules.resamplescalarvolume, None, resampleParameters, wait_for_completion=True)
+    
+    # TODO this line is a trial 
+    #self.croppedResampledDICOMDoseVolume.SetSpacing(2,0.2,2)
+    
+    
     # perform registration on that volume 
-    movingVolume = self.inputDICOMDoseVolume
+    #movingVolume = 
     
 
 
