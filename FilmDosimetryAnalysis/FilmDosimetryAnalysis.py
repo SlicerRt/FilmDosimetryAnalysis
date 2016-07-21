@@ -116,10 +116,14 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.lastAddedRoiNode = None
     self.calculatedDoseNode = None
     self.calculatedDoseExperimentalFilmVolume = None 
-    self.calculatedDoseExperimentalFilmVolumeName = "calculatedDoseExperimentalFilmVolume"
+    self.calculatedDoseExperimentalFilmVolumeName = "calculatedDoseExperimentalFilm"
     self.inputDICOMDoseVolume = None
     self.croppedResampledDICOMDoseVolume = None 
-    self.croppedResampledDICOMDoseVolumeName = "croppedResampledDICOMDoseVolume"
+    self.croppedResampledDICOMDoseVolumeName = "croppedResampledDICOMDose"
+    
+    self.ExperimentalFloodFieldImageNode = None
+    self.ExperimentalFilmImageNode = None 
+    
     self.calibrationValues = []
     self.measuredOpticalDensities = []
     # Set up constants
@@ -131,6 +135,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.exportedSceneFileName = slicer.app.temporaryPath + "/exportMrmlScene.mrml"
     self.savedCalibrationVolumeFolderName = "savedCalibrationVolumes"
     self.calibrationFunctionFileName = "doseVSopticalDensity.txt"
+    self.experimental2DoseTranslationTransformName = "Experimental to dose translation"
+    self.experimentalAxialToCoronalRotationTransformName = "Experimental film axial to coronal transform"
+    
     self.savedFolderPath = slicer.app.temporaryPath + "/" + self.savedCalibrationVolumeFolderName
     self.maxCalibrationVolumeSelectorsInt = 10
     self.fileLoadingSuccessMessageHeader = "Calibration image loading"
@@ -480,17 +487,17 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
 
     # PLANDOSE node selector
-    self.step2_planDoseSelectorComboBoxLayout = qt.QHBoxLayout()
-    self.step2_planDoseSelector = slicer.qMRMLNodeComboBox()
-    self.step2_planDoseSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    self.step2_planDoseSelector.addEnabled = False
-    self.step2_planDoseSelector.removeEnabled = False
-    self.step2_planDoseSelector.setMRMLScene( slicer.mrmlScene )
-    self.step2_planDoseSelector.setToolTip( "Pick the planning dose volume." )
-    self.step2_planDoseSelectorComboBoxLabel = qt.QLabel('Dose volume: ')
-    self.step2_planDoseSelectorComboBoxLayout.addWidget(self.step2_planDoseSelectorComboBoxLabel)
-    self.step2_planDoseSelectorComboBoxLayout.addWidget(self.step2_planDoseSelector)
-    self.step2_loadExperimentalDataCollapsibleButtonLayout.addLayout(self.step2_planDoseSelectorComboBoxLayout)
+    self.step2_doseVolumeSelectorComboBoxLayout = qt.QHBoxLayout()
+    self.step2_doseVolumeSelector = slicer.qMRMLNodeComboBox()
+    self.step2_doseVolumeSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
+    self.step2_doseVolumeSelector.addEnabled = False
+    self.step2_doseVolumeSelector.removeEnabled = False
+    self.step2_doseVolumeSelector.setMRMLScene( slicer.mrmlScene )
+    self.step2_doseVolumeSelector.setToolTip( "Pick the planning dose volume." )
+    self.step2_doseVolumeSelectorComboBoxLabel = qt.QLabel('Dose volume: ')
+    self.step2_doseVolumeSelectorComboBoxLayout.addWidget(self.step2_doseVolumeSelectorComboBoxLabel)
+    self.step2_doseVolumeSelectorComboBoxLayout.addWidget(self.step2_doseVolumeSelector)
+    self.step2_loadExperimentalDataCollapsibleButtonLayout.addLayout(self.step2_doseVolumeSelectorComboBoxLayout)
 
     # Enter plane position
     self.step2_planePositionLabel = qt.QLabel('Plane position :')
@@ -502,6 +509,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Connections
     self.step2_loadNonDicomDataButton.connect('clicked()', self.onLoadImageFilesButton)
     self.step2_showDicomBrowserButton.connect('clicked()', self.onDicomLoad)
+    self.step2_inputExperimentalDataCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_inputExperimentalDataCollapsed)
 
 
 
@@ -561,6 +569,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_calibrationFunctionOrder2LineEdit.connect('textChanged(QString)', self.onTextChanged)
     self.step3_calibrationFunctionOrder3LineEdit.connect('textChanged(QString)', self.onTextChanged)
 
+    
 
   def setup_step4_Registration(self):
     # Step 2: Load data panel
@@ -730,6 +739,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     exportMrmlScene.Clear(1)
 
   #------------------------------------------------------------------------------
+  def onStep2_inputExperimentalDataCollapsed(self, collapsed):
+    print 'onStep2_inputExperimentalDataCollapsed'
+    self.ExperimentalFloodFieldImageNode = self.step2_floodFieldImageSelectorComboBox.currentNode()
+    self.ExperimentalFilmImageNode = self.step2_experimentalFilmSelectorComboBox.currentNode()
+    self.inputDICOMDoseVolume = self.step2_doseVolumeSelector.currentNode()
+  
   def onloadCalibrationBatchButton(self):
     savedFolderPath = qt.QFileDialog.getExistingDirectory(0, 'Open dir')  # TODO have it so it searches for the .mrml file in the saved folder
     #TODO put this all in a try/except
@@ -843,7 +858,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_2_performCalibrationFunctionLabel.text = calibrationFunctionString
 
   def cropDoseByROI(self): 
-    doseVolume = self.step2_planDoseSelector.currentNode()
+    doseVolume = self.step2_doseVolumeSelector.currentNode()
     roiNode = slicer.vtkMRMLAnnotationROINode()
     slicer.mrmlScene.AddNode(roiNode)
     doseVolumeBounds = [0]*6
@@ -1218,7 +1233,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       for columnIndex in xrange(len(experimentalFilmArray2D[0])):
         opticalDensity = 0
         try:
-        #TODO current - multiply floodFieldArray2D by 1.0 to convert back to double 
           opticalDensity = math.log10((1.0* floodFieldArray2D[rowIndex][columnIndex])/experimentalFilmArray2D[rowIndex][columnIndex])
         except:
           inexcept+=1
@@ -1235,7 +1249,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   def onApplyCalibrationButton(self):
     print "onApplyCalibrationButton"
-    #TODO get the output volume, and call it something so it's accessible later!
+    #TODO add success message 
     
     #TODO have an error message for if bestCoefficients is empty 
     
@@ -1282,51 +1296,48 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       qt.QMessageBox.critical(None, 'Error', "A mm/pixel resolution for the experimental film must be selected")
       return 
       
-    self.step2_planDoseSelector.currentNode().GetDisplayNode().AutoWindowLevelOn()
-    
-    
-    # Resample calculated dose volume from experimental film 
-    self.calculatedDoseExperimentalFilmVolume = slicer.vtkMRMLScalarVolumeNode()
-    self.calculatedDoseExperimentalFilmVolume.SetName("calculatedDoseExperimentalFilmVolumeName")
-    slicer.mrmlScene.AddNode(self.calculatedDoseExperimentalFilmVolume)
-    experimentalFilmNode = self.calculatedDoseNode
-    resampleParameters = {'outputPixelSpacing':'1,1,0.2', 'interpolationType':'linear', 'InputVolume':experimentalFilmNode.GetID(), 'OutputVolume':self.calculatedDoseExperimentalFilmVolume.GetID()}
-    slicer.cli.run(slicer.modules.resamplescalarvolume, None, resampleParameters, wait_for_completion=True)
-        
+    self.step2_doseVolumeSelector.currentNode().GetDisplayNode().AutoWindowLevelOn()
+            
     # Set spacing of the experimental film volume
-    self.calculatedDoseExperimentalFilmVolume.SetSpacing(self.resolutionMM_ToPixel, self.resolutionMM_ToPixel, self.resolutionMM_ToPixel)
+    self.calculatedDoseExperimentalFilmVolume.SetSpacing(self.resolutionMM_ToPixel, self.resolutionMM_ToPixel, self.inputDICOMDoseVolume.GetSpacing()[1])
     
-    # Rotate the experimental film volume 
-    
-    rotationTransform = vtk.vtkTransform()
-    rotationTransform.RotateWXYZ(90,[1,0,0])
-    rotationTransformMRML = slicer.vtkMRMLLinearTransformNode()
-    rotationTransformMRML.SetMatrixTransformToParent(rotationTransform.GetMatrix())
-    slicer.mrmlScene.AddNode(rotationTransformMRML)
-    self.calculatedDoseExperimentalFilmVolume.SetAndObserveTransformNodeID(rotationTransformMRML.GetID())
-    print "rotated" 
     # Crop the dose volume by the ROI
     self.cropDoseByROI()
     
     # Resample cropped dose volume 
-    #self.inputDICOMDoseVolume
-    
     self.croppedResampledDICOMDoseVolume = slicer.vtkMRMLScalarVolumeNode()
     self.croppedResampledDICOMDoseVolume.SetName(self.croppedResampledDICOMDoseVolumeName)
     slicer.mrmlScene.AddNode(self.croppedResampledDICOMDoseVolume)
     resampleParameters = {'outputPixelSpacing':'2,0.4,2', 'interpolationType':'linear', 'InputVolume':self.inputDICOMDoseVolume.GetID(), 'OutputVolume':self.croppedResampledDICOMDoseVolume.GetID()}
     slicer.cli.run(slicer.modules.resamplescalarvolume, None, resampleParameters, wait_for_completion=True)
     
-    # TODO this line is a trial 
-    #self.croppedResampledDICOMDoseVolume.SetSpacing(2,0.2,2)
-    
-    
-    # perform registration on that volume 
-    #movingVolume = 
-    
+    # Set up transform pipeline 
+    expBounds = [0]*6
+    doseBounds = [0]*6
+    doseVolumeCenter = [(doseBounds[0]+doseBounds[1])/2, (doseBounds[2]+doseBounds[3])/2, (doseBounds[4]+doseBounds[5])/2]
+    expCenter = [(expBounds[0]+expBounds[1])/2, (expBounds[2]+expBounds[3])/2, (expBounds[4]+expBounds[5])/2]
+    exp2DoseTranslation = [doseVolumeCenter[x] - expBounds[x] for x in range(len(doseVolumeCenter))]
 
+    rotationTransform = vtk.vtkTransform()
+    rotationTransform.RotateWXYZ(90,[1,0,0])
+    rotationTransformMRML = slicer.vtkMRMLLinearTransformNode()
+    rotationTransformMRML.SetName(experimentalAxialToCoronalRotationTransformName)
+    slicer.mrmlScene.AddNode(rotationTransformMRML)
+    rotationTransformMRML.SetMatrixTransformToParent(rotationTransform.GetMatrix())
 
+    TranslationTransform = vtk.vtkTransform()
+    TranslationTransform.Translate(exp2DoseTranslation)
+    TranslationMRML = slicer.vtkMRMLLinearTransformNode()
+    TranslationMRML.SetName(experimental2DoseTranslationTransformName)
+    TranslationMRML.SetMatrixTransformToParent(TranslationTransform.GetMatrix())
+    slicer.mrmlScene.AddNode(TranslationMRML)
 
+    rotationTransformMRML.SetAndObserveTransformNodeID(TranslationMRML.GetID())
+
+    self.calculatedDoseExperimentalFilmVolume.SetAndObserveTransformNodeID(rotationTransformMRML.GetID())
+
+    # TODO set spacing on self.croppedResampledDICOMDoseVolume 
+ 
   #
   # -------------------------
   # Testing related functions
