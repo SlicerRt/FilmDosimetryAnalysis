@@ -1262,21 +1262,32 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
 
   def onApplyCalibrationButton(self):
-    print "onApplyCalibrationButton"
-    #TODO add success message 
+    #print "onApplyCalibrationButton"
     
-    #TODO have an error message for if bestCoefficients is empty 
+    if self.bestCoefficients is self.bestCoefficients[1] == 0: #TODO see why this isn't working
+      print "messagebox should appear"
+      qt.QMessageBox.critical(None, 'Error', "No calibration function in slicelet")
+      return 
+    print "it is not 0"
     
-    # TODO uncomment those if it doesn't work!!
     calculatedDoseDoubleArray2D = self.calculateDoseFromFilm()
-    castIntArrayVolume = self.numpyArray2DToVolume(calculatedDoseDoubleArray2D)
-    castIntArrayVolume.GetImageData().SetExtent(self.step2_experimentalFilmSelectorComboBox.currentNode().GetImageData().GetExtent())
-    # Copy orientation
-    castIntArrayVolume.CopyOrientation(self.step2_experimentalFilmSelectorComboBox.currentNode())
-    self.calculatedDoseNode = castIntArrayVolume
-    slicer.mrmlScene.AddNode(castIntArrayVolume)
-    castIntArrayVolume.CreateDefaultDisplayNodes()
+    oldVolumeArray = numpy.ravel(calculatedDoseDoubleArray2D)
+    newScalarVolume = slicer.vtkMRMLScalarVolumeNode()
+    new3dArray = numpy.tile(oldVolumeArray,5)
+    new3dScalars = numpy_support.numpy_to_vtk(new3dArray)
+    new3dScalarsCopy = vtk.vtkUnsignedShortArray()
+    new3dScalarsCopy.DeepCopy(new3dScalars)
+    new3dImageData = vtk.vtkImageData()
+    new3dImageData.GetPointData().SetScalars(new3dScalarsCopy)
+    new3dImageData.GetPointData().SetScalars(new3dScalarsCopy)
+    new3dImageData.SetExtent(self.step2_experimentalFilmSelectorComboBox.currentNode().GetImageData().GetExtent()[0:5] + (4,)) 
+    newScalarVolume.SetAndObserveImageData(new3dImageData)
+    newScalarVolume.SetName('new3dScalarVolume from FD code ')
+    slicer.mrmlScene.AddNode(newScalarVolume)
+    newScalarVolume.CreateDefaultDisplayNodes()
 
+    qt.QMessageBox.information(None, "Step 3" , "Calibration function successfully applied")
+    
 
   def calculateOpticalDensity(self,IFlood, IFilm):
     print "IFlood ", IFlood, "IFilm ", IFilm
