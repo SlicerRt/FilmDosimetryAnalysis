@@ -655,12 +655,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     print " onSaveCalibrationBatchButton "
     self.savedFolderPath = qt.QFileDialog.getExistingDirectory(0, 'Open dir')
 
-    # TODO: Check if folder is empty. If not, warn user that all files be deleted. If they choose yes, remove all files from folder, otherwise return
-
-    if glob.glob(self.savedFolderPath + "/*") is not []:
+    if not os.listdir(self.savedFolderPath):
       qt.QMessageBox.critical(None, 'Error', "Directory is not empty, all files will be deleted")
-
-
+      
     # Create temporary scene for saving
     exportMrmlScene = slicer.vtkMRMLScene()
 
@@ -695,7 +692,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Copy flood field image file to save folder
     shutil.copy(floodFieldStorageNode.GetFileName(), self.savedFolderPath)
-    # TODO Change vtkMRMLVolumeArchetypeStorageNode.SetFileName to new file
     print "exportFloodFieldStorageNode file path was", exportFloodFieldStorageNode.GetFileName()
     exportFloodFieldStorageNode.SetFileName(os.path.normpath(self.savedFolderPath + '/' + ntpath.basename(floodFieldStorageNode.GetFileName())))
     print "exportFloodFieldStorageNode file path is now", exportFloodFieldStorageNode.GetFileName()
@@ -747,7 +743,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.inputDICOMDoseVolume = self.step2_doseVolumeSelector.currentNode()
   
   def onloadCalibrationBatchButton(self):
-    savedFolderPath = qt.QFileDialog.getExistingDirectory(0, 'Open dir')  # TODO have it so it searches for the .mrml file in the saved folder
+    savedFolderPath = qt.QFileDialog.getExistingDirectory(0, 'Open dir')  
     #TODO put this all in a try/except
     os.chdir(os.path.normpath(savedFolderPath))
     mrmlFilesFound = 0
@@ -877,7 +873,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     cropParams = slicer.vtkMRMLCropVolumeParametersNode()
     cropParams.SetInputVolumeNodeID(doseVolume.GetID())
     cropParams.SetROINodeID(roiNode.GetID())
-    cropParams.SetVoxelBased(False) #TODO if this doesn't work, set this back to True 
+    cropParams.SetVoxelBased(False) 
     cropLogic = slicer.modules.cropvolume.logic()
     cropLogic.Apply(cropParams)
     croppedNode = slicer.mrmlScene.GetNodeByID( cropParams.GetOutputVolumeNodeID() )
@@ -1130,7 +1126,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       MSE = self.meanSquaredError(n,coeff)
       bestN.append([MSE, n, coeff])
 
-    bestN.sort(key=lambda bestNEntry: bestNEntry[0]) #TODO there is an error in here
+    bestN.sort(key=lambda bestNEntry: bestNEntry[0]) 
     self.bestCoefficients = bestN[0]
     #print "best 10 coefficients are: \n", bestN[0:10]
     print "best coefficients ", bestN[0]
@@ -1142,7 +1138,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #TODO change name, create success message
     import csv
-
     self.outputDir = qt.QFileDialog.getExistingDirectory(0, 'Open dir')
     if not os.access(self.outputDir, os.F_OK):
       os.mkdir(self.outputDir)
