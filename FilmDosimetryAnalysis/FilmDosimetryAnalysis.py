@@ -121,8 +121,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.croppedResampledDICOMDoseVolume = None 
     self.croppedResampledDICOMDoseVolumeName = "croppedResampledDICOMDose"
     
-    self.ExperimentalFloodFieldImageNode = None
-    self.ExperimentalFilmImageNode = None 
+    self.experimentalFloodFieldImageNode = None
+    self.experimentalFilmImageNode = None 
     
     self.calibrationValues = []
     self.measuredOpticalDensities = []
@@ -1215,11 +1215,25 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     newImageData = vtk.vtkImageData()
     newImageData.GetPointData().SetScalars(newVolumeScalarsCopy)
     newScalarVolume.SetAndObserveImageData(newImageData)
-    #print('Image data converted from numpy: ')
-    #print newImageData
     return newScalarVolume
-
-
+    
+  def numpyArrayTo3DVolume(self,oldVolumeArray2D):
+    oldVolumeArray = numpy.ravel(oldVolumeArray2D)
+    newScalarVolume = slicer.vtkMRMLScalarVolumeNode()
+    new3dArray = numpy.tile(oldVolumeArray,5)
+    new3dScalars = numpy_support.numpy_to_vtk(new3dArray)
+    new3dScalarsCopy = vtk.vtkUnsignedShortArray()
+    new3dScalarsCopy.DeepCopy(new3dScalars)
+    new3dImageData = vtk.vtkImageData()
+    new3dImageData.GetPointData().SetScalars(new3dScalarsCopy)
+    new3dImageData.GetPointData().SetScalars(new3dScalarsCopy)
+    new3dImageData.SetExtent((0, 1023, 0, 767, 0, 4)) 
+    newScalarVolume.SetAndObserveImageData(new3dImageData)
+    newScalarVolume.SetName('new3dScalarVolume from FD code ')
+    slicer.mrmlScene.AddNode(newScalarVolume)
+    return newScalarVolume 
+    
+    
 
   def calculateDoseFromFilm(self):
     #TODO this should be done in simpleITK
@@ -1254,11 +1268,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     #TODO have an error message for if bestCoefficients is empty 
     
     # TODO uncomment those if it doesn't work!!
-    calculatedDoseDoubleArray = self.calculateDoseFromFilm()
-    #print "calculatedDoseDoubleArray is type ", type(calculatedDoseDoubleArray[0][0])
-    #calculatedDoseDoubleArray = numpy.rint(calculatedDoseDoubleArray)
-    #calculatedDoseDoubleArray = calculatedDoseDoubleArray.astype(int)
-    castIntArrayVolume = self.numpyArray2DToVolume(calculatedDoseDoubleArray)
+    calculatedDoseDoubleArray2D = self.calculateDoseFromFilm()
+    castIntArrayVolume = self.numpyArray2DToVolume(calculatedDoseDoubleArray2D)
     castIntArrayVolume.GetImageData().SetExtent(self.step2_experimentalFilmSelectorComboBox.currentNode().GetImageData().GetExtent())
     # Copy orientation
     castIntArrayVolume.CopyOrientation(self.step2_experimentalFilmSelectorComboBox.currentNode())
