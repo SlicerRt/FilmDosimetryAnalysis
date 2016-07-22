@@ -135,8 +135,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.exportedSceneFileName = slicer.app.temporaryPath + "/exportMrmlScene.mrml"
     self.savedCalibrationVolumeFolderName = "savedCalibrationVolumes"
     self.calibrationFunctionFileName = "doseVSopticalDensity.txt"
-    self.experimental2DoseTranslationTransformName = "Experimental to dose translation"
-    self.experimentalAxialToCoronalRotationTransformName = "Experimental film axial to coronal transform"
+    self.experimental2DoseExperimentalCenterToDoseCenterTransformName = "Experimental to dose translation"
+    self.experimentalAxialToCoronalexperimentalAxialToCoronalRotationTransformName = "Experimental film axial to coronal transform"
+    self.cropDoseByROIName = "crop dose ROI" 
     
     self.savedFolderPath = slicer.app.temporaryPath + "/" + self.savedCalibrationVolumeFolderName
     self.maxCalibrationVolumeSelectorsInt = 10
@@ -860,14 +861,15 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   def cropDoseByROI(self): 
     doseVolume = self.step2_doseVolumeSelector.currentNode()
     roiNode = slicer.vtkMRMLAnnotationROINode()
+    roiNode.SetName(self.cropDoseByROIName)
     slicer.mrmlScene.AddNode(roiNode)
     doseVolumeBounds = [0]*6
     doseVolume.GetRASBounds(doseVolumeBounds)  
     roiBounds = [0]*6
     doseVolumeCenter = [(doseVolumeBounds[0]+doseVolumeBounds[1])/2, (doseVolumeBounds[2]+doseVolumeBounds[3])/2, (doseVolumeBounds[4]+doseVolumeBounds[5])/2]
-    print "center of the ROI - doseVolumeCenter: ", doseVolumeCenter 
+    #print "center of the ROI - doseVolumeCenter: ", doseVolumeCenter 
     newRadiusROI = [abs(doseVolumeBounds[1]-doseVolumeBounds[0])/2, 0.5*doseVolume.GetSpacing()[1], abs(doseVolumeBounds[5]-doseVolumeBounds[4])/2]
-    print "newRadiusROI : ", newRadiusROI
+    #print "newRadiusROI : ", newRadiusROI
     
     roiNode.SetXYZ(doseVolumeCenter)
     roiNode.SetRadiusXYZ(newRadiusROI)
@@ -1242,20 +1244,20 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     
     calculatedDoseDoubleArray2D = self.calculateDoseFromFilm()
     oldVolumeArray = numpy.ravel(calculatedDoseDoubleArray2D)
-    newScalarVolume = slicer.vtkMRMLScalarVolumeNode()
-    new3dArray = numpy.tile(oldVolumeArray,5)
-    new3dScalars = numpy_support.numpy_to_vtk(new3dArray)
-    new3dScalarsCopy = vtk.vtkUnsignedShortArray()
-    new3dScalarsCopy.DeepCopy(new3dScalars)
-    new3dImageData = vtk.vtkImageData()
-    new3dImageData.GetPointData().SetScalars(new3dScalarsCopy)
-    new3dImageData.GetPointData().SetScalars(new3dScalarsCopy)
-    new3dImageData.SetExtent(self.step2_experimentalFilmSelectorComboBox.currentNode().GetImageData().GetExtent()[0:5] + (4,)) 
-    newScalarVolume.SetAndObserveImageData(new3dImageData)
-    newScalarVolume.SetName('new3dScalarVolume from FD code ')
-    slicer.mrmlScene.AddNode(newScalarVolume)
-    newScalarVolume.CreateDefaultDisplayNodes()
-    self.calculatedDoseExperimentalFilmVolume = newScalarVolume
+    calculatedDoseVolume = slicer.vtkMRMLScalarVolumeNode()
+    calculatedDoseVolumeArray = numpy.tile(oldVolumeArray,5)
+    calculatedDoseVolumeScalars = numpy_support.numpy_to_vtk(calculatedDoseVolumeArray)
+    calculatedDoseVolumeScalarsCopy = vtk.vtkUnsignedShortArray()
+    calculatedDoseVolumeScalarsCopy.DeepCopy(calculatedDoseVolumeScalars)
+    calculatedDoseImageData = vtk.vtkImageData()
+    calculatedDoseImageData.GetPointData().SetScalars(calculatedDoseVolumeScalarsCopy)
+    calculatedDoseImageData.GetPointData().SetScalars(calculatedDoseVolumeScalarsCopy)
+    calculatedDoseImageData.SetExtent(self.step2_experimentalFilmSelectorComboBox.currentNode().GetImageData().GetExtent()[0:5] + (4,)) 
+    calculatedDoseVolume.SetAndObserveImageData(calculatedDoseImageData)
+    calculatedDoseVolume.SetName(self.calculatedDoseExperimentalFilmVolumeName)
+    slicer.mrmlScene.AddNode(calculatedDoseVolume)
+    calculatedDoseVolume.CreateDefaultDisplayNodes()
+    self.calculatedDoseExperimentalFilmVolume = calculatedDoseVolume
     qt.QMessageBox.information(None, "Step 3" , "Calibration function successfully applied")
     
 
@@ -1273,12 +1275,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   
   def onResolutionLineEditTextChanged(self):
-    print "onResolutionLineEditTextChanged"
-    #self.bestCoefficients[2][0] = round(float(self.step3_calibrationFunctionOrder0LineEdit.text),5)
+    #print "onResolutionLineEditTextChanged"
     self.resolutionMM_ToPixel = round(float(self.step4_resolutionLineEdit.text),5) 
-    print self.resolutionMM_ToPixel, type(self.resolutionMM_ToPixel)
-    
-    
+        
   def onPerformRegistrationButtonClicked(self):
   
   # TODO merge step 3 and step 4
@@ -1305,32 +1304,38 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     slicer.mrmlScene.AddNode(self.croppedResampledDICOMDoseVolume)
     resampleParameters = {'outputPixelSpacing':'2,0.4,2', 'interpolationType':'linear', 'InputVolume':self.inputDICOMDoseVolume.GetID(), 'OutputVolume':self.croppedResampledDICOMDoseVolume.GetID()}
     slicer.cli.run(slicer.modules.resamplescalarvolume, None, resampleParameters, wait_for_completion=True)
+    self.croppedResampledDICOMDoseVolume.SetSpacing(2,2,2)
     
     # Set up transform pipeline 
+    
+    experimentalAxialToCoronalRotationTransform = vtk.vtkTransform()
+    experimentalAxialToCoronalRotationTransform.RotateWXYZ(90,[1,0,0])
+    experimentalAxialToExperimentalCoronalTransformMRML = slicer.vtkMRMLLinearTransformNode()
+    experimentalAxialToExperimentalCoronalTransformMRML.SetName(self.experimentalAxialToCoronalexperimentalAxialToCoronalRotationTransformName)
+    slicer.mrmlScene.AddNode(experimentalAxialToExperimentalCoronalTransformMRML)
+    experimentalAxialToExperimentalCoronalTransformMRML.SetMatrixTransformToParent(experimentalAxialToCoronalRotationTransform.GetMatrix())
+
+    self.calculatedDoseExperimentalFilmVolume.SetAndObserveTransformNodeID(experimentalAxialToExperimentalCoronalTransformMRML.GetID())
+    
     expBounds = [0]*6
+    self.calculatedDoseExperimentalFilmVolume.GetRASBounds(expBounds)
     doseBounds = [0]*6
+    self.croppedResampledDICOMDoseVolume.GetRASBounds(doseBounds)
     doseVolumeCenter = [(doseBounds[0]+doseBounds[1])/2, (doseBounds[2]+doseBounds[3])/2, (doseBounds[4]+doseBounds[5])/2]
+    print "doseVolumeCenter :", doseVolumeCenter
     expCenter = [(expBounds[0]+expBounds[1])/2, (expBounds[2]+expBounds[3])/2, (expBounds[4]+expBounds[5])/2]
-    exp2DoseTranslation = [doseVolumeCenter[x] - expBounds[x] for x in range(len(doseVolumeCenter))]
+    print "expCenter :", expCenter
+    exp2DoseTranslation = [doseVolumeCenter[x] - expCenter[x] for x in range(len(doseVolumeCenter))]
+    print "translating: ", exp2DoseTranslation
+    
+    ExperimentalCenterToDoseCenterTransform = vtk.vtkTransform()
+    ExperimentalCenterToDoseCenterTransform.Translate(exp2DoseTranslation)
+    ExperimentalCenterToDoseCenterTransformMRML = slicer.vtkMRMLLinearTransformNode()
+    ExperimentalCenterToDoseCenterTransformMRML.SetName(self.experimental2DoseExperimentalCenterToDoseCenterTransformName)
+    ExperimentalCenterToDoseCenterTransformMRML.SetMatrixTransformToParent(ExperimentalCenterToDoseCenterTransform.GetMatrix())
+    slicer.mrmlScene.AddNode(ExperimentalCenterToDoseCenterTransformMRML)
 
-    rotationTransform = vtk.vtkTransform()
-    rotationTransform.RotateWXYZ(90,[1,0,0])
-    rotationTransformMRML = slicer.vtkMRMLLinearTransformNode()
-    rotationTransformMRML.SetName(self.experimentalAxialToCoronalRotationTransformName)
-    slicer.mrmlScene.AddNode(rotationTransformMRML)
-    rotationTransformMRML.SetMatrixTransformToParent(rotationTransform.GetMatrix())
-
-    TranslationTransform = vtk.vtkTransform()
-    TranslationTransform.Translate(exp2DoseTranslation)
-    TranslationMRML = slicer.vtkMRMLLinearTransformNode()
-    TranslationMRML.SetName(self.experimental2DoseTranslationTransformName)
-    TranslationMRML.SetMatrixTransformToParent(TranslationTransform.GetMatrix())
-    slicer.mrmlScene.AddNode(TranslationMRML)
-
-    rotationTransformMRML.SetAndObserveTransformNodeID(TranslationMRML.GetID())
-
-    self.calculatedDoseExperimentalFilmVolume.SetAndObserveTransformNodeID(rotationTransformMRML.GetID())
-
+    experimentalAxialToExperimentalCoronalTransformMRML.SetAndObserveTransformNodeID(ExperimentalCenterToDoseCenterTransformMRML.GetID())
     
  
   #
