@@ -115,11 +115,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.batchFolderToParse = None
     self.lastAddedRoiNode = None
     self.calculatedDoseNode = None
-    self.calculatedDoseExperimentalFilmVolume = None 
-    self.calculatedDoseExperimentalFilmVolumeName = "calculatedDoseExperimentalFilm"
+    self.experimentalFilmDoseVolume = None 
+    self.experimentalFilmDoseVolumeName = "Experimental film dose"
     self.inputDICOMDoseVolume = None
-    self.croppedResampledDICOMDoseVolume = None 
-    self.croppedResampledDICOMDoseVolumeName = "croppedResampledDICOMDose"
+    self.dosePlanVolume = None 
+    self.dosePlanVolumeName = "Dose plan resampled"
     
     self.experimentalFloodFieldImageNode = None
     self.experimentalFilmImageNode = None 
@@ -135,8 +135,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.exportedSceneFileName = slicer.app.temporaryPath + "/exportMrmlScene.mrml"
     self.savedCalibrationVolumeFolderName = "savedCalibrationVolumes"
     self.calibrationFunctionFileName = "doseVSopticalDensity.txt"
-    self.experimental2DoseExperimentalCenterToDoseCenterTransformName = "Experimental to dose translation"
-    self.experimentalAxialToCoronalexperimentalAxialToCoronalRotationTransformName = "Experimental film axial to coronal transform"
+    self.experimentalCenter2DoseCenterTransformName = "Experimental to dose translation"
+    self.experimentalAxialToExperimentalCoronalTransform = "Experimental film axial to coronal transform"
     self.cropDoseByROIName = "crop dose ROI" 
     
     self.savedFolderPath = slicer.app.temporaryPath + "/" + self.savedCalibrationVolumeFolderName
@@ -1041,8 +1041,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Create and populate the calculated dose/OD curve with K function
     #call function to find best coefficients
 
-
-
     self.bestCoefficients = self.findBestFunctionCoefficients()
 
     opticalDensityList = [round(0 + 0.01*opticalDensityIncrement,2) for opticalDensityIncrement in range(120)]
@@ -1073,8 +1071,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calculatedDoseLine.SetInputData(self.opticalDensityToDoseFunctionTable, 0, 1)
     self.calculatedDoseLine.SetColor(255, 0, 0, 255)
     self.calculatedDoseLine.SetWidth(2.0)
-
-
 
     # Show chart
     self.calibrationCurveChart.GetAxis(1).SetTitle('Optical Density| x - axis')
@@ -1123,9 +1119,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     for coefficientIndex in xrange(len(coefficients)):
       coefficients[coefficientIndex] = round(coefficients[coefficientIndex],5)
 
-
     return coefficients
-
 
   def findBestFunctionCoefficients(self):
     bestN = [] #entries are [MSE, n, answer]
@@ -1232,7 +1226,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     return doseArray2D
 
-
   def onApplyCalibrationButton(self):
     #print "onApplyCalibrationButton"
     
@@ -1243,21 +1236,21 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     print "it is not 0"
     
     calculatedDoseDoubleArray2D = self.calculateDoseFromFilm()
-    oldVolumeArray = numpy.ravel(calculatedDoseDoubleArray2D)
+    calculatedDoseDoubleArray = numpy.ravel(calculatedDoseDoubleArray2D)
     calculatedDoseVolume = slicer.vtkMRMLScalarVolumeNode()
-    calculatedDoseVolumeArray = numpy.tile(oldVolumeArray,5)
+    calculatedDoseVolumeArray = numpy.tile(calculatedDoseDoubleArray,5)
     calculatedDoseVolumeScalars = numpy_support.numpy_to_vtk(calculatedDoseVolumeArray)
-    calculatedDoseVolumeScalarsCopy = vtk.vtkUnsignedShortArray()
+    calculatedDoseVolumeScalarsCopy = vtk.vtkDoubleArray()  #current 
     calculatedDoseVolumeScalarsCopy.DeepCopy(calculatedDoseVolumeScalars)
     calculatedDoseImageData = vtk.vtkImageData()
     calculatedDoseImageData.GetPointData().SetScalars(calculatedDoseVolumeScalarsCopy)
     calculatedDoseImageData.GetPointData().SetScalars(calculatedDoseVolumeScalarsCopy)
     calculatedDoseImageData.SetExtent(self.step2_experimentalFilmSelectorComboBox.currentNode().GetImageData().GetExtent()[0:5] + (4,)) 
     calculatedDoseVolume.SetAndObserveImageData(calculatedDoseImageData)
-    calculatedDoseVolume.SetName(self.calculatedDoseExperimentalFilmVolumeName)
+    calculatedDoseVolume.SetName(self.experimentalFilmDoseVolumeName)
     slicer.mrmlScene.AddNode(calculatedDoseVolume)
     calculatedDoseVolume.CreateDefaultDisplayNodes()
-    self.calculatedDoseExperimentalFilmVolume = calculatedDoseVolume
+    self.experimentalFilmDoseVolume = calculatedDoseVolume
     qt.QMessageBox.information(None, "Step 3" , "Calibration function successfully applied")
     
 
@@ -1290,37 +1283,37 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step2_doseVolumeSelector.currentNode().GetDisplayNode().AutoWindowLevelOn()
             
     # Set spacing of the experimental film volume
-    if self.calculatedDoseExperimentalFilmVolume is None:
+    if self.experimentalFilmDoseVolume is None:
       qt.QMessageBox.critical(None, 'Error', "Step 3 must be performed before Step 4")
       return
-    self.calculatedDoseExperimentalFilmVolume.SetSpacing(self.resolutionMM_ToPixel, self.resolutionMM_ToPixel, self.inputDICOMDoseVolume.GetSpacing()[1])
+    self.experimentalFilmDoseVolume.SetSpacing(self.resolutionMM_ToPixel, self.resolutionMM_ToPixel, self.inputDICOMDoseVolume.GetSpacing()[1])
     
     # Crop the dose volume by the ROI
     self.cropDoseByROI()
     
     # Resample cropped dose volume 
-    self.croppedResampledDICOMDoseVolume = slicer.vtkMRMLScalarVolumeNode()
-    self.croppedResampledDICOMDoseVolume.SetName(self.croppedResampledDICOMDoseVolumeName)
-    slicer.mrmlScene.AddNode(self.croppedResampledDICOMDoseVolume)
-    resampleParameters = {'outputPixelSpacing':'2,0.4,2', 'interpolationType':'linear', 'InputVolume':self.inputDICOMDoseVolume.GetID(), 'OutputVolume':self.croppedResampledDICOMDoseVolume.GetID()}
+    self.dosePlanVolume = slicer.vtkMRMLScalarVolumeNode()
+    self.dosePlanVolume.SetName(self.dosePlanVolumeName)
+    slicer.mrmlScene.AddNode(self.dosePlanVolume)
+    resampleParameters = {'outputPixelSpacing':'2,0.4,2', 'interpolationType':'linear', 'InputVolume':self.inputDICOMDoseVolume.GetID(), 'OutputVolume':self.dosePlanVolume.GetID()}
     slicer.cli.run(slicer.modules.resamplescalarvolume, None, resampleParameters, wait_for_completion=True)
-    self.croppedResampledDICOMDoseVolume.SetSpacing(2,2,2)
+    self.dosePlanVolume.SetSpacing(2,2,2)
     
     # Set up transform pipeline 
     
     experimentalAxialToCoronalRotationTransform = vtk.vtkTransform()
     experimentalAxialToCoronalRotationTransform.RotateWXYZ(90,[1,0,0])
     experimentalAxialToExperimentalCoronalTransformMRML = slicer.vtkMRMLLinearTransformNode()
-    experimentalAxialToExperimentalCoronalTransformMRML.SetName(self.experimentalAxialToCoronalexperimentalAxialToCoronalRotationTransformName)
+    experimentalAxialToExperimentalCoronalTransformMRML.SetName(self.experimentalAxialToExperimentalCoronalTransform)
     slicer.mrmlScene.AddNode(experimentalAxialToExperimentalCoronalTransformMRML)
     experimentalAxialToExperimentalCoronalTransformMRML.SetMatrixTransformToParent(experimentalAxialToCoronalRotationTransform.GetMatrix())
 
-    self.calculatedDoseExperimentalFilmVolume.SetAndObserveTransformNodeID(experimentalAxialToExperimentalCoronalTransformMRML.GetID())
+    self.experimentalFilmDoseVolume.SetAndObserveTransformNodeID(experimentalAxialToExperimentalCoronalTransformMRML.GetID())
     
     expBounds = [0]*6
-    self.calculatedDoseExperimentalFilmVolume.GetRASBounds(expBounds)
+    self.experimentalFilmDoseVolume.GetRASBounds(expBounds)
     doseBounds = [0]*6
-    self.croppedResampledDICOMDoseVolume.GetRASBounds(doseBounds)
+    self.dosePlanVolume.GetRASBounds(doseBounds)
     doseVolumeCenter = [(doseBounds[0]+doseBounds[1])/2, (doseBounds[2]+doseBounds[3])/2, (doseBounds[4]+doseBounds[5])/2]
     print "doseVolumeCenter :", doseVolumeCenter
     expCenter = [(expBounds[0]+expBounds[1])/2, (expBounds[2]+expBounds[3])/2, (expBounds[4]+expBounds[5])/2]
@@ -1331,7 +1324,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     ExperimentalCenterToDoseCenterTransform = vtk.vtkTransform()
     ExperimentalCenterToDoseCenterTransform.Translate(exp2DoseTranslation)
     ExperimentalCenterToDoseCenterTransformMRML = slicer.vtkMRMLLinearTransformNode()
-    ExperimentalCenterToDoseCenterTransformMRML.SetName(self.experimental2DoseExperimentalCenterToDoseCenterTransformName)
+    ExperimentalCenterToDoseCenterTransformMRML.SetName(self.experimentalCenter2DoseCenterTransformName)
     ExperimentalCenterToDoseCenterTransformMRML.SetMatrixTransformToParent(ExperimentalCenterToDoseCenterTransform.GetMatrix())
     slicer.mrmlScene.AddNode(ExperimentalCenterToDoseCenterTransformMRML)
 
