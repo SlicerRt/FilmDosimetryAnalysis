@@ -1204,37 +1204,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     numpyArrayVolume = numpy_support.vtk_to_numpy(volumeDataScalars)
     volumeArray2D = numpyArrayVolume.reshape(volumeData.GetExtent()[3] + 1 , volumeData.GetExtent()[1] + 1 )
     return volumeArray2D
-
-  #do the opposite of this
-  def numpyArray2DToVolume(self, oldVolumeArray2D):
-    newScalarVolume = slicer.vtkMRMLScalarVolumeNode()
-    oldVolumeArray = numpy.ravel(oldVolumeArray2D)
-    newVolumeScalars = numpy_support.numpy_to_vtk(oldVolumeArray)
-    newVolumeScalarsCopy = vtk.vtkUnsignedShortArray()
-    newVolumeScalarsCopy.DeepCopy(newVolumeScalars)
-    newImageData = vtk.vtkImageData()
-    newImageData.GetPointData().SetScalars(newVolumeScalarsCopy)
-    newScalarVolume.SetAndObserveImageData(newImageData)
-    return newScalarVolume
     
-  def numpyArrayTo3DVolume(self,oldVolumeArray2D):
-    oldVolumeArray = numpy.ravel(oldVolumeArray2D)
-    newScalarVolume = slicer.vtkMRMLScalarVolumeNode()
-    new3dArray = numpy.tile(oldVolumeArray,5)
-    new3dScalars = numpy_support.numpy_to_vtk(new3dArray)
-    new3dScalarsCopy = vtk.vtkUnsignedShortArray()
-    new3dScalarsCopy.DeepCopy(new3dScalars)
-    new3dImageData = vtk.vtkImageData()
-    new3dImageData.GetPointData().SetScalars(new3dScalarsCopy)
-    new3dImageData.GetPointData().SetScalars(new3dScalarsCopy)
-    new3dImageData.SetExtent((0, 1023, 0, 767, 0, 4)) 
-    newScalarVolume.SetAndObserveImageData(new3dImageData)
-    newScalarVolume.SetName('new3dScalarVolume from FD code ')
-    slicer.mrmlScene.AddNode(newScalarVolume)
-    return newScalarVolume 
-    
-    
-
   def calculateDoseFromFilm(self):
     #TODO this should be done in simpleITK
     #TODO test to see if images are same size
@@ -1285,7 +1255,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     newScalarVolume.SetName('new3dScalarVolume from FD code ')
     slicer.mrmlScene.AddNode(newScalarVolume)
     newScalarVolume.CreateDefaultDisplayNodes()
-
+    self.calculatedDoseExperimentalFilmVolume = newScalarVolume
     qt.QMessageBox.information(None, "Step 3" , "Calibration function successfully applied")
     
 
@@ -1321,6 +1291,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step2_doseVolumeSelector.currentNode().GetDisplayNode().AutoWindowLevelOn()
             
     # Set spacing of the experimental film volume
+    if self.calculatedDoseExperimentalFilmVolume is None:
+      qt.QMessageBox.critical(None, 'Error', "Step 3 must be performed before Step 4")
+      return
     self.calculatedDoseExperimentalFilmVolume.SetSpacing(self.resolutionMM_ToPixel, self.resolutionMM_ToPixel, self.inputDICOMDoseVolume.GetSpacing()[1])
     
     # Crop the dose volume by the ROI
@@ -1343,14 +1316,14 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     rotationTransform = vtk.vtkTransform()
     rotationTransform.RotateWXYZ(90,[1,0,0])
     rotationTransformMRML = slicer.vtkMRMLLinearTransformNode()
-    rotationTransformMRML.SetName(experimentalAxialToCoronalRotationTransformName)
+    rotationTransformMRML.SetName(self.experimentalAxialToCoronalRotationTransformName)
     slicer.mrmlScene.AddNode(rotationTransformMRML)
     rotationTransformMRML.SetMatrixTransformToParent(rotationTransform.GetMatrix())
 
     TranslationTransform = vtk.vtkTransform()
     TranslationTransform.Translate(exp2DoseTranslation)
     TranslationMRML = slicer.vtkMRMLLinearTransformNode()
-    TranslationMRML.SetName(experimental2DoseTranslationTransformName)
+    TranslationMRML.SetName(self.experimental2DoseTranslationTransformName)
     TranslationMRML.SetMatrixTransformToParent(TranslationTransform.GetMatrix())
     slicer.mrmlScene.AddNode(TranslationMRML)
 
@@ -1358,7 +1331,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     self.calculatedDoseExperimentalFilmVolume.SetAndObserveTransformNodeID(rotationTransformMRML.GetID())
 
-    # TODO set spacing on self.croppedResampledDICOMDoseVolume 
+    
  
   #
   # -------------------------
