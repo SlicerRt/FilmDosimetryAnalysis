@@ -1189,37 +1189,39 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
 
-  def volumeToNumpyArray2D(self, currentVolume):
+  def volumeToNumpyArray(self, currentVolume):
     volumeData = currentVolume.GetImageData()
     volumeDataScalars = volumeData.GetPointData().GetScalars()
     numpyArrayVolume = numpy_support.vtk_to_numpy(volumeDataScalars)
-    volumeArray2D = numpyArrayVolume.reshape(volumeData.GetExtent()[3] + 1 , volumeData.GetExtent()[1] + 1 )
-    return volumeArray2D
+    return numpyArrayVolume
     
   def calculateDoseFromFilm(self):
     #TODO this should be done in simpleITK
-    #TODO test to see if images are same size
-    experimentalFilmArray2D = self.volumeToNumpyArray2D(self.step2_experimentalFilmSelectorComboBox.currentNode())
-    floodFieldArray2D = self.volumeToNumpyArray2D(self.step2_floodFieldImageSelectorComboBox.currentNode())
-    doseArray2D = numpy.zeros(shape = floodFieldArray2D.shape)
-
+    experimentalFilmArray = self.volumeToNumpyArray(self.step2_experimentalFilmSelectorComboBox.currentNode()) #deletelater these are 1D now
+    floodFieldArray = self.volumeToNumpyArray(self.step2_floodFieldImageSelectorComboBox.currentNode())#deletelater these are 1D now
+    
+    if len(experimentalFilmArray) != len(floodFieldArray):
+      qt.QMessageBox.critical(None, 'Error', "Experimental and flood field images must be the same size")
+      return 
+    
+    doseArray = numpy.zeros(len(floodFieldArray))
     inexcept = 0
-    for rowIndex in xrange(len(experimentalFilmArray2D)):
-      for columnIndex in xrange(len(experimentalFilmArray2D[0])):
+    for rowIndex in xrange(len(experimentalFilmArray)):
+      
+      opticalDensity = 0
+      try:
+        opticalDensity = math.log10((1.0* floodFieldArray[rowIndex])/experimentalFilmArray[rowIndex])
+      except:
+        inexcept+=1
         opticalDensity = 0
-        try:
-          opticalDensity = math.log10((1.0* floodFieldArray2D[rowIndex][columnIndex])/experimentalFilmArray2D[rowIndex][columnIndex])
-        except:
-          inexcept+=1
-          opticalDensity = 0
-        if opticalDensity <= 0.0:
-          opticalDensity = 0
-        doseArray2D[rowIndex][columnIndex] = self.applyFitFunction(opticalDensity, self.bestCoefficients[1],self.bestCoefficients[2] )
+      if opticalDensity <= 0.0:
+        opticalDensity = 0
+      doseArray[rowIndex] = self.applyFitFunction(opticalDensity, self.bestCoefficients[1],self.bestCoefficients[2] )
         
-        if doseArray2D[rowIndex][columnIndex] <0.0:
-          doseArray2D[rowIndex][columnIndex] = 0.0
+      if doseArray[rowIndex] <0.0:
+        doseArray[rowIndex] = 0.0
 
-    return doseArray2D
+    return doseArray
 
   def onApplyCalibrationButton(self):
     #print "onApplyCalibrationButton"
@@ -1230,8 +1232,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       return 
     print "it is not 0"
     
-    calculatedDoseDoubleArray2D = self.calculateDoseFromFilm()
-    calculatedDoseDoubleArray = numpy.ravel(calculatedDoseDoubleArray2D)
+    calculatedDoseDoubleArray = self.calculateDoseFromFilm()
     calculatedDoseVolume = slicer.vtkMRMLScalarVolumeNode()
     calculatedDoseVolumeArray = numpy.tile(calculatedDoseDoubleArray,5)
     calculatedDoseVolumeScalars = numpy_support.numpy_to_vtk(calculatedDoseVolumeArray)
@@ -1240,7 +1241,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     calculatedDoseImageData = vtk.vtkImageData()
     calculatedDoseImageData.GetPointData().SetScalars(calculatedDoseVolumeScalarsCopy)
     calculatedDoseImageData.GetPointData().SetScalars(calculatedDoseVolumeScalarsCopy)
-    calculatedDoseImageData.SetExtent(self.step2_experimentalFilmSelectorComboBox.currentNode().GetImageData().GetExtent()[0:5] + (4,)) 
+    calculatedDoseImageData.SetDimensions(self.step2_experimentalFilmSelectorComboBox.currentNode().GetImageData().GetDimensions()[0:2] + (5,))
     calculatedDoseVolume.SetAndObserveImageData(calculatedDoseImageData)
     calculatedDoseVolume.SetName(self.experimentalFilmDoseVolumeName)
     slicer.mrmlScene.AddNode(calculatedDoseVolume)
