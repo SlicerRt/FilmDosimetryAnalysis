@@ -878,6 +878,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     cropLogic.Apply(cropParams)
     croppedNode = slicer.mrmlScene.GetNodeByID( cropParams.GetOutputVolumeNodeID() )
     self.inputDICOMDoseVolume = croppedNode
+    return croppedNode
+    
   
 
 
@@ -1222,6 +1224,23 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
         doseArray[rowIndex] = 0.0
 
     return doseArray
+    
+  def arrayTo3DVolume(self, array, dimensions):
+    calculatedDoseDoubleArray = self.calculateDoseFromFilm()
+    calculatedDoseVolume = slicer.vtkMRMLScalarVolumeNode()
+    calculatedDoseVolumeArray = numpy.tile(calculatedDoseDoubleArray,5)
+    calculatedDoseVolumeScalars = numpy_support.numpy_to_vtk(calculatedDoseVolumeArray)
+    calculatedDoseVolumeScalarsCopy = vtk.vtkDoubleArray()  #current 
+    calculatedDoseVolumeScalarsCopy.DeepCopy(calculatedDoseVolumeScalars)
+    calculatedDoseImageData = vtk.vtkImageData()
+    calculatedDoseImageData.GetPointData().SetScalars(calculatedDoseVolumeScalarsCopy)
+    calculatedDoseImageData.SetDimensions(dimensions)
+    calculatedDoseVolume.SetAndObserveImageData(calculatedDoseImageData)
+    calculatedDoseVolume.SetName(self.experimentalFilmDoseVolumeName)
+    slicer.mrmlScene.AddNode(calculatedDoseVolume)
+    calculatedDoseVolume.CreateDefaultDisplayNodes()  
+    
+    
 
   def onApplyCalibrationButton(self):
     #print "onApplyCalibrationButton"
@@ -1239,7 +1258,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     calculatedDoseVolumeScalarsCopy = vtk.vtkDoubleArray()  #current 
     calculatedDoseVolumeScalarsCopy.DeepCopy(calculatedDoseVolumeScalars)
     calculatedDoseImageData = vtk.vtkImageData()
-    calculatedDoseImageData.GetPointData().SetScalars(calculatedDoseVolumeScalarsCopy)
     calculatedDoseImageData.GetPointData().SetScalars(calculatedDoseVolumeScalarsCopy)
     calculatedDoseImageData.SetDimensions(self.step2_experimentalFilmSelectorComboBox.currentNode().GetImageData().GetDimensions()[0:2] + (5,))
     calculatedDoseVolume.SetAndObserveImageData(calculatedDoseImageData)
@@ -1285,15 +1303,40 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.experimentalFilmDoseVolume.SetSpacing(self.resolutionMM_ToPixel, self.resolutionMM_ToPixel, self.inputDICOMDoseVolume.GetSpacing()[1])
     
     # Crop the dose volume by the ROI
-    self.cropDoseByROI()
+    croppedNode = self.cropDoseByROI()
     
-    # Resample cropped dose volume 
-    self.dosePlanVolume = slicer.vtkMRMLScalarVolumeNode()
-    self.dosePlanVolume.SetName(self.dosePlanVolumeName)
-    slicer.mrmlScene.AddNode(self.dosePlanVolume)
-    resampleParameters = {'outputPixelSpacing':'2,0.4,2', 'interpolationType':'linear', 'InputVolume':self.inputDICOMDoseVolume.GetID(), 'OutputVolume':self.dosePlanVolume.GetID()}
-    slicer.cli.run(slicer.modules.resamplescalarvolume, None, resampleParameters, wait_for_completion=True)
-    self.dosePlanVolume.SetSpacing(2,2,2)
+    # TODO resampling might still be better, find out...
+    # # Resample cropped dose volume 
+    # self.dosePlanVolume = slicer.vtkMRMLScalarVolumeNode()
+    # self.dosePlanVolume.SetName(self.dosePlanVolumeName)
+    # slicer.mrmlScene.AddNode(self.dosePlanVolume)
+    # resampleParameters = {'outputPixelSpacing':'2,0.4,2', 'interpolationType':'linear', 'InputVolume':self.inputDICOMDoseVolume.GetID(), 'OutputVolume':self.dosePlanVolume.GetID()}
+    # slicer.cli.run(slicer.modules.resamplescalarvolume, None, resampleParameters, wait_for_completion=True)
+    # self.dosePlanVolume.SetSpacing(2,2,2)
+ 
+    doseArray = self.volumeToNumpyArray(croppedNode)
+    doseArrayList = []
+    doseArray = doseArray.reshape(151,106)
+    for x in xrange(len(doseArray)):
+      doseArrayList.append(numpy.tile(doseArray[x],5).tolist())
+      
+    doseArrayList = numpy.asarray(doseArrayList)
+    doseArrayList = numpy.ravel(doseArrayList)
+    newScalarVolume = slicer.vtkMRMLScalarVolumeNode()
+    new3dScalars = numpy_support.numpy_to_vtk(doseArrayList)
+    new3dScalarsCopy = vtk.vtkDoubleArray()
+    new3dScalarsCopy.DeepCopy(new3dScalars)
+    new3dImageData = vtk.vtkImageData()
+    new3dImageData.GetPointData().SetScalars(new3dScalarsCopy)
+    newExtent = croppedNode.GetImageData().GetExtent()
+    newExtent = newExtent[0:3] +(4,) + newExtent[4:]
+    new3dImageData.SetExtent(newExtent) #TODO replace with SetDimensions
+    newScalarVolume.SetAndObserveImageData(new3dImageData)
+    newScalarVolume.SetName("Dose volume for registration")
+    slicer.mrmlScene.AddNode(newScalarVolume)
+    self.dosePlanVolume = newScalarVolume
+    newScalarVolume.CopyOrientation(croppedNode)
+    
     
     # Set up transform pipeline 
     
