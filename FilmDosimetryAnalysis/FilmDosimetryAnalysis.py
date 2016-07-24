@@ -116,7 +116,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.lastAddedRoiNode = None
     self.calculatedDoseNode = None
     self.experimentalFilmDoseVolume = None 
-    self.experimentalFilmDoseVolumeName = "Experimental film dose"
+    self.experimentalFilmDoseVolumeName = "Experimental film"
     self.inputDICOMDoseVolume = None
     self.dosePlanVolume = None 
     self.dosePlanVolumeName = "Dose plan resampled"
@@ -136,7 +136,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.savedCalibrationVolumeFolderName = "savedCalibrationVolumes"
     self.calibrationFunctionFileName = "doseVSopticalDensity.txt"
     self.experimentalCenter2DoseCenterTransformName = "Experimental to dose translation"
-    self.experimentalAxialToExperimentalCoronalTransform = "Experimental film axial to coronal transform"
+    self.experimentalAxialToExperimentalCoronalTransformName = "Experimental film axial to coronal transform"
+    self.experimentalRotate90APTransformName = "Experimental rotate 90 around AP axis"
     self.cropDoseByROIName = "crop dose ROI" 
     
     self.savedFolderPath = slicer.app.temporaryPath + "/" + self.savedCalibrationVolumeFolderName
@@ -467,7 +468,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step2_floodFieldImageSelectorComboBox.removeEnabled = False
     self.step2_floodFieldImageSelectorComboBox.setMRMLScene( slicer.mrmlScene )
     self.step2_floodFieldImageSelectorComboBox.setToolTip( "--select the flood field image file--" )
-    self.step2_floodFieldImageSelectorComboBoxLabel = qt.QLabel('Experimental flood field image: ')
+    self.step2_floodFieldImageSelectorComboBoxLabel = qt.QLabel('Flood field image (experimental): ')
     self.step2_floodFieldImageSelectorComboBoxLayout.addWidget(self.step2_floodFieldImageSelectorComboBoxLabel)
     self.step2_floodFieldImageSelectorComboBoxLayout.addWidget(self.step2_floodFieldImageSelectorComboBox)
     self.step2_loadExperimentalDataCollapsibleButtonLayout.addLayout(self.step2_floodFieldImageSelectorComboBoxLayout)
@@ -1343,22 +1344,24 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     experimentalAxialToCoronalRotationTransform = vtk.vtkTransform()
     experimentalAxialToCoronalRotationTransform.RotateWXYZ(90,[1,0,0])
     experimentalAxialToExperimentalCoronalTransformMRML = slicer.vtkMRMLLinearTransformNode()
-    experimentalAxialToExperimentalCoronalTransformMRML.SetName(self.experimentalAxialToExperimentalCoronalTransform)
+    experimentalAxialToExperimentalCoronalTransformMRML.SetName(self.experimentalAxialToExperimentalCoronalTransformName)
     slicer.mrmlScene.AddNode(experimentalAxialToExperimentalCoronalTransformMRML)
     experimentalAxialToExperimentalCoronalTransformMRML.SetMatrixTransformToParent(experimentalAxialToCoronalRotationTransform.GetMatrix())
 
     self.experimentalFilmDoseVolume.SetAndObserveTransformNodeID(experimentalAxialToExperimentalCoronalTransformMRML.GetID())
+    #print self.experimentalAxialToExperimentalCoronalTransformName, " - added"
+    
     
     # Rotate 90 degrees about [0,1,0]
 
     rotate90APTransform = vtk.vtkTransform()
     rotate90APTransform.RotateWXYZ(90,[0,1,0])
     rotate90APTransformMRML = slicer.vtkMRMLLinearTransformNode()
-    slicer.mrmlScene.AddNode(rotate90APTransformMRML)
     rotate90APTransformMRML.SetMatrixTransformToParent(rotate90APTransform.GetMatrix())
+    rotate90APTransformMRML.SetName(self.experimentalRotate90APTransformName)    
+    slicer.mrmlScene.AddNode(rotate90APTransformMRML)
+    #print self.experimentalRotate90APTransformName, " - added"
     experimentalAxialToExperimentalCoronalTransformMRML.SetAndObserveTransformNodeID(rotate90APTransformMRML.GetID())
-    rotate90APTransformMRML.SetName('rotate90APTransformMRML')    
-     
     # Translate to center of the dose volume 
     
     expBounds = [0]*6
@@ -1366,11 +1369,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     doseBounds = [0]*6
     self.dosePlanVolume.GetRASBounds(doseBounds)
     doseVolumeCenter = [(doseBounds[0]+doseBounds[1])/2, (doseBounds[2]+doseBounds[3])/2, (doseBounds[4]+doseBounds[5])/2]
-    print "doseVolumeCenter :", doseVolumeCenter
+    #print "doseVolumeCenter :", doseVolumeCenter
     expCenter = [(expBounds[0]+expBounds[1])/2, (expBounds[2]+expBounds[3])/2, (expBounds[4]+expBounds[5])/2]
-    print "expCenter :", expCenter
+    #print "expCenter :", expCenter
     exp2DoseTranslation = [doseVolumeCenter[x] - expCenter[x] for x in range(len(doseVolumeCenter))]
-    print "translating: ", exp2DoseTranslation
+    #print "translating: ", exp2DoseTranslation
     
     ExperimentalCenterToDoseCenterTransform = vtk.vtkTransform()
     ExperimentalCenterToDoseCenterTransform.Translate(exp2DoseTranslation)
@@ -1378,8 +1381,37 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     ExperimentalCenterToDoseCenterTransformMRML.SetName(self.experimentalCenter2DoseCenterTransformName)
     ExperimentalCenterToDoseCenterTransformMRML.SetMatrixTransformToParent(ExperimentalCenterToDoseCenterTransform.GetMatrix())
     slicer.mrmlScene.AddNode(ExperimentalCenterToDoseCenterTransformMRML)
-
+    #print self.experimentalCenter2DoseCenterTransformName, " - added"
     rotate90APTransformMRML.SetAndObserveTransformNodeID(ExperimentalCenterToDoseCenterTransformMRML.GetID())
+    
+    print "harden node"
+    slicer.vtkSlicerTransformLogic.hardenTransform(self.experimentalFilmDoseVolume)
+    
+    # Apply BRAINSFit module 
+    
+    parametersRigid = {}
+    parametersRigid["fixedVolume"] = newScalarVolume
+    parametersRigid["movingVolume"] = self.experimentalFilmDoseVolume
+    parametersRigid["useRigid"] = True
+    parametersRigid["samplingPercentage"] = 0.05
+    parametersRigid["maximumStepLength"] = 15 # Start with long-range translations
+    parametersRigid["relaxationFactor"] = 0.8 # Relax quickly
+    parametersRigid["translationScale"] = 1000000 # Suppress rotation
+    obiToPlanTransformNode = slicer.vtkMRMLLinearTransformNode()
+    slicer.mrmlScene.AddNode(obiToPlanTransformNode)
+    obiToPlanTransformNode.SetName('obiToPlanTransformNode')
+    parametersRigid["linearTransform"] = obiToPlanTransformNode.GetID()
+
+    # Runs the brainsfit registration
+    brainsFit = slicer.modules.brainsfit
+    cliBrainsFitRigidNode = None
+    cliBrainsFitRigidNode = slicer.cli.run(brainsFit, None, parametersRigid)
+    
+    print "registration : \n"
+    self.brainsFit = cliBrainsFitRigidNode # TODO this is just for testing purposes 
+    print cliBrainsFitRigidNode.GetStatusString()
+    
+    
     
  
   #
