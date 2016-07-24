@@ -1249,7 +1249,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       print "messagebox should appear"
       qt.QMessageBox.critical(None, 'Error', "No calibration function in slicelet")
       return 
-    print "it is not 0"
+    #print "it is not 0"
     
     calculatedDoseDoubleArray = self.calculateDoseFromFilm()
     calculatedDoseVolume = slicer.vtkMRMLScalarVolumeNode()
@@ -1316,7 +1316,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
  
     doseArray = self.volumeToNumpyArray(croppedNode)
     doseArrayList = []
-    doseArray = doseArray.reshape(151,106)
+    #doseArray = doseArray.reshape(151,106)
+    doseArray = doseArray.reshape(croppedNode.GetImageData().GetExtent()[5]+1, croppedNode.GetImageData().GetExtent()[1]+1)
     for x in xrange(len(doseArray)):
       doseArrayList.append(numpy.tile(doseArray[x],5).tolist())
       
@@ -1336,8 +1337,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     slicer.mrmlScene.AddNode(newScalarVolume)
     self.dosePlanVolume = newScalarVolume
     newScalarVolume.CopyOrientation(croppedNode)
-    
-    
+        
     # Set up transform pipeline 
     
     experimentalAxialToCoronalRotationTransform = vtk.vtkTransform()
@@ -1348,6 +1348,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     experimentalAxialToExperimentalCoronalTransformMRML.SetMatrixTransformToParent(experimentalAxialToCoronalRotationTransform.GetMatrix())
 
     self.experimentalFilmDoseVolume.SetAndObserveTransformNodeID(experimentalAxialToExperimentalCoronalTransformMRML.GetID())
+    
+    #add another transform here to rotate 90 degrees about [0,1,0]
     
     expBounds = [0]*6
     self.experimentalFilmDoseVolume.GetRASBounds(expBounds)
