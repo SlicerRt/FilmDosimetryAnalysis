@@ -315,8 +315,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     self.step1_calibrationVolumeLayoutList = []
     self.step1_calibrationVolumeSelectorLabelBeforeList = []
-    self.step1_calibrationVolumeSelector_cGySpinBoxList = []
-    self.step1_calibrationVolumeSelector_cGyLabelList = []
+    self.step1_calibrationVolumeSelectorCGySpinBoxList = []
+    self.step1_calibrationVolumeSelectorCGyLabelList = []
     self.step1_calibrationVolumeSelectorComboBoxList = []
 
     for doseToImageLayoutNumber in xrange(self.maxCalibrationVolumeSelectorsInt):
@@ -324,13 +324,13 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.step1_mainCalibrationVolumeSelectorLabelBefore = qt.QLabel('Calibration ')
       self.step1_calibrationVolumeSelectorLabelBeforeList.append(self.step1_mainCalibrationVolumeSelectorLabelBefore)
 
-      self.doseToImageSelector_cGySpinBox = qt.QSpinBox()
-      self.doseToImageSelector_cGySpinBox.minimum = 0
-      self.doseToImageSelector_cGySpinBox.maximum = 10000
-      self.step1_calibrationVolumeSelector_cGySpinBoxList.append(self.doseToImageSelector_cGySpinBox)
+      self.doseToImageSelectorCGySpinBox = qt.QSpinBox()
+      self.doseToImageSelectorCGySpinBox.minimum = 0
+      self.doseToImageSelectorCGySpinBox.maximum = 10000
+      self.step1_calibrationVolumeSelectorCGySpinBoxList.append(self.doseToImageSelectorCGySpinBox)
 
       self.doseToImageSelectorLabelMiddle = qt.QLabel(' cGy : ')
-      self.step1_calibrationVolumeSelector_cGyLabelList.append(self.doseToImageSelectorLabelMiddle)
+      self.step1_calibrationVolumeSelectorCGyLabelList.append(self.doseToImageSelectorLabelMiddle)
 
       self.doseToImageFilmSelector = slicer.qMRMLNodeComboBox()
       self.doseToImageFilmSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
@@ -341,7 +341,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.step1_calibrationVolumeSelectorComboBoxList.append(self.doseToImageFilmSelector)
 
       self.step1_doseToImageSelectorRowLayout.addWidget(self.step1_mainCalibrationVolumeSelectorLabelBefore)
-      self.step1_doseToImageSelectorRowLayout.addWidget(self.doseToImageSelector_cGySpinBox)
+      self.step1_doseToImageSelectorRowLayout.addWidget(self.doseToImageSelectorCGySpinBox)
       self.step1_doseToImageSelectorRowLayout.addWidget(self.doseToImageSelectorLabelMiddle)
       self.step1_doseToImageSelectorRowLayout.addWidget(self.doseToImageFilmSelector)
 
@@ -636,14 +636,14 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   def fillStep1CalibrationPanel(self,CalibrationVolumeQuantity):
     for calibrationLayout in xrange(CalibrationVolumeQuantity):
       self.step1_calibrationVolumeSelectorLabelBeforeList[calibrationLayout].visible = True
-      self.step1_calibrationVolumeSelector_cGySpinBoxList[calibrationLayout].visible = True
-      self.step1_calibrationVolumeSelector_cGyLabelList[calibrationLayout].visible = True
+      self.step1_calibrationVolumeSelectorCGySpinBoxList[calibrationLayout].visible = True
+      self.step1_calibrationVolumeSelectorCGyLabelList[calibrationLayout].visible = True
       self.step1_calibrationVolumeSelectorComboBoxList[calibrationLayout].visible = True
 
     for calibrationLayout in range(1,self.maxCalibrationVolumeSelectorsInt-CalibrationVolumeQuantity + 1):
       self.step1_calibrationVolumeSelectorLabelBeforeList[-calibrationLayout].visible = False
-      self.step1_calibrationVolumeSelector_cGySpinBoxList[-calibrationLayout].visible = False
-      self.step1_calibrationVolumeSelector_cGyLabelList[-calibrationLayout].visible = False
+      self.step1_calibrationVolumeSelectorCGySpinBoxList[-calibrationLayout].visible = False
+      self.step1_calibrationVolumeSelectorCGyLabelList[-calibrationLayout].visible = False
       self.step1_calibrationVolumeSelectorComboBoxList[-calibrationLayout].visible = False
 
   #------------------------------------------------------------------------------
@@ -701,7 +701,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       currentCalibrationVolume = self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationVolumeIndex].currentNode()
       # Create calibration image subject hierarchy node, add it under folder node
       calibrationVolumeShNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, self.folderNode, slicer.vtkMRMLSubjectHierarchyConstants.GetDICOMLevelSeries(), self.calibrationVolumeName, currentCalibrationVolume)
-      doseLevelAttributeValue = self.step1_calibrationVolumeSelector_cGySpinBoxList[currentCalibrationVolumeIndex].value
+      doseLevelAttributeValue = self.step1_calibrationVolumeSelectorCGySpinBoxList[currentCalibrationVolumeIndex].value
       calibrationVolumeShNode.SetAttribute(self.calibrationVolumeDoseAttributeName, str(doseLevelAttributeValue))
       # Copy both image and SH to exported scene
       exportCalibrationImageVolumeNode = exportMrmlScene.CopyNode(currentCalibrationVolume)
@@ -814,7 +814,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     for currentCalibrationVolumeIndex in xrange(self.step1_numberOfCalibrationFilmsSpinBox.value):
       # Get current calibration image node
       currentCalibrationVolume = self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationVolumeIndex].currentNode()
-      currentCalibrationVolumeDose = self.step1_calibrationVolumeSelector_cGySpinBoxList[currentCalibrationVolumeIndex].value
+      currentCalibrationVolumeDose = self.step1_calibrationVolumeSelectorCGySpinBoxList[currentCalibrationVolumeIndex].value
 
       # Crop calibration images by last defined ROI
       cropVolumeLogic = slicer.modules.cropvolume.logic()
@@ -968,7 +968,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
             # Setting dose attribute to combobox
             dose = int(currentNode.GetAttribute(self.calibrationVolumeDoseAttributeName))
-            self.step1_calibrationVolumeSelector_cGySpinBoxList[calibrationVolumeIndex].value = dose
+            self.step1_calibrationVolumeSelectorCGySpinBoxList[calibrationVolumeIndex].value = dose
           else:
             fileNotFoundError = True
             logging.error("No calibration image in directory")
@@ -1305,7 +1305,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Crop the dose volume by the ROI
     croppedNode = self.cropDoseByROI()
     
-    # TODO resampling might still be better, find out...
+    # TODO just in case I need the resampling code, deletelater 
     # # Resample cropped dose volume 
     # self.dosePlanVolume = slicer.vtkMRMLScalarVolumeNode()
     # self.dosePlanVolume.SetName(self.dosePlanVolumeName)
@@ -1351,8 +1351,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     
     # Rotate 90 degrees about [0,1,0]
 
-
-
     rotate90APTransform = vtk.vtkTransform()
     rotate90APTransform.RotateWXYZ(90,[0,1,0])
     rotate90APTransformMRML = slicer.vtkMRMLLinearTransformNode()
@@ -1360,11 +1358,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     rotate90APTransformMRML.SetMatrixTransformToParent(rotate90APTransform.GetMatrix())
     experimentalAxialToExperimentalCoronalTransformMRML.SetAndObserveTransformNodeID(rotate90APTransformMRML.GetID())
     rotate90APTransformMRML.SetName('rotate90APTransformMRML')    
-        
-    
-    
-    
-    
+     
     # Translate to center of the dose volume 
     
     expBounds = [0]*6
