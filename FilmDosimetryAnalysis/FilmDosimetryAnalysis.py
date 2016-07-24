@@ -1349,7 +1349,23 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     self.experimentalFilmDoseVolume.SetAndObserveTransformNodeID(experimentalAxialToExperimentalCoronalTransformMRML.GetID())
     
-    #add another transform here to rotate 90 degrees about [0,1,0]
+    # Rotate 90 degrees about [0,1,0]
+
+
+
+    rotate90APTransform = vtk.vtkTransform()
+    rotate90APTransform.RotateWXYZ(90,[0,1,0])
+    rotate90APTransformMRML = slicer.vtkMRMLLinearTransformNode()
+    slicer.mrmlScene.AddNode(rotate90APTransformMRML)
+    rotate90APTransformMRML.SetMatrixTransformToParent(rotate90APTransform.GetMatrix())
+    experimentalAxialToExperimentalCoronalTransformMRML.SetAndObserveTransformNodeID(rotate90APTransformMRML.GetID())
+    rotate90APTransformMRML.SetName('rotate90APTransformMRML')    
+        
+    
+    
+    
+    
+    # Translate to center of the dose volume 
     
     expBounds = [0]*6
     self.experimentalFilmDoseVolume.GetRASBounds(expBounds)
@@ -1369,7 +1385,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     ExperimentalCenterToDoseCenterTransformMRML.SetMatrixTransformToParent(ExperimentalCenterToDoseCenterTransform.GetMatrix())
     slicer.mrmlScene.AddNode(ExperimentalCenterToDoseCenterTransformMRML)
 
-    experimentalAxialToExperimentalCoronalTransformMRML.SetAndObserveTransformNodeID(ExperimentalCenterToDoseCenterTransformMRML.GetID())
+    rotate90APTransformMRML.SetAndObserveTransformNodeID(ExperimentalCenterToDoseCenterTransformMRML.GetID())
     
  
   #
