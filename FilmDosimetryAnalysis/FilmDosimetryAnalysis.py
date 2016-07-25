@@ -1350,7 +1350,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Rotate 90 degrees about [0,1,0]
 
     rotate90APTransform = vtk.vtkTransform()
-    rotate90APTransform.RotateWXYZ(90,[0,1,0])
+    rotate90APTransform.RotateWXYZ(-90,[0,1,0])
+    # TODO this may be a 90 or -90 rotation, it is unclear what orientation the films should be in 
     rotate90APTransformMRML = slicer.vtkMRMLLinearTransformNode()
     rotate90APTransformMRML.SetMatrixTransformToParent(rotate90APTransform.GetMatrix())
     rotate90APTransformMRML.SetName(self.experimentalRotate90APTransformName)    
