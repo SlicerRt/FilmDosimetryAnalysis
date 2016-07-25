@@ -1119,7 +1119,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     return round(sumMeanSquaredError/(len(self.measuredOpticalDensities)),5)
 
   def applyFitFunction(self, OD, n, coeff):
-    return coeff[0] + coeff[1]*OD + coeff[2]*(OD**n)
+    return (coeff[0] + coeff[1]*OD + coeff[2]*(OD**n))
 
   def findCoefficients(self,n):
     # Calculate matrix A
@@ -1225,7 +1225,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     numpyArrayVolume = numpy_support.vtk_to_numpy(volumeDataScalars)
     return numpyArrayVolume
     
-  def calculateDoseFromFilm(self):
+  def calculateDoseFromExperimentalFilmImage(self):
     #TODO this should be done in simpleITK
     experimentalFilmArray = self.volumeToNumpyArray(self.step2_experimentalFilmSelectorComboBox.currentNode())  
     floodFieldArray = self.volumeToNumpyArray(self.step2_floodFieldImageSelectorComboBox.currentNode())
@@ -1234,7 +1234,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       qt.QMessageBox.critical(None, 'Error', "Experimental and flood field images must be the same size")
       return 
     
-    doseArray = numpy.zeros(len(floodFieldArray))
+    doseArrayGy = numpy.zeros(len(floodFieldArray))
     inexcept = 0
     for rowIndex in xrange(len(experimentalFilmArray)):
       
@@ -1246,30 +1246,15 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
         opticalDensity = 0
       if opticalDensity <= 0.0:
         opticalDensity = 0
-      doseArray[rowIndex] = self.applyFitFunction(opticalDensity, self.bestCoefficients[1],self.bestCoefficients[2] )
+      doseArrayGy[rowIndex] = self.applyFitFunction(opticalDensity, self.bestCoefficients[1],self.bestCoefficients[2] )/100.0
+      # TODO       
         
-      if doseArray[rowIndex] <0.0:
-        doseArray[rowIndex] = 0.0
+      if doseArrayGy[rowIndex] <0.0:
+        doseArrayGy[rowIndex] = 0.0
 
-    return doseArray
+    return doseArrayGy
+     
     
-  def arrayTo3DVolume(self, array, dimensions):
-    calculatedDoseDoubleArray = self.calculateDoseFromFilm()
-    calculatedDoseVolume = slicer.vtkMRMLScalarVolumeNode()
-    calculatedDoseVolumeArray = numpy.tile(calculatedDoseDoubleArray,5)
-    calculatedDoseVolumeScalars = numpy_support.numpy_to_vtk(calculatedDoseVolumeArray)
-    calculatedDoseVolumeScalarsCopy = vtk.vtkDoubleArray()  #current 
-    calculatedDoseVolumeScalarsCopy.DeepCopy(calculatedDoseVolumeScalars)
-    calculatedDoseImageData = vtk.vtkImageData()
-    calculatedDoseImageData.GetPointData().SetScalars(calculatedDoseVolumeScalarsCopy)
-    calculatedDoseImageData.SetDimensions(dimensions)
-    calculatedDoseVolume.SetAndObserveImageData(calculatedDoseImageData)
-    calculatedDoseVolume.SetName(self.experimentalFilmDoseVolumeName)
-    slicer.mrmlScene.AddNode(calculatedDoseVolume)
-    calculatedDoseVolume.CreateDefaultDisplayNodes()  
-    
-    
-
   def onApplyCalibrationButton(self):
     #print "onApplyCalibrationButton"
     
@@ -1279,14 +1264,14 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       return 
     #print "it is not 0"
     
-    calculatedDoseDoubleArray = self.calculateDoseFromFilm()
+    calculatedDoseDoubleArrayGy = self.calculateDoseFromExperimentalFilmImage()
     calculatedDoseVolume = slicer.vtkMRMLScalarVolumeNode()
-    calculatedDoseVolumeArray = numpy.tile(calculatedDoseDoubleArray,5)
-    calculatedDoseVolumeScalars = numpy_support.numpy_to_vtk(calculatedDoseVolumeArray)
-    calculatedDoseVolumeScalarsCopy = vtk.vtkDoubleArray()  #current 
-    calculatedDoseVolumeScalarsCopy.DeepCopy(calculatedDoseVolumeScalars)
+    calculatedDoseVolumeArrayGy = numpy.tile(calculatedDoseDoubleArrayGy,5)
+    calculatedDoseVolumeScalarsGy = numpy_support.numpy_to_vtk(calculatedDoseVolumeArrayGy)
+    calculatedDoseVolumeScalarsGyCopy = vtk.vtkDoubleArray()  #current 
+    calculatedDoseVolumeScalarsGyCopy.DeepCopy(calculatedDoseVolumeScalarsGy)
     calculatedDoseImageData = vtk.vtkImageData()
-    calculatedDoseImageData.GetPointData().SetScalars(calculatedDoseVolumeScalarsCopy)
+    calculatedDoseImageData.GetPointData().SetScalars(calculatedDoseVolumeScalarsGyCopy)
     calculatedDoseImageData.SetDimensions(self.step2_experimentalFilmSelectorComboBox.currentNode().GetImageData().GetDimensions()[0:2] + (5,))
     calculatedDoseVolume.SetAndObserveImageData(calculatedDoseImageData)
     calculatedDoseVolume.SetName(self.experimentalFilmDoseVolumeName)
@@ -1295,26 +1280,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.experimentalFilmDoseVolume = calculatedDoseVolume
     qt.QMessageBox.information(None, "Step 3" , "Calibration function successfully applied")
     
-
-  def calculateOpticalDensity(self,IFlood, IFilm):
-    print "IFlood ", IFlood, "IFilm ", IFilm
-    opticalDensity = 0
-    try:
-      print "in try"
-      opticalDensity = math.log10((IFlood + 0.0)/IFilm)
-    except:
-      print "internal numerical error"
-
-      opticalDensity = 0
-    return opticalDensity
-
-  
   def onResolutionLineEditTextChanged(self):
     #print "onResolutionLineEditTextChanged"
     self.resolutionMM_ToPixel = round(float(self.step4_resolutionLineEdit.text),5)   
         
   def onPerformRegistrationButtonClicked(self):
-  
+    
   # TODO merge step 3 and step 4
     print "onPerformRegistrationButtonClicked"
     
@@ -1375,7 +1346,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     slicer.mrmlScene.AddNode(experimentalAxialToExperimentalCoronalTransformMRML)
     experimentalAxialToExperimentalCoronalTransformMRML.SetMatrixTransformToParent(experimentalAxialToCoronalRotationTransform.GetMatrix())
     self.experimentalFilmDoseVolume.SetAndObserveTransformNodeID(experimentalAxialToExperimentalCoronalTransformMRML.GetID())
-    
     
     # Rotate 90 degrees about [0,1,0]
 
