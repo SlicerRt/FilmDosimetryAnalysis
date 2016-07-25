@@ -93,6 +93,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step2_inputExperimentalDataCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step3_applyCalibrationCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step4_CollapsibleButton = ctk.ctkCollapsibleButton()
+    self.step5_CollapsibleButton = ctk.ctkCollapsibleButton()
     self.testButton = ctk.ctkCollapsibleButton()
 
     self.collapsibleButtonsGroup = qt.QButtonGroup()
@@ -101,7 +102,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.collapsibleButtonsGroup.addButton(self.step2_inputExperimentalDataCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step3_applyCalibrationCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step4_CollapsibleButton)
-
+    self.collapsibleButtonsGroup.addButton(self.step5_CollapsibleButton)   
 
     self.collapsibleButtonsGroup.addButton(self.testButton)
 
@@ -175,7 +176,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.setup_step2_inputExperimentalData()
     self.setup_step3_applyCalibration()
     self.setup_step4_Registration()
-
+    self.setup_step5_gammaComparison()
+# TODO add function call here 
 
     if widgetClass:
       self.widget = widgetClass(self.parent)
@@ -582,7 +584,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step4_CollapsibleButtonLayout = qt.QVBoxLayout(self.step4_CollapsibleButton)
     self.step4_CollapsibleButtonLayout.setContentsMargins(12,4,4,4)
     self.step4_CollapsibleButtonLayout.setSpacing(4)
-    self.sliceletPanelLayout.addStretch(1) # TODO this may need to be moved
+    #self.sliceletPanelLayout.addStretch(1) # TODO this may need to be moved
 
     # Experimental film resolution mm/pixel
     self.step4_resolutionLineEdit = qt.QLineEdit()
@@ -602,6 +604,22 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step4_resolutionLineEdit.connect('textChanged(QString)', self.onResolutionLineEditTextChanged)
     self.step4_performRegistrationButton.connect('clicked()', self.onPerformRegistrationButtonClicked)
 
+    
+  def setup_step5_gammaComparison(self):
+  # TODO add to collapsible buttons group
+    # Step 2: Load data panel
+    self.step5_CollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step5_CollapsibleButton.text = "5. Gamma comparison"
+    self.sliceletPanelLayout.addWidget(self.step5_CollapsibleButton)
+
+    self.step5_CollapsibleButtonLayout = qt.QVBoxLayout(self.step5_CollapsibleButton)
+    self.step5_CollapsibleButtonLayout.setContentsMargins(12,4,4,4)
+    self.step5_CollapsibleButtonLayout.setSpacing(4)
+    self.sliceletPanelLayout.addStretch(1) # TODO this may need to be moved
+    
+    # TODO follow onGammaDoseComparison in Gel 
+    
+    
   #
   # -----------------------
   # Event handler functions
@@ -655,9 +673,16 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   def onSaveCalibrationBatchButton(self):
     print " onSaveCalibrationBatchButton "
     self.savedFolderPath = qt.QFileDialog.getExistingDirectory(0, 'Open dir')
-
-    if not os.listdir(self.savedFolderPath):
+    
+    savedFolderPathFileList = os.listdir(self.savedFolderPath)
+    if savedFolderPathFileList is not []:
       qt.QMessageBox.critical(None, 'Error', "Directory is not empty, all files will be deleted")
+      os.chdir(self.savedFolderPath)
+      for fileToDelete in savedFolderPathFileList: 
+         os.remove(fileToDelete)
+    # TODO add some option for ending the function and choosing another file path 
+      
+    # TODO delete all files
       
     # Create temporary scene for saving
     exportMrmlScene = slicer.vtkMRMLScene()
@@ -1200,8 +1225,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     
   def calculateDoseFromFilm(self):
     #TODO this should be done in simpleITK
-    experimentalFilmArray = self.volumeToNumpyArray(self.step2_experimentalFilmSelectorComboBox.currentNode()) #deletelater these are 1D now
-    floodFieldArray = self.volumeToNumpyArray(self.step2_floodFieldImageSelectorComboBox.currentNode())#deletelater these are 1D now
+    experimentalFilmArray = self.volumeToNumpyArray(self.step2_experimentalFilmSelectorComboBox.currentNode())  
+    floodFieldArray = self.volumeToNumpyArray(self.step2_floodFieldImageSelectorComboBox.currentNode())
     
     if len(experimentalFilmArray) != len(floodFieldArray):
       qt.QMessageBox.critical(None, 'Error', "Experimental and flood field images must be the same size")
@@ -1284,7 +1309,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   
   def onResolutionLineEditTextChanged(self):
     #print "onResolutionLineEditTextChanged"
-    self.resolutionMM_ToPixel = round(float(self.step4_resolutionLineEdit.text),5) 
+    self.resolutionMM_ToPixel = round(float(self.step4_resolutionLineEdit.text),5)   
         
   def onPerformRegistrationButtonClicked(self):
   
@@ -1306,7 +1331,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Crop the dose volume by the ROI
     croppedNode = self.cropDoseByROI()
     
-    # TODO just in case I need the resampling code, deletelater 
+    # TODO just in case I need the resampling code,
     # # Resample cropped dose volume 
     # self.dosePlanVolume = slicer.vtkMRMLScalarVolumeNode()
     # self.dosePlanVolume.SetName(self.dosePlanVolumeName)
@@ -1369,6 +1394,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     expCenter = [(expBounds[0]+expBounds[1])/2, (expBounds[2]+expBounds[3])/2, (expBounds[4]+expBounds[5])/2]
     exp2DoseTranslation = [doseVolumeCenter[x] - expCenter[x] for x in range(len(doseVolumeCenter))]
     
+    # TODO test transformation chain on asymmetrical image 
+    
     ExperimentalCenterToDoseCenterTransform = vtk.vtkTransform()
     ExperimentalCenterToDoseCenterTransform.Translate(exp2DoseTranslation)
     ExperimentalCenterToDoseCenterTransformMRML = slicer.vtkMRMLLinearTransformNode()
@@ -1408,6 +1435,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     waitCount = 0
     while cliBrainsFitRigidNode.GetStatusString() != 'Completed' and waitCount < 200:
       #self.delayDisplay( "Register experimental film to dose using rigid registration... %d" % waitCount )
+      # TODO implement the delayDisplay function 
       waitCount += 1
     #self.delayDisplay("Register experimental film to dose using rigid registration finished")
     qt.QApplication.restoreOverrideCursor()
