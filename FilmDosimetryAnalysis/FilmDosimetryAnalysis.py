@@ -121,6 +121,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.inputDICOMDoseVolume = None
     self.dosePlanVolume = None 
     self.dosePlanVolumeName = "Dose plan resampled"
+    self.experimentalToDoseTransform = None 
     
     self.experimentalFloodFieldImageNode = None
     self.experimentalFilmImageNode = None 
@@ -140,6 +141,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.experimentalAxialToExperimentalCoronalTransformName = "Experimental film axial to coronal transform"
     self.experimentalRotate90APTransformName = "Experimental rotate 90 around AP axis"
     self.cropDoseByROIName = "crop dose ROI" 
+    self.experimentalToDoseTransformName = "Experimental film to dose transform"
     
     self.savedFolderPath = slicer.app.temporaryPath + "/" + self.savedCalibrationVolumeFolderName
     self.maxCalibrationVolumeSelectorsInt = 10
@@ -1418,10 +1420,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     parametersRigid["maximumStepLength"] = 15 # Start with long-range translations
     parametersRigid["relaxationFactor"] = 0.8 # Relax quickly
     parametersRigid["translationScale"] = 1000000 # Suppress rotation
-    experimentalToDoseNode = slicer.vtkMRMLLinearTransformNode()
-    slicer.mrmlScene.AddNode(experimentalToDoseNode)
-    experimentalToDoseNode.SetName('experimentalToDoseNode')
-    parametersRigid["linearTransform"] = experimentalToDoseNode.GetID()
+    self.experimentalToDoseTransform = slicer.vtkMRMLLinearTransformNode()
+    slicer.mrmlScene.AddNode(self.experimentalToDoseTransform)
+    self.experimentalToDoseTransform.SetName(self.experimentalToDoseTransformName)
+    parametersRigid["linearTransform"] = self.experimentalToDoseTransform.GetID()
 
     # Runs the brainsfit registration
     brainsFit = slicer.modules.brainsfit
@@ -1430,7 +1432,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     
     print "registration : \n"
     self.brainsFit = cliBrainsFitRigidNode # TODO this is just for testing purposes 
-    print cliBrainsFitRigidNode.GetStatusString()
     
     waitCount = 0
     while cliBrainsFitRigidNode.GetStatusString() != 'Completed' and waitCount < 200:
@@ -1438,6 +1439,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       # TODO implement the delayDisplay function 
       waitCount += 1
     #self.delayDisplay("Register experimental film to dose using rigid registration finished")
+    print cliBrainsFitRigidNode.GetStatusString()
     qt.QApplication.restoreOverrideCursor()
     # TODO have success message pop up
  
