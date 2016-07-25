@@ -1347,9 +1347,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     experimentalAxialToExperimentalCoronalTransformMRML.SetName(self.experimentalAxialToExperimentalCoronalTransformName)
     slicer.mrmlScene.AddNode(experimentalAxialToExperimentalCoronalTransformMRML)
     experimentalAxialToExperimentalCoronalTransformMRML.SetMatrixTransformToParent(experimentalAxialToCoronalRotationTransform.GetMatrix())
-
     self.experimentalFilmDoseVolume.SetAndObserveTransformNodeID(experimentalAxialToExperimentalCoronalTransformMRML.GetID())
-    #print self.experimentalAxialToExperimentalCoronalTransformName, " - added"
     
     
     # Rotate 90 degrees about [0,1,0]
@@ -1360,7 +1358,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     rotate90APTransformMRML.SetMatrixTransformToParent(rotate90APTransform.GetMatrix())
     rotate90APTransformMRML.SetName(self.experimentalRotate90APTransformName)    
     slicer.mrmlScene.AddNode(rotate90APTransformMRML)
-    #print self.experimentalRotate90APTransformName, " - added"
     experimentalAxialToExperimentalCoronalTransformMRML.SetAndObserveTransformNodeID(rotate90APTransformMRML.GetID())
     # Translate to center of the dose volume 
     
@@ -1369,11 +1366,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     doseBounds = [0]*6
     self.dosePlanVolume.GetRASBounds(doseBounds)
     doseVolumeCenter = [(doseBounds[0]+doseBounds[1])/2, (doseBounds[2]+doseBounds[3])/2, (doseBounds[4]+doseBounds[5])/2]
-    #print "doseVolumeCenter :", doseVolumeCenter
     expCenter = [(expBounds[0]+expBounds[1])/2, (expBounds[2]+expBounds[3])/2, (expBounds[4]+expBounds[5])/2]
-    #print "expCenter :", expCenter
     exp2DoseTranslation = [doseVolumeCenter[x] - expCenter[x] for x in range(len(doseVolumeCenter))]
-    #print "translating: ", exp2DoseTranslation
     
     ExperimentalCenterToDoseCenterTransform = vtk.vtkTransform()
     ExperimentalCenterToDoseCenterTransform.Translate(exp2DoseTranslation)
@@ -1381,26 +1375,26 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     ExperimentalCenterToDoseCenterTransformMRML.SetName(self.experimentalCenter2DoseCenterTransformName)
     ExperimentalCenterToDoseCenterTransformMRML.SetMatrixTransformToParent(ExperimentalCenterToDoseCenterTransform.GetMatrix())
     slicer.mrmlScene.AddNode(ExperimentalCenterToDoseCenterTransformMRML)
-    #print self.experimentalCenter2DoseCenterTransformName, " - added"
     rotate90APTransformMRML.SetAndObserveTransformNodeID(ExperimentalCenterToDoseCenterTransformMRML.GetID())
     
     print "harden node"
     slicer.vtkSlicerTransformLogic.hardenTransform(self.experimentalFilmDoseVolume)
     
     # Apply BRAINSFit module 
+    qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
     
     parametersRigid = {}
-    parametersRigid["fixedVolume"] = newScalarVolume
+    parametersRigid["fixedVolume"] = self.dosePlanVolume # current 
     parametersRigid["movingVolume"] = self.experimentalFilmDoseVolume
     parametersRigid["useRigid"] = True
     parametersRigid["samplingPercentage"] = 0.05
     parametersRigid["maximumStepLength"] = 15 # Start with long-range translations
     parametersRigid["relaxationFactor"] = 0.8 # Relax quickly
     parametersRigid["translationScale"] = 1000000 # Suppress rotation
-    obiToPlanTransformNode = slicer.vtkMRMLLinearTransformNode()
-    slicer.mrmlScene.AddNode(obiToPlanTransformNode)
-    obiToPlanTransformNode.SetName('obiToPlanTransformNode')
-    parametersRigid["linearTransform"] = obiToPlanTransformNode.GetID()
+    experimentalToDoseNode = slicer.vtkMRMLLinearTransformNode()
+    slicer.mrmlScene.AddNode(experimentalToDoseNode)
+    experimentalToDoseNode.SetName('experimentalToDoseNode')
+    parametersRigid["linearTransform"] = experimentalToDoseNode.GetID()
 
     # Runs the brainsfit registration
     brainsFit = slicer.modules.brainsfit
@@ -1411,8 +1405,13 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.brainsFit = cliBrainsFitRigidNode # TODO this is just for testing purposes 
     print cliBrainsFitRigidNode.GetStatusString()
     
-    
-    
+    waitCount = 0
+    while cliBrainsFitRigidNode.GetStatusString() != 'Completed' and waitCount < 200:
+      #self.delayDisplay( "Register experimental film to dose using rigid registration... %d" % waitCount )
+      waitCount += 1
+    #self.delayDisplay("Register experimental film to dose using rigid registration finished")
+    qt.QApplication.restoreOverrideCursor()
+    # TODO have success message pop up
  
   #
   # -------------------------
