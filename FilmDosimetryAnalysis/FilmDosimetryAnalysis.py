@@ -858,7 +858,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
       self.calibrationValues.append([meanValue, currentCalibrationVolumeDose])
       # Optical density calculation
-      opticalDensity = math.log10(meanValueFloodField/meanValue)
+      opticalDensity = math.log10(1.0* meanValueFloodField/meanValue) # TODO check to see that every involved integer division is converted to float 
 
       if opticalDensity < 0.0:
         opticalDensity = 0.0
@@ -1067,7 +1067,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Create and populate the calculated dose/OD curve with K function
     #call function to find best coefficients
 
-    self.bestCoefficients = self.findBestFunctionCoefficients()
+    self.bestCoefficients = self.selectBestFunctionCoefficients()
 
     opticalDensityList = [round(0 + 0.01*opticalDensityIncrement,2) for opticalDensityIncrement in range(120)]
     opticalDensities = []
@@ -1147,7 +1147,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     return coefficients
 
-  def findBestFunctionCoefficients(self):
+  def selectBestFunctionCoefficients(self):
     bestN = [] #entries are [MSE, n, answer]
 
     for n in xrange(1000,4001):
