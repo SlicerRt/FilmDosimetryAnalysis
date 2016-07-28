@@ -858,7 +858,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
       self.calibrationValues.append([meanValue, currentCalibrationVolumeDose])
       # Optical density calculation
-      opticalDensity = math.log10(1.0* meanValueFloodField/meanValue) # TODO check to see that every involved integer division is converted to float 
+      opticalDensity = math.log10(float(meanValueFloodField)/meanValue) 
 
       if opticalDensity < 0.0:
         opticalDensity = 0.0
@@ -1132,14 +1132,14 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     functionTermsMatrix = numpy.asmatrix(functionTermsMatrix)
     #print functionTermsMatrix
     # Calculate constant term coefficient vector
-    # functionOpticalDensityTerms
-    functionOpticalDensityTerms = []
+    # functionDoseTerms
+    functionDoseTerms = []
     for row in xrange(len(self.measuredOpticalDensities)):
-      functionOpticalDensityTerms+= [self.measuredOpticalDensities[row][1]]
-        #print "functionOpticalDensityTerms is ", functionOpticalDensityTerms
+      functionDoseTerms+= [self.measuredOpticalDensities[row][1]]
+        #print "functionDoseTerms is ", functionDoseTerms
         # Find x
         #functionConstantTerms
-    functionConstantTerms = numpy.linalg.lstsq(functionTermsMatrix,functionOpticalDensityTerms)
+    functionConstantTerms = numpy.linalg.lstsq(functionTermsMatrix,functionDoseTerms)
     coefficients = functionConstantTerms[0].tolist()
 
     for coefficientIndex in xrange(len(coefficients)):
@@ -1225,7 +1225,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     numpyArrayVolume = numpy_support.vtk_to_numpy(volumeDataScalars)
     return numpyArrayVolume
     
-  def calculateDoseFromExperimentalFilmImage(self):
+  def calculateDoseFromExperimentalFilmImage(self): #AR problem is here
     #TODO this should be done in simpleITK
     experimentalFilmArray = self.volumeToNumpyArray(self.step2_experimentalFilmSelectorComboBox.currentNode())  
     floodFieldArray = self.volumeToNumpyArray(self.step2_floodFieldImageSelectorComboBox.currentNode())
@@ -1240,7 +1240,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       
       opticalDensity = 0
       try:
-        opticalDensity = math.log10((1.0* floodFieldArray[rowIndex])/experimentalFilmArray[rowIndex])
+        opticalDensity = math.log10(float(floodFieldArray[rowIndex])/experimentalFilmArray[rowIndex])
       except:
         inexcept+=1
         opticalDensity = 0
