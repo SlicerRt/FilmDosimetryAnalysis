@@ -90,7 +90,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Initiate and group together all panels
     self.step0_layoutSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step1_CalibrationCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step2_inputExperimentalDataCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.step2_loadExperimentalDataCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step3_applyCalibrationCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step4_CollapsibleButton = ctk.ctkCollapsibleButton()
     self.step5_CollapsibleButton = ctk.ctkCollapsibleButton()
@@ -99,7 +99,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.collapsibleButtonsGroup = qt.QButtonGroup()
     self.collapsibleButtonsGroup.addButton(self.step0_layoutSelectionCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step1_CalibrationCollapsibleButton)
-    self.collapsibleButtonsGroup.addButton(self.step2_inputExperimentalDataCollapsibleButton)
+    self.collapsibleButtonsGroup.addButton(self.step2_loadExperimentalDataCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step3_applyCalibrationCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step4_CollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step5_CollapsibleButton)   
@@ -109,7 +109,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step0_layoutSelectionCollapsibleButton.setProperty('collapsed', False)
 
     # Create module logic
-    self.logic = FilmDosimetryAnalysisLogic.FilmDosimetryAnalysisLogic()
+    # self.logic = FilmDosimetryAnalysisLogic.FilmDosimetryAnalysisLogic() #TODO (include as well)
 
     # Declare member variables (selected at certain steps and then from then on for the workflow)
     self.folderNode = None
@@ -126,16 +126,15 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.experimentalFloodFieldImageNode = None
     self.experimentalFilmImageNode = None 
     
-    self.calibrationValues = []
     self.measuredOpticalDensities = []
+
     # Set up constants
-    self.saveCalibrationBatchFolderNodeName = "Calibration batch"
+    self.saveCalibrationBatchFolderNodeNamePrefix = "Calibration batch"
     self.calibrationVolumeDoseAttributeName = "Dose"
     self.floodFieldAttributeValue = "FloodField"
-    self.floodFieldImageShNodeName = "FloodFieldImage"
-    self.calibrationVolumeName = "CalibrationVolume"
-    self.exportedSceneFileName = slicer.app.temporaryPath + "/exportMrmlScene.mrml"
-    self.savedCalibrationVolumeFolderName = "savedCalibrationVolumes"
+    self.floodFieldImageShNodeName = "FloodFieldImage" #TODO: Do not rename node, and use the attribute to identify
+    self.calibrationVolumeName = "CalibrationVolume" #TODO: Do not rename node, and use the attribute to identify
+    self.calibrationBatchSceneFileName = "CalibrationBatchScene.mrml"
     self.calibrationFunctionFileName = "doseVSopticalDensity.txt"
     self.experimentalCenter2DoseCenterTransformName = "Experimental to dose translation"
     self.experimentalAxialToExperimentalCoronalTransformName = "Experimental film axial to coronal transform"
@@ -143,13 +142,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.cropDoseByROIName = "crop dose ROI" 
     self.experimentalToDoseTransformName = "Experimental film to dose transform"
     
-    self.savedFolderPath = slicer.app.temporaryPath + "/" + self.savedCalibrationVolumeFolderName
-    self.maxCalibrationVolumeSelectorsInt = 10
-    self.fileLoadingSuccessMessageHeader = "Calibration image loading"
-    self.floodFieldFailureMessage = "Flood field image failed to load"
-    self.calibrationVolumeLoadFailureMessage = "calibration volume failed to load"
-    self.opticalDensityCurve = None #where polyfit is stored
-    self.bestCoefficients = [0,0,[0,0,0]] #the best coefficients from Kevin's function, [n, [a,b,c]]
+    self.maxNumberOfCalibrationVolumes = 10
+    self.opticalDensityCurve = None # Polyfit
+    self.bestCoefficients = [0,0,[0,0,0]] #the best coefficients from Kevin's function, [n, [a,b,c]] #TODO
     self.resolutionMM_ToPixel = None
 
     # Set observations
@@ -175,11 +170,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Set up step panels
     self.setup_Step0_LayoutSelection()
     self.setup_step1_Calibration()
-    self.setup_step2_inputExperimentalData()
+    self.setup_step2_loadExperimentalData()
     self.setup_step3_applyCalibration()
     self.setup_step4_Registration()
-    self.setup_step5_gammaComparison()
-# TODO add function call here 
+    self.setup_step5_GammaComparison()
 
     if widgetClass:
       self.widget = widgetClass(self.parent)
@@ -190,12 +184,15 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   def disconnect(self):
     self.step0_viewSelectorComboBox.disconnect('activated(int)', self.onViewSelect)
     self.step1_loadImageFilesButton.disconnect('clicked()', self.onLoadImageFilesButton)
-    self.step1_numberOfCalibrationFilmsSpinBox.disconnect('valueChanged()', self.onNumberOfCalibrationFilmsSpinBoxValueChanged)
+    self.step1_numberOfCalibrationFilmsSpinBox.disconnect('valueChanged(int)', self.onNumberOfCalibrationFilmsSpinBoxValueChanged)
     self.step1_saveCalibrationBatchButton.disconnect('clicked()', self.onSaveCalibrationBatchButton)
     self.step1_loadCalibrationBatchButton.disconnect('clicked()', self.onloadCalibrationBatchButton)
-    self.step1_saveCalibrationButton.disconnect('clicked()', self.exportCalibrationToTxt)
+    self.step1_saveCalibrationButton.disconnect('clicked()', self.exportCalibrationResultToFile)
+    self.step1_addRoiButton.disconnect('clicked()', self.onAddRoiButton)
+    self.step1_performCalibrationButton.disconnect('clicked()', self.onPerformCalibrationButton)
     self.step2_loadNonDicomDataButton.disconnect('clicked()', self.onLoadImageFilesButton)
     self.step2_showDicomBrowserButton.disconnect('clicked()', self.onDicomLoad)
+    self.step2_loadExperimentalDataCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onstep2_loadExperimentalDataCollapsed)
     self.step3_calibrationFunctionOrder0LineEdit.disconnect('textChanged()', self.onTextChanged)
     self.step3_calibrationFunctionOrder1LineEdit.disconnect('textChanged()', self.onTextChanged)
     self.step3_calibrationFunctionOrder2LineEdit.disconnect('textChanged()', self.onTextChanged)
@@ -204,7 +201,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_loadCalibrationButton.disconnect('clicked()', self.onLoadCalibrationFunctionButton)
     self.step4_resolutionLineEdit.disconnect('textChanged(QString)', self.onResolutionLineEditTextChanged)
     self.step4_performRegistrationButton.disconnect('clicked()', self.onPerformRegistrationButtonClicked)
-
 
   #------------------------------------------------------------------------------
   def setup_Step0_LayoutSelection(self):
@@ -243,23 +239,20 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   def setup_step1_Calibration(self):
     # Step 1: Load data panel
     self.step1_CalibrationCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step1_CalibrationCollapsibleButton.text = "1. Calibration"
+    self.step1_CalibrationCollapsibleButton.text = "1. Calibration (optional)"
     self.sliceletPanelLayout.addWidget(self.step1_CalibrationCollapsibleButton)
 
     # Step 1 main background layout
     self.step1_calibrationLayout = qt.QVBoxLayout(self.step1_CalibrationCollapsibleButton)
 
-
-    # Step 1.1: Calibration routine (optional)
+    # Step 1.1: Calibration routine
     self.step1_1_calibrationRoutineCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step1_1_calibrationRoutineCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step1_1_calibrationRoutineCollapsibleButton.text = "1.1. Load calibration data (optional)"
+    self.step1_1_calibrationRoutineCollapsibleButton.text = "1.1. Load calibration data"
     self.step1_calibrationLayout.addWidget(self.step1_1_calibrationRoutineCollapsibleButton)
     self.step1_1_calibrationRoutineLayout = qt.QVBoxLayout(self.step1_1_calibrationRoutineCollapsibleButton)
     self.step1_1_calibrationRoutineLayout.setContentsMargins(12,4,4,4)
     self.step1_1_calibrationRoutineLayout.setSpacing(4)
-
-
 
     # Step 1 top third sub-layout
     self.step1_topCalibrationSubLayout = qt.QVBoxLayout()
@@ -324,7 +317,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_calibrationVolumeSelectorCGyLabelList = []
     self.step1_calibrationVolumeSelectorComboBoxList = []
 
-    for doseToImageLayoutNumber in xrange(self.maxCalibrationVolumeSelectorsInt):
+    for doseToImageLayoutNumber in xrange(self.maxNumberOfCalibrationVolumes):
       self.step1_doseToImageSelectorRowLayout = qt.QHBoxLayout()
       self.step1_mainCalibrationVolumeSelectorLabelBefore = qt.QLabel('Calibration ')
       self.step1_calibrationVolumeSelectorLabelBeforeList.append(self.step1_mainCalibrationVolumeSelectorLabelBefore)
@@ -356,7 +349,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_bottomCalibrationSubLayout = qt.QVBoxLayout()
     self.step1_1_calibrationRoutineLayout.addLayout(self.step1_bottomCalibrationSubLayout)
 
-    self.fillStep1CalibrationPanel(self.step1_numberOfCalibrationFilmsSpinBox.value)
+    self.updateStep1CalibrationPanel(self.step1_numberOfCalibrationFilmsSpinBox.value)
 
     # Save batch button
     self.step1_saveCalibrationBatchButton = qt.QPushButton("Save calibration batch")
@@ -366,13 +359,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Add empty row
     self.step1_bottomCalibrationSubLayout.addWidget(qt.QLabel(''))
 
-
-
-
-   # Step 1.2: Calibration routine (optional)
+    # Step 1.2: Calibration routine (optional)
     self.step1_2_calibrationRoutineCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step1_2_calibrationRoutineCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step1_2_calibrationRoutineCollapsibleButton.text = "1.2. Perform Calibration"
+    self.step1_2_calibrationRoutineCollapsibleButton.text = "1.2. Perform calibration"
     self.step1_calibrationLayout.addWidget(self.step1_2_calibrationRoutineCollapsibleButton)
     self.step1_2_calibrationRoutineLayout = qt.QVBoxLayout(self.step1_2_calibrationRoutineCollapsibleButton)
     self.step1_2_calibrationRoutineLayout.setContentsMargins(12,4,4,4)
@@ -393,12 +383,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_calibrationFunctionLabel = qt.QLabel('Optical density to dose calibration function: ')
     self.step1_2_calibrationRoutineLayout.addWidget(self.step1_calibrationFunctionLabel)
 
+    #TODO:
     self.blankLabel = qt.QLabel('')
     self.step1_2_calibrationRoutineLayout.addWidget(self.blankLabel)
-    #dose calibration function label
+    # Dose calibration function label
     self.step1_2_performCalibrationFunctionLabel = qt.QLabel(" ")
     self.step1_2_calibrationRoutineLayout.addWidget(self.step1_2_performCalibrationFunctionLabel)
-
 
     self.step1_2_calibrationRoutineLayout.addWidget(self.blankLabel)
 
@@ -406,8 +396,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_saveCalibrationButton = qt.QPushButton("Save calibration function")
     self.step1_saveCalibrationButton.toolTip = "Save calibration function for later use"
     self.step1_2_calibrationRoutineLayout.addWidget(self.step1_saveCalibrationButton)
-
-
 
     self.step1_bottomCalibrationSubLayout.addStretch(1)
 
@@ -423,21 +411,21 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_numberOfCalibrationFilmsSpinBox.connect('valueChanged(int)', self.onNumberOfCalibrationFilmsSpinBoxValueChanged)
     self.step1_addRoiButton.connect('clicked()', self.onAddRoiButton)
     self.step1_performCalibrationButton.connect('clicked()', self.onPerformCalibrationButton)
-    self.step1_saveCalibrationButton.connect('clicked()', self.exportCalibrationToTxt)
+    self.step1_saveCalibrationButton.connect('clicked()', self.exportCalibrationResultToFile)
 
   #------------------------------------------------------------------------------
-  def setup_step2_inputExperimentalData(self):
+  def setup_step2_loadExperimentalData(self):
   # Step 2: Load data panel
-    self.step2_inputExperimentalDataCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step2_inputExperimentalDataCollapsibleButton.text = "2. Input experimental film data"
-    self.sliceletPanelLayout.addWidget(self.step2_inputExperimentalDataCollapsibleButton)
+    self.step2_loadExperimentalDataCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step2_loadExperimentalDataCollapsibleButton.text = "2. Load experimental data"
+    self.sliceletPanelLayout.addWidget(self.step2_loadExperimentalDataCollapsibleButton)
 
-    self.step2_loadExperimentalDataCollapsibleButtonLayout = qt.QVBoxLayout(self.step2_inputExperimentalDataCollapsibleButton)
+    self.step2_loadExperimentalDataCollapsibleButtonLayout = qt.QVBoxLayout(self.step2_loadExperimentalDataCollapsibleButton)
     self.step2_loadExperimentalDataCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
     self.step2_loadExperimentalDataCollapsibleButtonLayout.setSpacing(4)
 
     # Load data label
-    self.step2_LoadDataLabel = qt.QLabel("Load all DICOM data involved in the workflow.\nNote: Can return to this step later if more data needs to be loaded")
+    self.step2_LoadDataLabel = qt.QLabel("Load all data involved in the workflow.\nNote: Can return to this step later if more data needs to be loaded")
     self.step2_LoadDataLabel.wordWrap = True
     self.step2_loadExperimentalDataCollapsibleButtonLayout.addWidget(self.step2_LoadDataLabel)
 
@@ -453,16 +441,14 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step2_loadNonDicomDataButton.name = "loadNonDicomDataButton"
     self.step2_loadExperimentalDataCollapsibleButtonLayout.addWidget(self.step2_loadNonDicomDataButton)
 
-
     # Add empty row
     self.step2_emptyLabel = qt.QLabel("   ")
     self.step2_loadExperimentalDataCollapsibleButtonLayout.addWidget(self.step2_emptyLabel)
 
-
     # Assign loaded data to roles
-    self.step2_AssignDataLabel = qt.QLabel("Assign loaded data to roles.\nNote: If this selection is changed later then all the following steps need to be performed again")
-    self.step2_AssignDataLabel.wordWrap = True
-    self.step2_loadExperimentalDataCollapsibleButtonLayout.addWidget(self.step2_AssignDataLabel)
+    self.step2_assignDataLabel = qt.QLabel("Assign loaded data to roles.\nNote: If this selection is changed later then all the following steps need to be performed again")
+    self.step2_assignDataLabel.wordWrap = True
+    self.step2_loadExperimentalDataCollapsibleButtonLayout.addWidget(self.step2_assignDataLabel)
 
     # Choose the experimental flood field image
     self.step2_floodFieldImageSelectorComboBoxLayout = qt.QHBoxLayout()
@@ -477,7 +463,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step2_floodFieldImageSelectorComboBoxLayout.addWidget(self.step2_floodFieldImageSelectorComboBox)
     self.step2_loadExperimentalDataCollapsibleButtonLayout.addLayout(self.step2_floodFieldImageSelectorComboBoxLayout)
 
-
     # Choose the experimental film image
     self.step2_experimentalFilmSelectorComboBoxLayout = qt.QHBoxLayout()
     self.step2_experimentalFilmSelectorComboBox = slicer.qMRMLNodeComboBox()
@@ -490,7 +475,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step2_experimentalFilmSelectorComboBoxLayout.addWidget(self.step2_experimentalFilmSelectorComboBoxLabel)
     self.step2_experimentalFilmSelectorComboBoxLayout.addWidget(self.step2_experimentalFilmSelectorComboBox)
     self.step2_loadExperimentalDataCollapsibleButtonLayout.addLayout(self.step2_experimentalFilmSelectorComboBoxLayout)
-
 
     # PLANDOSE node selector
     self.step2_doseVolumeSelectorComboBoxLayout = qt.QHBoxLayout()
@@ -515,9 +499,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Connections
     self.step2_loadNonDicomDataButton.connect('clicked()', self.onLoadImageFilesButton)
     self.step2_showDicomBrowserButton.connect('clicked()', self.onDicomLoad)
-    self.step2_inputExperimentalDataCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_inputExperimentalDataCollapsed)
-
-
+    self.step2_loadExperimentalDataCollapsibleButton.connect('contentsCollapsed(bool)', self.onstep2_loadExperimentalDataCollapsed)
 
   #------------------------------------------------------------------------------
   def setup_step3_applyCalibration(self):
@@ -575,8 +557,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_calibrationFunctionOrder2LineEdit.connect('textChanged(QString)', self.onTextChanged)
     self.step3_calibrationFunctionOrder3LineEdit.connect('textChanged(QString)', self.onTextChanged)
 
-    
-
+  #------------------------------------------------------------------------------
   def setup_step4_Registration(self):
     # Step 2: Load data panel
     self.step4_CollapsibleButton.setProperty('collapsedHeight', 4)
@@ -606,8 +587,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step4_resolutionLineEdit.connect('textChanged(QString)', self.onResolutionLineEditTextChanged)
     self.step4_performRegistrationButton.connect('clicked()', self.onPerformRegistrationButtonClicked)
 
-    
-  def setup_step5_gammaComparison(self):
+  #------------------------------------------------------------------------------
+  def setup_step5_GammaComparison(self):
   # TODO add to collapsible buttons group
     # Step 2: Load data panel
     self.step5_CollapsibleButton.setProperty('collapsedHeight', 4)
@@ -649,54 +630,58 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   def onLoadImageFilesButton(self):
     slicer.util.openAddDataDialog()
 
+  #------------------------------------------------------------------------------
   def onDicomLoad(self):
     slicer.modules.dicom.widgetRepresentation()
     slicer.modules.DICOMWidget.enter()
 
   #------------------------------------------------------------------------------
-  def fillStep1CalibrationPanel(self,CalibrationVolumeQuantity):
-    for calibrationLayout in xrange(CalibrationVolumeQuantity):
+  def updateStep1CalibrationPanel(self, numberOfCalibrationFilms):
+    for calibrationLayout in xrange(numberOfCalibrationFilms):
       self.step1_calibrationVolumeSelectorLabelBeforeList[calibrationLayout].visible = True
       self.step1_calibrationVolumeSelectorCGySpinBoxList[calibrationLayout].visible = True
       self.step1_calibrationVolumeSelectorCGyLabelList[calibrationLayout].visible = True
       self.step1_calibrationVolumeSelectorComboBoxList[calibrationLayout].visible = True
 
-    for calibrationLayout in range(1,self.maxCalibrationVolumeSelectorsInt-CalibrationVolumeQuantity + 1):
+    for calibrationLayout in xrange(1,self.maxNumberOfCalibrationVolumes-numberOfCalibrationFilms + 1):
       self.step1_calibrationVolumeSelectorLabelBeforeList[-calibrationLayout].visible = False
       self.step1_calibrationVolumeSelectorCGySpinBoxList[-calibrationLayout].visible = False
       self.step1_calibrationVolumeSelectorCGyLabelList[-calibrationLayout].visible = False
       self.step1_calibrationVolumeSelectorComboBoxList[-calibrationLayout].visible = False
 
   #------------------------------------------------------------------------------
+  def onstep2_loadExperimentalDataCollapsed(self, collapsed):
+    print 'onstep2_loadExperimentalDataCollapsed'
+    self.experimentalFloodFieldImageNode = self.step2_floodFieldImageSelectorComboBox.currentNode() #TODO:
+    self.experimentalFilmImageNode = self.step2_experimentalFilmSelectorComboBox.currentNode()
+    self.inputDICOMDoseVolume = self.step2_doseVolumeSelector.currentNode()
+  
+  #------------------------------------------------------------------------------
   def onNumberOfCalibrationFilmsSpinBoxValueChanged(self):
-    self.fillStep1CalibrationPanel(self.step1_numberOfCalibrationFilmsSpinBox.value)
+    self.updateStep1CalibrationPanel(self.step1_numberOfCalibrationFilmsSpinBox.value)
 
   #------------------------------------------------------------------------------
   def onSaveCalibrationBatchButton(self):
-    print " onSaveCalibrationBatchButton "
-    self.savedFolderPath = qt.QFileDialog.getExistingDirectory(0, 'Open dir')
+    from time import gmtime, strftime
+
+    calibrationBatchDirectoryPath = qt.QFileDialog.getExistingDirectory(0, 'Select directory to save calibration batch')
     
-    savedFolderPathFileList = os.listdir(self.savedFolderPath)
-    if savedFolderPathFileList is not []:
-      qt.QMessageBox.critical(None, 'Error', "Directory is not empty, all files will be deleted")
-      os.chdir(self.savedFolderPath)
-      for fileToDelete in savedFolderPathFileList: 
-         os.remove(fileToDelete)
-    # TODO add some option for ending the function and choosing another file path 
-      
-    # TODO delete all files
-      
+    calibrationBatchDirectoryFileList = os.listdir(calibrationBatchDirectoryPath)
+    if len(calibrationBatchDirectoryFileList) > 0:
+      message = 'Directory is not empty, please choose an empty one'
+      qt.QMessageBox.critical(None, 'Empty directory must be chosen', message)
+      logging.error(message)
+      return
+
     # Create temporary scene for saving
-    exportMrmlScene = slicer.vtkMRMLScene()
+    calibrationBatchMrmlScene = slicer.vtkMRMLScene()
 
     # Get folder node (create if not exists)
     exportFolderNode = None
-    self.folderNode = slicer.util.getNode(self.saveCalibrationBatchFolderNodeName)
-    if self.folderNode is None:
-      print "creating a folderNode"
-      self.folderNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, None, slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder(), self.saveCalibrationBatchFolderNodeName, None)
+    folderNodeName = self.saveCalibrationBatchFolderNodeNamePrefix + strftime("%Y%m%d %H%M%S", gmtime())
+    self.folderNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, None, slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder(), folderNodeName, None)
     # Clone folder node to export scene
-    exportFolderNode = exportMrmlScene.CopyNode(self.folderNode)
+    exportFolderNode = calibrationBatchMrmlScene.CopyNode(self.folderNode)
 
     # Get flood field image node
     floodFieldImageVolumeNode = self.step1_floodFieldImageSelectorComboBox.currentNode()
@@ -704,25 +689,24 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     floodFieldVolumeShNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, self.folderNode, slicer.vtkMRMLSubjectHierarchyConstants.GetDICOMLevelSeries(), self.floodFieldImageShNodeName, floodFieldImageVolumeNode)
     floodFieldVolumeShNode.SetAttribute(self.calibrationVolumeDoseAttributeName, self.floodFieldAttributeValue)
     # Copy both image and SH to exported scene
-    exportFloodFieldImageVolumeNode = exportMrmlScene.CopyNode(floodFieldImageVolumeNode)
-    exportFloodFieldVolumeShNode = exportMrmlScene.CopyNode(floodFieldVolumeShNode)
+    exportFloodFieldImageVolumeNode = calibrationBatchMrmlScene.CopyNode(floodFieldImageVolumeNode)
+    exportFloodFieldVolumeShNode = calibrationBatchMrmlScene.CopyNode(floodFieldVolumeShNode)
     exportFloodFieldVolumeShNode.SetParentNodeID(exportFolderNode.GetID())
 
     # Export flood field image storage node
     floodFieldStorageNode = floodFieldImageVolumeNode.GetStorageNode()
-    exportFloodFieldStorageNode = exportMrmlScene.CopyNode(floodFieldStorageNode)
+    exportFloodFieldStorageNode = calibrationBatchMrmlScene.CopyNode(floodFieldStorageNode)
     exportFloodFieldImageVolumeNode.SetAndObserveStorageNodeID(exportFloodFieldStorageNode.GetID())
 
     # Export flood field image display node
     floodFieldDisplayNode = floodFieldImageVolumeNode.GetDisplayNode()
-    exportFloodFieldDisplayNode = exportMrmlScene.CopyNode(floodFieldDisplayNode)
+    exportFloodFieldDisplayNode = calibrationBatchMrmlScene.CopyNode(floodFieldDisplayNode)
     exportFloodFieldImageVolumeNode.SetAndObserveDisplayNodeID(exportFloodFieldDisplayNode.GetID())
 
     # Copy flood field image file to save folder
-    shutil.copy(floodFieldStorageNode.GetFileName(), self.savedFolderPath)
-    print "exportFloodFieldStorageNode file path was", exportFloodFieldStorageNode.GetFileName()
-    exportFloodFieldStorageNode.SetFileName(os.path.normpath(self.savedFolderPath + '/' + ntpath.basename(floodFieldStorageNode.GetFileName())))
-    print "exportFloodFieldStorageNode file path is now", exportFloodFieldStorageNode.GetFileName()
+    shutil.copy(floodFieldStorageNode.GetFileName(), calibrationBatchDirectoryPath)
+    logging.info('Flood field image copied from' + exportFloodFieldStorageNode.GetFileName() + ' to ' + calibrationBatchDirectoryPath)
+    exportFloodFieldStorageNode.SetFileName(os.path.normpath(calibrationBatchDirectoryPath + '/' + ntpath.basename(floodFieldStorageNode.GetFileName())))
 
     for currentCalibrationVolumeIndex in xrange(self.step1_numberOfCalibrationFilmsSpinBox.value):
       # Get current calibration image node
@@ -732,70 +716,61 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       doseLevelAttributeValue = self.step1_calibrationVolumeSelectorCGySpinBoxList[currentCalibrationVolumeIndex].value
       calibrationVolumeShNode.SetAttribute(self.calibrationVolumeDoseAttributeName, str(doseLevelAttributeValue))
       # Copy both image and SH to exported scene
-      exportCalibrationImageVolumeNode = exportMrmlScene.CopyNode(currentCalibrationVolume)
-      exportCalibrationVolumeShNode = exportMrmlScene.CopyNode(calibrationVolumeShNode)
+      exportCalibrationImageVolumeNode = calibrationBatchMrmlScene.CopyNode(currentCalibrationVolume)
+      exportCalibrationVolumeShNode = calibrationBatchMrmlScene.CopyNode(calibrationVolumeShNode)
       exportCalibrationVolumeShNode.SetParentNodeID(exportFolderNode.GetID())
 
       # Export calibration image storage node
       calibrationStorageNode = currentCalibrationVolume.GetStorageNode()
-      exportCalibrationStorageNode = exportMrmlScene.CopyNode(calibrationStorageNode)
+      exportCalibrationStorageNode = calibrationBatchMrmlScene.CopyNode(calibrationStorageNode)
       exportCalibrationImageVolumeNode.SetAndObserveStorageNodeID(exportCalibrationStorageNode.GetID())
 
       # Export calibration image display node
       calibrationDisplayNode = currentCalibrationVolume.GetDisplayNode()
-      exportCalibrationDisplayNode = exportMrmlScene.CopyNode(calibrationDisplayNode)
+      exportCalibrationDisplayNode = calibrationBatchMrmlScene.CopyNode(calibrationDisplayNode)
       exportCalibrationImageVolumeNode.SetAndObserveDisplayNodeID(exportCalibrationDisplayNode.GetID())
 
       # Copy calibration image file to save folder, set location of exportCalibrationStorageNode file to new folder
-      print "exportCalibrationStorageNode file path was", exportCalibrationStorageNode.GetFileName()
-      exportCalibrationStorageNode.SetFileName(os.path.normpath(self.savedFolderPath + '/' + ntpath.basename(calibrationStorageNode.GetFileName())))
-      print "exportCalibrationStorageNode file path is now", exportCalibrationStorageNode.GetFileName()
-      shutil.copy(calibrationStorageNode.GetFileName(), self.savedFolderPath)
+      shutil.copy(calibrationStorageNode.GetFileName(), calibrationBatchDirectoryPath)
+      logging.info('Calibration image copied from' + exportCalibrationStorageNode.GetFileName() + ' to ' + calibrationBatchDirectoryPath)
+      exportCalibrationStorageNode.SetFileName(os.path.normpath(calibrationBatchDirectoryPath + '/' + ntpath.basename(calibrationStorageNode.GetFileName())))
 
-    exportMrmlScene.SetURL(os.path.normpath(self.savedFolderPath + "/exportMrmlScene.mrml" ))
-    exportMrmlScene.Commit()
+    # Save calibration batch scene
+    fileName = strftime("%Y%m%d_%H%M%S_", gmtime()) + "_" + self.calibrationBatchSceneFileName
+    calibrationBatchMrmlScene.SetURL( os.path.normpath(calibrationBatchDirectoryPath + "/" + fileName) )
+    calibrationBatchMrmlScene.Commit()
 
     # Check if scene file has been created
-    if os.path.isfile(exportMrmlScene.GetURL()) == True:
-      qt.QMessageBox.information(None, "Calibration Volume Saving" , "Calibration volume successfully saved")
+    if os.path.isfile(calibrationBatchMrmlScene.GetURL()) == True:
+      qt.QMessageBox.information(None, "Calibration batch saving" , "Calibration batch successfully saved")
     else:
-      qt.QMessageBox.information(None, "Calibration Volume Saving" , "Calibration volume save failed")
+      qt.QMessageBox.information(None, "Calibration batch saving" , "Calibration batch save failed!\n\nPlease see error log for details")
 
-    exportMrmlScene.Clear(1)
+    calibrationBatchMrmlScene.Clear(1)
 
   #------------------------------------------------------------------------------
-  def onStep2_inputExperimentalDataCollapsed(self, collapsed):
-    print 'onStep2_inputExperimentalDataCollapsed'
-    self.ExperimentalFloodFieldImageNode = self.step2_floodFieldImageSelectorComboBox.currentNode()
-    self.ExperimentalFilmImageNode = self.step2_experimentalFilmSelectorComboBox.currentNode()
-    self.inputDICOMDoseVolume = self.step2_doseVolumeSelector.currentNode()
-  
   def onloadCalibrationBatchButton(self):
-    savedFolderPath = qt.QFileDialog.getExistingDirectory(0, 'Open dir')  
+    calibrationBatchDirectoryPath = qt.QFileDialog.getExistingDirectory(0, 'Open directory containing calibration batch')  
     #TODO put this all in a try/except
-    os.chdir(os.path.normpath(savedFolderPath))
+    os.chdir(os.path.normpath(calibrationBatchDirectoryPath))
     mrmlFilesFound = 0
 
-    savedMrmlSceneName = None
-    for potentialMrmlFile in glob.glob("*.mrml"):
-      mrmlFilesFound +=1
-      savedMrmlSceneName = potentialMrmlFile
+    calibrationBatchMrmlSceneFileName = None
+    for potentialMrmlFileName in glob.glob("*.mrml"):
+      mrmlFilesFound += 1
+      calibrationBatchMrmlSceneFileName = potentialMrmlFileName
 
-    if mrmlFilesFound >1:
-      qt.QMessageBox.critical(None, 'Error', "More than one .mrml file found")
-      logging.error("More than one .mrmlScene found in directory")
+    if mrmlFilesFound > 1:
+      qt.QMessageBox.critical(None, 'Error', "More than one MRML file found in directory!\n\nThe calibration batch directory must contain exactly one MRML file")
+      logging.error("More than one MRML files found in directory" + calibrationBatchDirectoryPath)
       return
-    elif mrmlFilesFound <1:
-      qt.QMessageBox.critical(None, 'Error', "No .mrml files found")
-      logging.error("No .mrmlScene in directory")
+    elif mrmlFilesFound < 1:
+      qt.QMessageBox.critical(None, 'Error', "No MRML file found in directory!\n\nThe calibration batch directory must contain exactly one MRML file")
+      logging.error("No MRML file found in directory" + calibrationBatchDirectoryPath)
       return
 
-      #error message
-
-
-    #savedMrmlSceneName = ntpath.basename(self.exportedSceneFileName)
-    savedMrmlScenePath = os.path.normpath(savedFolderPath + "/" + savedMrmlSceneName)
-    success = slicer.util.loadScene(savedMrmlScenePath)
+    calibrationBatchMrmlSceneFilePath = os.path.normpath(calibrationBatchDirectoryPath + "/" + calibrationBatchMrmlSceneFileName)
+    success = slicer.util.loadScene(calibrationBatchMrmlSceneFilePath)
 
     # TODO: Indentify flood field image by this attribute value (for attribute self.calibrationVolumeDoseAttributeName): self.floodFieldAttributeValue
     
@@ -813,19 +788,26 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   def onPerformCalibrationButton(self):
-    print "onPerformCalibrationButton \n"
-    if self.lastAddedRoiNode is None or not hasattr(slicer.modules, 'cropvolume'):
-      qt.QMessageBox.critical(None, 'Error', "Missing ROI selector")
+    if not hasattr(slicer.modules, 'cropvolume'):
+      message = "Crop Volume module missing!"
+      qt.QMessageBox.critical(None, 'Error', message)
+      logging.error(message)    
+    if self.lastAddedRoiNode is None:
+      message = 'No ROI created for calibration!'
+      qt.QMessageBox.critical(None, 'Error', message)
+      logging.error(message)
       return
 
     # Get flood field image node
     floodFieldCalibrationVolume = self.step1_floodFieldImageSelectorComboBox.currentNode()
 
     if floodFieldCalibrationVolume is None:
-      qt.QMessageBox.critical(None, 'Error', "Flood field image is not selected")
+      message = "Flood field image is not selected"
+      qt.QMessageBox.critical(None, 'Error', message)
+      logging.error(message)
       return
 
-    # Crop flood field volume by last defined ROI
+    # Crop flood field volume by defined ROI
     cropVolumeLogic = slicer.modules.cropvolume.logic()
     cropVolumeLogic.CropVoxelBased(self.lastAddedRoiNode, floodFieldCalibrationVolume, floodFieldCalibrationVolume)
 
@@ -833,11 +815,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     imageStat.SetInputData(floodFieldCalibrationVolume.GetImageData())
     imageStat.Update()
     meanValueFloodField = imageStat.GetMean()[0]
-    print "meanValueFloodField from imageStat: ", meanValueFloodField
+    logging.info("Mean value for flood field image in ROI = " + str(meanValueFloodField))
     self.calibrationValues.append([self.floodFieldAttributeValue, meanValueFloodField])
     self.measuredOpticalDensities = []
-    #TODO check this OD calculation
 
+    #TODO check this OD calculation
 
     for currentCalibrationVolumeIndex in xrange(self.step1_numberOfCalibrationFilmsSpinBox.value):
       # Get current calibration image node
@@ -845,7 +827,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       currentCalibrationVolumeDose = self.step1_calibrationVolumeSelectorCGySpinBoxList[currentCalibrationVolumeIndex].value
 
       # Crop calibration images by last defined ROI
-      cropVolumeLogic = slicer.modules.cropvolume.logic()
       cropVolumeLogic.CropVoxelBased(self.lastAddedRoiNode, currentCalibrationVolume, currentCalibrationVolume)
 
       # Measure dose value as average of the cropped calibration images
@@ -863,9 +844,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       if opticalDensity < 0.0:
         opticalDensity = 0.0
 
-      #x = optical density, y = dose
+      # x = optical density, y = dose
       self.measuredOpticalDensities.append([opticalDensity, currentCalibrationVolumeDose])
-      print "meanValue from imageStat: ", meanValue, "associated dose is ", currentCalibrationVolumeDose
+      logging.info("Mean value for calibration image for " + str(currentCalibrationVolumeDose) + " cGy in ROI = " + str(meanValue))
 
     self.measuredOpticalDensities.sort(key=lambda doseODPair: doseODPair[1])
 
@@ -878,12 +859,15 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_calibrationFunctionOrder3LineEdit.text = str(self.bestCoefficients[1])
 
     # Calibration function label
-    calibrationFunctionString = "Dose(cGy) = " + str(self.bestCoefficients[2][0]) + " + " + str(self.bestCoefficients[2][1]) + "OD + " + str(self.bestCoefficients[2][2]) + "OD ^" + str(self.bestCoefficients[1])
-
+    calibrationFunctionString = "Dose (cGy) = " + str(self.bestCoefficients[2][0]) + " + " + str(self.bestCoefficients[2][1]) + " * OD + " + str(self.bestCoefficients[2][2]) + " * OD^" + str(self.bestCoefficients[1])
     self.step1_2_performCalibrationFunctionLabel.text = calibrationFunctionString
 
+  #------------------------------------------------------------------------------
   def cropDoseByROI(self): 
     doseVolume = self.step2_doseVolumeSelector.currentNode()
+    if doseVolume is None:
+      logging.error()
+
     roiNode = slicer.vtkMRMLAnnotationROINode()
     roiNode.SetName(self.cropDoseByROIName)
     slicer.mrmlScene.AddNode(roiNode)
@@ -907,15 +891,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     croppedNode = slicer.mrmlScene.GetNodeByID( cropParams.GetOutputVolumeNodeID() )
     self.inputDICOMDoseVolume = croppedNode
     return croppedNode
-    
-  
 
-
-#------------------------------------------------------------------------------
-
+  #------------------------------------------------------------------------------
   def onTextChanged(self):
     if not (self.step3_calibrationFunctionOrder0LineEdit.text == ''):
-      self.bestCoefficients[2][0] = round(float(self.step3_calibrationFunctionOrder0LineEdit.text),5)
+      self.bestCoefficients[2][0] = round(float(self.step3_calibrationFunctionOrder0LineEdit.text),5) #TODO: Round only for display!
     if not (self.step3_calibrationFunctionOrder1LineEdit.text  == ''):
       self.bestCoefficients[2][1] = round(float(self.step3_calibrationFunctionOrder1LineEdit.text),5)
     if not (self.step3_calibrationFunctionOrder2LineEdit.text == ''):
@@ -931,31 +911,41 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.opticalDensityCurve = numpy.polyfit(x,y,3)
     opticalDensityToDosePolynomialFunction = numpy.poly1d(self.opticalDensityCurve)
     return opticalDensityToDosePolynomialFunction
+
   #------------------------------------------------------------------------------
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def onNodeAdded(self, caller, event, calldata):
     addedNode = calldata
 
+    # If importing a scene then save the calibration batch that needs to be parsed
     if slicer.mrmlScene.IsImporting() and addedNode.IsA("vtkMRMLSubjectHierarchyNode"):
       nodeLevel = addedNode.GetLevel()
-      if (nodeLevel == slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder()):# & (slicer.mrmlScene.IsImporting()) :
+      if nodeLevel == slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder():
         self.batchFolderToParse = addedNode
 
+    # When an ROI is added then save it as the ROI to use for calibration
     if addedNode.IsA('vtkMRMLAnnotationROINode'):
       self.lastAddedRoiNode = addedNode
 
+    # Set auto window/level for loaded dose volumes
+    import vtkSlicerRtCommonPython as vtkSlicerRtCommon
+    if vtkSlicerRtCommon.SlicerRtCommon.IsDoseVolumeNode(addedNode):
+      if addedNode.GetDisplayNode() is not None:
+        addedNode.GetDisplayNode().AutoWindowLevelOn()
+
   #------------------------------------------------------------------------------
-  def onSceneEndImport(self, caller,event):
-    if self.batchFolderToParse == None:
-      qt.QMessageBox.critical(None, 'Error', "Wrong directory")
-      logging.error("No subjectHierarchy folders in directory, wrong saved directory")
+  def onSceneEndImport(self, caller, event): #TODO: Rely on attributes and not node names (which are duplicate!) + variable names etc.
+    if self.batchFolderToParse is None:
+      message = "Invalid saved directory, no subject hierarchy folder is selected to parse!"
+      qt.QMessageBox.critical(None, 'Error', message)
+      logging.error(message)
       return
 
     childrenToParse = vtk.vtkCollection()
     self.batchFolderToParse.GetAssociatedChildrenNodes(childrenToParse)
 
     calibrationVolumeNumber = childrenToParse.GetNumberOfItems() - 1
-    self.fillStep1CalibrationPanel(calibrationVolumeNumber)
+    self.updateStep1CalibrationPanel(calibrationVolumeNumber)
     self.step1_numberOfCalibrationFilmsSpinBox.value = calibrationVolumeNumber
 
     loadedFloodFieldScalarVolume = None
@@ -969,7 +959,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     CalibrationFilmsSHFound = False
     fileNotFoundError = False
 
-    while currentNode!= None:
+    while currentNode != None:
       if currentNode.GetAncestorAtLevel('Folder') == self.batchFolderToParse:
         if currentNode.GetAttribute(self.calibrationVolumeDoseAttributeName) == self.floodFieldAttributeValue :
           floodFieldSHFound = True
@@ -978,15 +968,16 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
               loadedFloodFieldScalarVolume = slicer.mrmlScene.GetNodeByID(currentNode.GetAssociatedNodeID())
               self.step1_floodFieldImageSelectorComboBox.setCurrentNode(loadedFloodFieldScalarVolume)
             else:
-              qt.QMessageBox.critical(None, 'Error', "More than 1 flood field image found")
-              logging.error("More than one flood field image found")
+              message = "More than one flood field image found"
+              qt.QMessageBox.critical(None, 'Error', message)
+              logging.error(message)
               slicer.mrmlScene.Clear(0)
               return
           else:
             fileNotFoundError = True
             logging.error("No flood field image in directory")
 
-        if (self.calibrationVolumeName in currentNode.GetName()):
+        if self.calibrationVolumeName in currentNode.GetName():
           CalibrationFilmsSHFound = True
 
           if os.path.isfile(currentNode.GetAssociatedNode().GetStorageNode().GetFileName()) == True:
@@ -1009,22 +1000,21 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     result = CalibrationFilmsSHFound and floodFieldSHFound and (not fileNotFoundError)
 
-    self.fileLoadingSuccessMessageHeader = "Calibration image loading"
-    self.floodFieldFailureMessage = "Flood field image failed to load"
-    self.calibrationVolumeLoadFailureMessage = "calibration volume failed to load"
-    self.fileNotFoundFailureMessage = "File not found for 1 or more calibration volumes"
-
     # TODO fix placement of popup boxes on screen relative to load slider thing
 
     # Error messages for issues with loading
     if result:
-      qt.QMessageBox.information(None,self.fileLoadingSuccessMessageHeader , 'Success! Saved calibration values loaded')
+      qt.QMessageBox.information(None, "Calibration image loading", 'Success! Saved calibration values loaded')
     else:
-      qt.QMessageBox.critical(None, 'Error', "Failed to load saved calibration batch.")
+      message = "Failed to load saved calibration batch"
+      qt.QMessageBox.critical(None, 'Error', message)
+      logging.error(message)
+      return
 
     if fileNotFoundError:
-      qt.QMessageBox.critical(None, 'Error', "File not found for 1 or more calibration volumes saved")
+      qt.QMessageBox.critical(None, 'Error', "File not found for flood file image or calibration image(s)")
       slicer.mrmlScene.Clear(0)
+      return
 
     if floodFieldSHFound == False:
       qt.QMessageBox.warning(None, 'Warning', 'No flood field image.')
@@ -1039,16 +1029,17 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calibrationCurveChart = vtk.vtkChartXY()
     self.calibrationCurveChartView.GetScene().AddItem(self.calibrationCurveChart)
 
+  #------------------------------------------------------------------------------
   def showCalibrationCurves(self):
     # Create CALIBRATION dose vs. optical density plot
     self.calibrationCurveDataTable = vtk.vtkTable()
     calibrationNumberOfRows = len(self.measuredOpticalDensities)
 
     opticalDensityArray = vtk.vtkDoubleArray()
-    opticalDensityArray.SetName("optical density")
+    opticalDensityArray.SetName("Optical Density")
     self.calibrationCurveDataTable.AddColumn(opticalDensityArray)
     dose_cGyCalibrationCurveArray = vtk.vtkDoubleArray()
-    dose_cGyCalibrationCurveArray.SetName("dose (cGy) (measured)")
+    dose_cGyCalibrationCurveArray.SetName("Dose (cGy)")
     self.calibrationCurveDataTable.AddColumn(dose_cGyCalibrationCurveArray)
     self.calibrationCurveDataTable.SetNumberOfRows(calibrationNumberOfRows)
 
@@ -1069,7 +1060,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     self.bestCoefficients = self.selectBestFunctionCoefficients()
 
-    opticalDensityList = [round(0 + 0.01*opticalDensityIncrement,2) for opticalDensityIncrement in range(120)]
+    opticalDensityList = [round(0 + 0.01*opticalDensityIncrement,2) for opticalDensityIncrement in xrange(120)]
     opticalDensities = []
 
     for calculatedEntryIndex in xrange(120):
@@ -1083,7 +1074,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     opticalDensityCalculatedArray.SetName("opticalDensities")
     self.opticalDensityToDoseFunctionTable.AddColumn(opticalDensityCalculatedArray)
     dose_cGyCalculatedArray = vtk.vtkDoubleArray()
-    dose_cGyCalculatedArray.SetName("optical density calculated")
+    dose_cGyCalculatedArray.SetName("Optical Density")
     self.opticalDensityToDoseFunctionTable.AddColumn(dose_cGyCalculatedArray)
 
     self.opticalDensityToDoseFunctionTable.SetNumberOfRows(opticalDensityNumberOfRows)
@@ -1099,18 +1090,17 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calculatedDoseLine.SetWidth(2.0)
 
     # Show chart
-    self.calibrationCurveChart.GetAxis(1).SetTitle('Optical Density| x - axis')
-    self.calibrationCurveChart.GetAxis(0).SetTitle('Dose (cGy)   |y-axis')
+    self.calibrationCurveChart.GetAxis(1).SetTitle('Optical Density')
+    self.calibrationCurveChart.GetAxis(0).SetTitle('Dose (cGy)')
     self.calibrationCurveChart.SetShowLegend(True)
     self.calibrationCurveChart.SetTitle('Dose (cGy) vs. Optical Density')
     self.calibrationCurveChartView.GetInteractor().Initialize()
     self.renderWindow = self.calibrationCurveChartView.GetRenderWindow()
     self.renderWindow.SetSize(800,550)
-    self.renderWindow.SetWindowName('Dose (cGy) vs. Optical Density chart')
+    self.renderWindow.SetWindowName('Dose (cGy) vs. Optical Density')
     self.renderWindow.Start()
 
   #------------------------------------------------------------------------------
-
   def meanSquaredError(self, n, coeff):
     sumMeanSquaredError = 0
     for i in xrange(len(self.measuredOpticalDensities)):
@@ -1118,9 +1108,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       sumMeanSquaredError += ((self.measuredOpticalDensities[i][1] - newY)**2)
     return round(sumMeanSquaredError/(len(self.measuredOpticalDensities)),5)
 
+  #------------------------------------------------------------------------------
   def applyFitFunction(self, OD, n, coeff):
     return (coeff[0] + coeff[1]*OD + coeff[2]*(OD**n))
 
+  #------------------------------------------------------------------------------
   def findCoefficients(self,n):
     # Calculate matrix A
     #print "findCoefficients"
@@ -1147,8 +1139,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     return coefficients
 
+  #------------------------------------------------------------------------------
   def selectBestFunctionCoefficients(self):
-    bestN = [] #entries are [MSE, n, answer]
+    bestN = [] # Entries are [MSE, n, answer]
 
     for n in xrange(1000,4001):
       n/=1000.0
@@ -1164,9 +1157,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     return bestN[0]
 
   #------------------------------------------------------------------------------
-  def exportCalibrationToTxt(self):
-
-  #TODO change name, create success message
+  def exportCalibrationResultToFile(self):
+    #TODO change name, create success message
     import csv
     self.outputDir = qt.QFileDialog.getExistingDirectory(0, 'Open dir')
     if not os.access(self.outputDir, os.F_OK):
@@ -1177,31 +1169,31 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     fileName = self.outputDir + '/' + strftime("%Y%m%d_%H%M%S_", gmtime()) + self.calibrationFunctionFileName
 
     if not os.path.isfile(fileName):
-      f = open(fileName, 'w')
-      f.close()
-    f = open(fileName, 'r+')
-    f.seek(0)
-    f.truncate()
-    self.recSave(f, self.bestCoefficients)
-    f.close()
+      file = open(fileName, 'w')
+      file.close()
+    file = open(fileName, 'r+')
+    file.seek(0)
+    file.truncate()
 
-  def recSave(self, f, lis):
+    self.recSave(file, self.bestCoefficients)
+
+    file.close()
+
+  def recSave(self, file, lis): #TODO: Awful way to save the list. It would be much simpler to have a flat list instead of the complex bestCoefficients embedded lists
     for x in lis:
       if x is not None:
         if type(x) is not list:
           #print x
-          f.write(str(x) + '\n')
+          file.write(str(x) + '\n')
         else:
-          self.recSave(f, x)
+          self.recSave(file, x)
 
+  #------------------------------------------------------------------------------
   def onLoadCalibrationFunctionButton(self):
     savedFilePath = qt.QFileDialog.getOpenFileName(0, 'Open file')
-    self.loadCalibrationFunction(savedFilePath)
 
-  def loadCalibrationFunction(self, fileName):
-    print "loadCalibrationFunction"
-    f = open(fileName, 'r+')
-    content = f.readlines()
+    file = open(savedFilePath, 'r+')
+    content = file.readlines()
     if len(content)!= 5:
       qt.QMessageBox.critical(None, 'Error', "Invalid function file")
 
@@ -1215,25 +1207,25 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.bestCoefficients[2][2] = float(content[4].rstrip())
     self.step3_calibrationFunctionOrder2LineEdit.text = content[4].rstrip()
 
-    f.close()
+    file.close()
 
   #------------------------------------------------------------------------------
-
   def volumeToNumpyArray(self, currentVolume):
     volumeData = currentVolume.GetImageData()
     volumeDataScalars = volumeData.GetPointData().GetScalars()
     numpyArrayVolume = numpy_support.vtk_to_numpy(volumeDataScalars)
     return numpyArrayVolume
     
-  def calculateDoseFromExperimentalFilmImage(self): #AR problem is here
+  #------------------------------------------------------------------------------
+  def calculateDoseFromExperimentalFilmImage(self):
     #TODO this should be done in simpleITK
     experimentalFilmArray = self.volumeToNumpyArray(self.step2_experimentalFilmSelectorComboBox.currentNode())  
     floodFieldArray = self.volumeToNumpyArray(self.step2_floodFieldImageSelectorComboBox.currentNode())
-    
+
     if len(experimentalFilmArray) != len(floodFieldArray):
       qt.QMessageBox.critical(None, 'Error', "Experimental and flood field images must be the same size")
       return 
-    
+
     doseArrayGy = numpy.zeros(len(floodFieldArray))
     inexcept = 0
     for rowIndex in xrange(len(experimentalFilmArray)):
@@ -1249,20 +1241,18 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       doseArrayGy[rowIndex] = self.applyFitFunction(opticalDensity, self.bestCoefficients[1],self.bestCoefficients[2] )/100.0
       # TODO       
         
-      if doseArrayGy[rowIndex] <0.0:
+      if doseArrayGy[rowIndex] < 0.0:
         doseArrayGy[rowIndex] = 0.0
 
     return doseArrayGy
-     
-    
+
+  #------------------------------------------------------------------------------
   def onApplyCalibrationButton(self):
-    #print "onApplyCalibrationButton"
-    
     if self.bestCoefficients is self.bestCoefficients[1] == 0: #TODO see why this isn't working
-      print "messagebox should appear"
-      qt.QMessageBox.critical(None, 'Error', "No calibration function in slicelet")
+      message = "No calibration function in slicelet"
+      qt.QMessageBox.critical(None, 'Error', message)
+      logging.error(message)
       return 
-    #print "it is not 0"
     
     calculatedDoseDoubleArrayGy = self.calculateDoseFromExperimentalFilmImage()
     calculatedDoseVolume = slicer.vtkMRMLScalarVolumeNode()
@@ -1280,20 +1270,23 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.experimentalFilmDoseVolume = calculatedDoseVolume
     qt.QMessageBox.information(None, "Step 3" , "Calibration function successfully applied")
     
+  #------------------------------------------------------------------------------
   def onResolutionLineEditTextChanged(self):
-    #print "onResolutionLineEditTextChanged"
     self.resolutionMM_ToPixel = round(float(self.step4_resolutionLineEdit.text),5)   
         
+  #------------------------------------------------------------------------------
   def onPerformRegistrationButtonClicked(self):
-    
-  # TODO merge step 3 and step 4
+    # TODO merge step 3 and step 4
     print "onPerformRegistrationButtonClicked"
     
-    if    self.resolutionMM_ToPixel is None:
-      qt.QMessageBox.critical(None, 'Error', "A mm/pixel resolution for the experimental film must be selected")
-      return 
-      
-    self.step2_doseVolumeSelector.currentNode().GetDisplayNode().AutoWindowLevelOn()
+    if self.resolutionMM_ToPixel is None:
+      message = "A mm/pixel resolution for the experimental film must be entered"
+      qt.QMessageBox.critical(None, 'Error', message)
+      logging.error(message)
+      return
+
+    # Set auto window/level for dose volume
+    self.step2_doseVolumeSelector.currentNode().GetDisplayNode().AutoWindowLevelOn() #TODO
             
     # Set spacing of the experimental film volume
     if self.experimentalFilmDoseVolume is None:
@@ -1302,7 +1295,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.experimentalFilmDoseVolume.SetSpacing(self.resolutionMM_ToPixel, self.resolutionMM_ToPixel, self.inputDICOMDoseVolume.GetSpacing()[1])
     
     # Crop the dose volume by the ROI
-    croppedNode = self.cropDoseByROI()
+    croppedDoseVolumeNode = self.cropDoseByROI()
     
     # TODO just in case I need the resampling code,
     # # Resample cropped dose volume 
@@ -1313,10 +1306,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # slicer.cli.run(slicer.modules.resamplescalarvolume, None, resampleParameters, wait_for_completion=True)
     # self.dosePlanVolume.SetSpacing(2,2,2)
  
-    doseArray = self.volumeToNumpyArray(croppedNode)
+    doseArray = self.volumeToNumpyArray(croppedDoseVolumeNode)
     doseArrayList = []
     #doseArray = doseArray.reshape(151,106)
-    doseArray = doseArray.reshape(croppedNode.GetImageData().GetExtent()[5]+1, croppedNode.GetImageData().GetExtent()[1]+1)
+    doseArray = doseArray.reshape(croppedDoseVolumeNode.GetImageData().GetExtent()[5]+1, croppedDoseVolumeNode.GetImageData().GetExtent()[1]+1)
     for x in xrange(len(doseArray)):
       doseArrayList.append(numpy.tile(doseArray[x],5).tolist())
       
@@ -1328,14 +1321,14 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     new3dScalarsCopy.DeepCopy(new3dScalars)
     new3dImageData = vtk.vtkImageData()
     new3dImageData.GetPointData().SetScalars(new3dScalarsCopy)
-    newExtent = croppedNode.GetImageData().GetExtent()
+    newExtent = croppedDoseVolumeNode.GetImageData().GetExtent()
     newExtent = newExtent[0:3] +(4,) + newExtent[4:]
     new3dImageData.SetExtent(newExtent) #TODO replace with SetDimensions
     newScalarVolume.SetAndObserveImageData(new3dImageData)
     newScalarVolume.SetName("Dose volume for registration")
     slicer.mrmlScene.AddNode(newScalarVolume)
     self.dosePlanVolume = newScalarVolume
-    newScalarVolume.CopyOrientation(croppedNode)
+    newScalarVolume.CopyOrientation(croppedDoseVolumeNode)
         
     # Set up transform pipeline 
     
@@ -1357,15 +1350,15 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     rotate90APTransformMRML.SetName(self.experimentalRotate90APTransformName)    
     slicer.mrmlScene.AddNode(rotate90APTransformMRML)
     experimentalAxialToExperimentalCoronalTransformMRML.SetAndObserveTransformNodeID(rotate90APTransformMRML.GetID())
+
     # Translate to center of the dose volume 
-    
     expBounds = [0]*6
     self.experimentalFilmDoseVolume.GetRASBounds(expBounds)
     doseBounds = [0]*6
     self.dosePlanVolume.GetRASBounds(doseBounds)
     doseVolumeCenter = [(doseBounds[0]+doseBounds[1])/2, (doseBounds[2]+doseBounds[3])/2, (doseBounds[4]+doseBounds[5])/2]
     expCenter = [(expBounds[0]+expBounds[1])/2, (expBounds[2]+expBounds[3])/2, (expBounds[4]+expBounds[5])/2]
-    exp2DoseTranslation = [doseVolumeCenter[x] - expCenter[x] for x in range(len(doseVolumeCenter))]
+    exp2DoseTranslation = [doseVolumeCenter[x] - expCenter[x] for x in xrange(len(doseVolumeCenter))]
     
     # TODO test transformation chain on asymmetrical image 
     
@@ -1377,7 +1370,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     slicer.mrmlScene.AddNode(ExperimentalCenterToDoseCenterTransformMRML)
     rotate90APTransformMRML.SetAndObserveTransformNodeID(ExperimentalCenterToDoseCenterTransformMRML.GetID())
     
-    print "harden node"
     slicer.vtkSlicerTransformLogic.hardenTransform(self.experimentalFilmDoseVolume)
     
     # Apply BRAINSFit module 
@@ -1434,18 +1426,19 @@ class FilmDosimetryAnalysis(ScriptedLoadableModule):
     ScriptedLoadableModule.__init__(self, parent)
     parent.title = "Film Dosimetry Analysis"
     parent.categories = ["Slicelets"]
-    parent.dependencies = ["DicomRtImportExport", "BRAINSFit", "BRAINSResample", "Markups", "DataProbe", "DoseComparison"]
-    parent.contributors = ["Kevin Alexander (KGH, Queen's University), Csaba Pinter (Queen's University)"] # replace with "Firstname Lastname (Org)"
+    parent.dependencies = ["DicomRtImportExport", "BRAINSFit", "CropVolume", "ResampleScalarVolume", "Annotations", "DataProbe", "DoseComparison"]
+    parent.contributors = ["Csaba Pinter (Queen's University), Kevin Alexander (KGH, Queen's University), Alec Robinson (Queen's University)"] # replace with "Firstname Lastname (Org)"
     parent.helpText = "Slicelet for film dosimetry analysis"
     parent.acknowledgementText = """
-    This file was originally developed by Kevin Alexander (KGH, Queen's University). Funding was provided by CIHR
+    This file was originally developed by Kevin Alexander (KGH, Queen's University), Csaba Pinter (Queen's University), and Alec Robinson (Queen's University). Funding was provided by CIHR
     """
     iconPath = os.path.join(os.path.dirname(self.parent.path), 'Resources/Icons', self.moduleName+'.png')
     parent.icon = qt.QIcon(iconPath)
 
 
-#FilmDosimetryAnalysisWidget
-
+#
+# FilmDosimetryAnalysisWidget
+#
 class FilmDosimetryAnalysisWidget(ScriptedLoadableModuleWidget):
   """Uses ScriptedLoadableModuleWidget base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
