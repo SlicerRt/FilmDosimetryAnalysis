@@ -653,7 +653,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.step1_calibrationVolumeSelectorComboBoxList[-calibrationLayout].visible = False
 
   #------------------------------------------------------------------------------
-  def onstep2_loadExperimentalDataCollapsed(self, collapsed):
+  def onstep2_loadExperimentalDataCollapsed(self, collapsed): #TODO:
     print 'onstep2_loadExperimentalDataCollapsed'
     self.experimentalFloodFieldImageNode = self.step2_floodFieldImageSelectorComboBox.currentNode() #TODO:
     self.experimentalFilmImageNode = self.step2_experimentalFilmSelectorComboBox.currentNode()
@@ -802,20 +802,28 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       return
 
     # Get flood field image node
-    floodFieldCalibrationVolume = self.step1_floodFieldImageSelectorComboBox.currentNode()
+    floodFieldCalibrationVolumeNode = self.step1_floodFieldImageSelectorComboBox.currentNode()
 
-    if floodFieldCalibrationVolume is None:
+    if floodFieldCalibrationVolumeNode is None:
       message = "Flood field image is not selected"
       qt.QMessageBox.critical(None, 'Error', message)
       logging.error(message)
       return
 
-    # Crop flood field volume by defined ROI
+    # Show wait cursor while processing
+    qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
+
     cropVolumeLogic = slicer.modules.cropvolume.logic()
-    cropVolumeLogic.CropVoxelBased(self.lastAddedRoiNode, floodFieldCalibrationVolume, floodFieldCalibrationVolume)
+    cloner = slicer.qSlicerSubjectHierarchyCloneNodePlugin()
+
+    # Crop flood field volume by defined ROI into a cloned volume node
+    floodFieldShNode = slicer.vtkMRMLSubjectHierarchyNode.GetAssociatedSubjectHierarchyNode(floodFieldCalibrationVolumeNode)
+    floodFieldVolumeNodeNodeCloneName = floodFieldCalibrationVolumeNode.GetName() + '_Cropped'
+    croppedFloodFieldVolumeShNode = cloner.cloneSubjectHierarchyNode(floodFieldShNode, floodFieldVolumeNodeNodeCloneName)    
+    cropVolumeLogic.CropVoxelBased(self.lastAddedRoiNode, floodFieldCalibrationVolumeNode, croppedFloodFieldVolumeShNode.GetAssociatedNode())
 
     imageStat = vtk.vtkImageAccumulate()
-    imageStat.SetInputData(floodFieldCalibrationVolume.GetImageData())
+    imageStat.SetInputData(floodFieldCalibrationVolumeNode.GetImageData())
     imageStat.Update()
     meanValueFloodField = imageStat.GetMean()[0]
     logging.info("Mean value for flood field image in ROI = " + str(meanValueFloodField))
@@ -829,24 +837,25 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     for currentCalibrationVolumeIndex in xrange(self.step1_numberOfCalibrationFilmsSpinBox.value):
       # Get current calibration image node
-      currentCalibrationVolume = self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationVolumeIndex].currentNode()
+      currentCalibrationVolumeNode = self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationVolumeIndex].currentNode()
       currentCalibrationDose = self.step1_calibrationVolumeSelectorCGySpinBoxList[currentCalibrationVolumeIndex].value
 
-      # Crop calibration images by last defined ROI
-      cropVolumeLogic.CropVoxelBased(self.lastAddedRoiNode, currentCalibrationVolume, currentCalibrationVolume)
+      # Crop calibration images by last defined ROI into a cloned volume node
+      calibrationShNode = slicer.vtkMRMLSubjectHierarchyNode.GetAssociatedSubjectHierarchyNode(floodFieldCalibrationVolumeNode)
+      calibrationVolumeNodeNodeCloneName = currentCalibrationVolumeNode.GetName() + '_Cropped'
+      croppedCalibrationVolumeShNode = cloner.cloneSubjectHierarchyNode(calibrationShNode, calibrationVolumeNodeNodeCloneName)    
+      cropVolumeLogic.CropVoxelBased(self.lastAddedRoiNode, currentCalibrationVolumeNode, croppedCalibrationVolumeShNode.GetAssociatedNode())
 
       # Measure dose value as average of the cropped calibration images
-      #calibrationValues[imageDose_cGy] = measuredValueInRoi
-
+      #calibrationValues[imageDose_cGy] = measuredValueInRoi #TODO:
       imageStat = vtk.vtkImageAccumulate()
-      imageStat.SetInputData(currentCalibrationVolume.GetImageData())
+      imageStat.SetInputData(currentCalibrationVolumeNode.GetImageData())
       imageStat.Update()
       meanValue = imageStat.GetMean()[0]
-
       calibrationValues.append([meanValue, currentCalibrationDose])
+
       # Optical density calculation
       opticalDensity = math.log10(float(meanValueFloodField)/meanValue) 
-
       if opticalDensity < 0.0:
         opticalDensity = 0.0
 
@@ -858,6 +867,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Perform calibration of OD to dose
     self.findBestFittingCalibrationFunctionCoefficients()
+
+    # Restore cursor
+    qt.QApplication.restoreOverrideCursor()
 
     # Show calibration plot
     self.createCalibrationCurvesWindow()
@@ -1249,7 +1261,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       if opticalDensity <= 0.0:
         opticalDensity = 0.0
       doseArrayGy[rowIndex] = self.applyCalibrationFunction(opticalDensity, self.calibrationCoefficients[0], self.calibrationCoefficients[1], self.calibrationCoefficients[2], self.calibrationCoefficients[3]) / 100.0
-        
+
       if doseArrayGy[rowIndex] < 0.0:
         doseArrayGy[rowIndex] = 0.0
 
