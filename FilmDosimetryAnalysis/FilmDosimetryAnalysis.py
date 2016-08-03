@@ -89,7 +89,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Initiate and group together all panels
     self.step0_layoutSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step1_CalibrationCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.step1_calibrationCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step2_loadExperimentalDataCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step3_applyCalibrationCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step4_CollapsibleButton = ctk.ctkCollapsibleButton()
@@ -98,7 +98,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     self.collapsibleButtonsGroup = qt.QButtonGroup()
     self.collapsibleButtonsGroup.addButton(self.step0_layoutSelectionCollapsibleButton)
-    self.collapsibleButtonsGroup.addButton(self.step1_CalibrationCollapsibleButton)
+    self.collapsibleButtonsGroup.addButton(self.step1_calibrationCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step2_loadExperimentalDataCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step3_applyCalibrationCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step4_CollapsibleButton)
@@ -106,18 +106,18 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     self.collapsibleButtonsGroup.addButton(self.testButton)
 
-    self.step0_layoutSelectionCollapsibleButton.setProperty('collapsed', False)
+    self.step1_calibrationCollapsibleButton.setProperty('collapsed', False)
 
     # Create module logic
     # self.logic = FilmDosimetryAnalysisLogic.FilmDosimetryAnalysisLogic() #TODO (include as well)
 
     # Declare member variables (selected at certain steps and then from then on for the workflow)
-    self.folderNode = None
+    self.folderNode = None #TODO: Not needed
     self.batchFolderToParse = None
     self.lastAddedRoiNode = None
     self.calculatedDoseNode = None
     self.experimentalFilmDoseVolume = None 
-    self.experimentalFilmDoseVolumeName = "Experimental film"
+    self.experimentalFilmDoseVolumeNamePostfix = "_Calibrated"
     self.inputDICOMDoseVolume = None
     self.dosePlanVolume = None 
     self.dosePlanVolumeName = "Dose plan resampled"
@@ -126,7 +126,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.experimentalFloodFieldImageNode = None
     self.experimentalFilmImageNode = None 
     
-    self.measuredOpticalDensities = []
+    self.measuredOpticalDensityToDoseMap = [] #TODO: Make it a real map (need to sort by key where it is created)
 
     # Set up constants
     self.saveCalibrationBatchFolderNodeNamePrefix = "Calibration batch"
@@ -135,7 +135,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.floodFieldImageShNodeName = "FloodFieldImage" #TODO: Do not rename node, and use the attribute to identify
     self.calibrationVolumeName = "CalibrationVolume" #TODO: Do not rename node, and use the attribute to identify
     self.calibrationBatchSceneFileName = "CalibrationBatchScene.mrml"
-    self.calibrationFunctionFileName = "doseVSopticalDensity.txt"
+    self.calibrationFunctionFileName = "FilmDosinetryCalibrationFunctionCoefficients"
     self.experimentalCenter2DoseCenterTransformName = "Experimental to dose translation"
     self.experimentalAxialToExperimentalCoronalTransformName = "Experimental film axial to coronal transform"
     self.experimentalRotate90APTransformName = "Experimental rotate 90 around AP axis"
@@ -144,7 +144,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     
     self.maxNumberOfCalibrationVolumes = 10
     self.opticalDensityCurve = None # Polyfit
-    self.bestCoefficients = [0,0,[0,0,0]] #the best coefficients from Kevin's function, [n, [a,b,c]] #TODO
+    self.calibrationCoefficients = [0,0,0,0] # Calibration coefficients [a,b,c,n] in calibration function dose = a + b*OD + c*OD^n
     self.resolutionMM_ToPixel = None
 
     # Set observations
@@ -169,11 +169,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Set up step panels
     self.setup_Step0_LayoutSelection()
-    self.setup_step1_Calibration()
-    self.setup_step2_loadExperimentalData()
-    self.setup_step3_applyCalibration()
-    self.setup_step4_Registration()
-    self.setup_step5_GammaComparison()
+    self.setup_Step1_Calibration()
+    self.setup_Step2_LoadExperimentalData()
+    self.setup_Step3_ApplyCalibration()
+    self.setup_Step4_Registration()
+    self.setup_Step5_GammaComparison()
 
     if widgetClass:
       self.widget = widgetClass(self.parent)
@@ -186,17 +186,17 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_loadImageFilesButton.disconnect('clicked()', self.onLoadImageFilesButton)
     self.step1_numberOfCalibrationFilmsSpinBox.disconnect('valueChanged(int)', self.onNumberOfCalibrationFilmsSpinBoxValueChanged)
     self.step1_saveCalibrationBatchButton.disconnect('clicked()', self.onSaveCalibrationBatchButton)
-    self.step1_loadCalibrationBatchButton.disconnect('clicked()', self.onloadCalibrationBatchButton)
+    self.step1_loadCalibrationBatchButton.disconnect('clicked()', self.onLoadCalibrationBatchButton)
     self.step1_saveCalibrationButton.disconnect('clicked()', self.exportCalibrationResultToFile)
     self.step1_addRoiButton.disconnect('clicked()', self.onAddRoiButton)
     self.step1_performCalibrationButton.disconnect('clicked()', self.onPerformCalibrationButton)
     self.step2_loadNonDicomDataButton.disconnect('clicked()', self.onLoadImageFilesButton)
     self.step2_showDicomBrowserButton.disconnect('clicked()', self.onDicomLoad)
     self.step2_loadExperimentalDataCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onstep2_loadExperimentalDataCollapsed)
-    self.step3_calibrationFunctionOrder0LineEdit.disconnect('textChanged()', self.onTextChanged)
-    self.step3_calibrationFunctionOrder1LineEdit.disconnect('textChanged()', self.onTextChanged)
-    self.step3_calibrationFunctionOrder2LineEdit.disconnect('textChanged()', self.onTextChanged)
-    self.step3_calibrationFunctionOrder3LineEdit.disconnect('textChanged()', self.onTextChanged)
+    self.step3_calibrationFunctionOrder0LineEdit.disconnect('textChanged()', self.onCalibrationFunctionLineEditChanged)
+    self.step3_calibrationFunctionOrder1LineEdit.disconnect('textChanged()', self.onCalibrationFunctionLineEditChanged)
+    self.step3_calibrationFunctionOrder2LineEdit.disconnect('textChanged()', self.onCalibrationFunctionLineEditChanged)
+    self.step3_calibrationFunctionExponentLineEdit.disconnect('textChanged()', self.onCalibrationFunctionLineEditChanged)
     self.step3_applyCalibrationButton.disconnect('clicked()', self.onApplyCalibrationButton)
     self.step3_loadCalibrationButton.disconnect('clicked()', self.onLoadCalibrationFunctionButton)
     self.step4_resolutionLineEdit.disconnect('textChanged(QString)', self.onResolutionLineEditTextChanged)
@@ -236,27 +236,28 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step0_modeSelectorLayout.addWidget(self.step0_preclinicalModeRadioButton, 0, 2)
 
   #------------------------------------------------------------------------------
-  def setup_step1_Calibration(self):
+  def setup_Step1_Calibration(self):
     # Step 1: Load data panel
-    self.step1_CalibrationCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step1_CalibrationCollapsibleButton.text = "1. Calibration (optional)"
-    self.sliceletPanelLayout.addWidget(self.step1_CalibrationCollapsibleButton)
+    self.step1_calibrationCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step1_calibrationCollapsibleButton.text = "1. Calibration (optional)"
+    self.sliceletPanelLayout.addWidget(self.step1_calibrationCollapsibleButton)
 
     # Step 1 main background layout
-    self.step1_calibrationLayout = qt.QVBoxLayout(self.step1_CalibrationCollapsibleButton)
+    self.step1_calibrationLayout = qt.QVBoxLayout(self.step1_calibrationCollapsibleButton)
 
-    # Step 1.1: Calibration routine
-    self.step1_1_calibrationRoutineCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step1_1_calibrationRoutineCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step1_1_calibrationRoutineCollapsibleButton.text = "1.1. Load calibration data"
-    self.step1_calibrationLayout.addWidget(self.step1_1_calibrationRoutineCollapsibleButton)
-    self.step1_1_calibrationRoutineLayout = qt.QVBoxLayout(self.step1_1_calibrationRoutineCollapsibleButton)
-    self.step1_1_calibrationRoutineLayout.setContentsMargins(12,4,4,4)
-    self.step1_1_calibrationRoutineLayout.setSpacing(4)
+    # Step 1.1: Load calibration data
+    self.step1_1_loadCalibrationDataCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.step1_1_loadCalibrationDataCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step1_1_loadCalibrationDataCollapsibleButton.text = "1.1. Load calibration data"
+    self.step1_calibrationLayout.addWidget(self.step1_1_loadCalibrationDataCollapsibleButton)
+
+    self.step1_1_loadCalibrationDataLayout = qt.QVBoxLayout(self.step1_1_loadCalibrationDataCollapsibleButton)
+    self.step1_1_loadCalibrationDataLayout.setContentsMargins(12,4,4,4)
+    self.step1_1_loadCalibrationDataLayout.setSpacing(4)
 
     # Step 1 top third sub-layout
     self.step1_topCalibrationSubLayout = qt.QVBoxLayout()
-    self.step1_1_calibrationRoutineLayout.addLayout(self.step1_topCalibrationSubLayout)
+    self.step1_1_loadCalibrationDataLayout.addLayout(self.step1_topCalibrationSubLayout)
 
     # Load data label
     self.step1_CalibrationLabel = qt.QLabel("Load all image data involved in the workflow.\nCan either be a new batch of image files, or a saved image batch")
@@ -309,7 +310,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_topCalibrationSubLayout.addLayout(self.step1_floodFieldImageSelectorComboBoxLayout)
 
     self.step1_middleCalibrationSubLayout = qt.QVBoxLayout()
-    self.step1_1_calibrationRoutineLayout.addLayout(self.step1_middleCalibrationSubLayout)
+    self.step1_1_loadCalibrationDataLayout.addLayout(self.step1_middleCalibrationSubLayout)
 
     self.step1_calibrationVolumeLayoutList = []
     self.step1_calibrationVolumeSelectorLabelBeforeList = []
@@ -347,7 +348,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.step1_middleCalibrationSubLayout.addLayout(self.step1_doseToImageSelectorRowLayout)
 
     self.step1_bottomCalibrationSubLayout = qt.QVBoxLayout()
-    self.step1_1_calibrationRoutineLayout.addLayout(self.step1_bottomCalibrationSubLayout)
+    self.step1_1_loadCalibrationDataLayout.addLayout(self.step1_bottomCalibrationSubLayout)
 
     self.updateStep1CalibrationPanel(self.step1_numberOfCalibrationFilmsSpinBox.value)
 
@@ -359,62 +360,64 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Add empty row
     self.step1_bottomCalibrationSubLayout.addWidget(qt.QLabel(''))
 
-    # Step 1.2: Calibration routine (optional)
-    self.step1_2_calibrationRoutineCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step1_2_calibrationRoutineCollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step1_2_calibrationRoutineCollapsibleButton.text = "1.2. Perform calibration"
-    self.step1_calibrationLayout.addWidget(self.step1_2_calibrationRoutineCollapsibleButton)
-    self.step1_2_calibrationRoutineLayout = qt.QVBoxLayout(self.step1_2_calibrationRoutineCollapsibleButton)
-    self.step1_2_calibrationRoutineLayout.setContentsMargins(12,4,4,4)
-    self.step1_2_calibrationRoutineLayout.setSpacing(4)
+    # Step 1.2: Perform calibration
+    self.step1_2_performCalibrationCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.step1_2_performCalibrationCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step1_2_performCalibrationCollapsibleButton.text = "1.2. Perform calibration"
+    self.step1_calibrationLayout.addWidget(self.step1_2_performCalibrationCollapsibleButton)
+    self.step1_2_performCalibrationLayout = qt.QVBoxLayout(self.step1_2_performCalibrationCollapsibleButton)
+    self.step1_2_performCalibrationLayout.setContentsMargins(12,4,4,4)
+    self.step1_2_performCalibrationLayout.setSpacing(4)
 
     # Add ROI button
     self.step1_addRoiButton = qt.QPushButton("Add region")
     self.step1_addRoiButton.setIcon(qt.QIcon(":/Icons/AnnotationROIWithArrow.png"))
     self.step1_addRoiButton.toolTip = "Add ROI (region of interest) that is considered when measuring dose in the calibration images\n\nOnce activated, click in the center of the region to be used for calibration, then do another click to one of the corners. After that the ROI appears and can be adjusted using the colored handles."
-    self.step1_2_calibrationRoutineLayout.addWidget(self.step1_addRoiButton)
+    self.step1_2_performCalibrationLayout.addWidget(self.step1_addRoiButton)
 
     # Calibration button
     self.step1_performCalibrationButton = qt.QPushButton("Perform calibration")
     self.step1_performCalibrationButton.toolTip = "Finds the calibration function"
-    self.step1_2_calibrationRoutineLayout.addWidget(self.step1_performCalibrationButton)
+    self.step1_2_performCalibrationLayout.addWidget(self.step1_performCalibrationButton)
 
     # Calibration function
     self.step1_calibrationFunctionLabel = qt.QLabel('Optical density to dose calibration function: ')
-    self.step1_2_calibrationRoutineLayout.addWidget(self.step1_calibrationFunctionLabel)
+    self.step1_2_performCalibrationLayout.addWidget(self.step1_calibrationFunctionLabel)
 
     #TODO:
     self.blankLabel = qt.QLabel('')
-    self.step1_2_calibrationRoutineLayout.addWidget(self.blankLabel)
+    self.step1_2_performCalibrationLayout.addWidget(self.blankLabel)
     # Dose calibration function label
     self.step1_2_performCalibrationFunctionLabel = qt.QLabel(" ")
-    self.step1_2_calibrationRoutineLayout.addWidget(self.step1_2_performCalibrationFunctionLabel)
+    self.step1_2_performCalibrationLayout.addWidget(self.step1_2_performCalibrationFunctionLabel)
 
-    self.step1_2_calibrationRoutineLayout.addWidget(self.blankLabel)
+    self.step1_2_performCalibrationLayout.addWidget(self.blankLabel)
 
     # Save calibration function button
     self.step1_saveCalibrationButton = qt.QPushButton("Save calibration function")
     self.step1_saveCalibrationButton.toolTip = "Save calibration function for later use"
-    self.step1_2_calibrationRoutineLayout.addWidget(self.step1_saveCalibrationButton)
+    self.step1_2_performCalibrationLayout.addWidget(self.step1_saveCalibrationButton)
 
     self.step1_bottomCalibrationSubLayout.addStretch(1)
 
     # Step 1 sub button group
     self.step1_calibrationCollapsibleButtonGroup = qt.QButtonGroup()
-    self.step1_calibrationCollapsibleButtonGroup.addButton(self.step1_1_calibrationRoutineCollapsibleButton)
-    self.step1_calibrationCollapsibleButtonGroup.addButton(self.step1_2_calibrationRoutineCollapsibleButton)
+    self.step1_calibrationCollapsibleButtonGroup.addButton(self.step1_1_loadCalibrationDataCollapsibleButton)
+    self.step1_calibrationCollapsibleButtonGroup.addButton(self.step1_2_performCalibrationCollapsibleButton)
+
+    self.step1_1_loadCalibrationDataCollapsibleButton.setProperty('collapsed', False)
 
     # Connections
     self.step1_loadImageFilesButton.connect('clicked()', self.onLoadImageFilesButton)
     self.step1_saveCalibrationBatchButton.connect('clicked()', self.onSaveCalibrationBatchButton)
-    self.step1_loadCalibrationBatchButton.connect('clicked()', self.onloadCalibrationBatchButton)
+    self.step1_loadCalibrationBatchButton.connect('clicked()', self.onLoadCalibrationBatchButton)
     self.step1_numberOfCalibrationFilmsSpinBox.connect('valueChanged(int)', self.onNumberOfCalibrationFilmsSpinBoxValueChanged)
     self.step1_addRoiButton.connect('clicked()', self.onAddRoiButton)
     self.step1_performCalibrationButton.connect('clicked()', self.onPerformCalibrationButton)
     self.step1_saveCalibrationButton.connect('clicked()', self.exportCalibrationResultToFile)
 
   #------------------------------------------------------------------------------
-  def setup_step2_loadExperimentalData(self):
+  def setup_Step2_LoadExperimentalData(self):
   # Step 2: Load data panel
     self.step2_loadExperimentalDataCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step2_loadExperimentalDataCollapsibleButton.text = "2. Load experimental data"
@@ -502,7 +505,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step2_loadExperimentalDataCollapsibleButton.connect('contentsCollapsed(bool)', self.onstep2_loadExperimentalDataCollapsed)
 
   #------------------------------------------------------------------------------
-  def setup_step3_applyCalibration(self):
+  def setup_Step3_ApplyCalibration(self):
   # Step 2: Load data panel
     self.step3_applyCalibrationCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step3_applyCalibrationCollapsibleButton.text = "3. Apply calibration"
@@ -531,8 +534,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_calibrationFunctionOrder2LineEdit = qt.QLineEdit()
     self.step3_calibrationFunctionOrder2LineEdit.maximumWidth = 64
     self.step3_calibrationFunctionOrder2Label = qt.QLabel(' OD ^ ')
-    self.step3_calibrationFunctionOrder3LineEdit = qt.QLineEdit()
-    self.step3_calibrationFunctionOrder3LineEdit.maximumWidth = 64
+    self.step3_calibrationFunctionExponentLineEdit = qt.QLineEdit()
+    self.step3_calibrationFunctionExponentLineEdit.maximumWidth = 64
 
     self.step3_calibrationFunctionLayout.addWidget(self.step3_calibrationFunctionOrder0LineEdit,0,1)
     self.step3_calibrationFunctionLayout.addWidget(self.step3_calibrationFunctionOrder0Label,0,2)
@@ -540,7 +543,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_calibrationFunctionLayout.addWidget(self.step3_calibrationFunctionOrder1Label,0,4)
     self.step3_calibrationFunctionLayout.addWidget(self.step3_calibrationFunctionOrder2LineEdit,0,5)
     self.step3_calibrationFunctionLayout.addWidget(self.step3_calibrationFunctionOrder2Label,0,6)
-    self.step3_calibrationFunctionLayout.addWidget(self.step3_calibrationFunctionOrder3LineEdit,1,1)
+    self.step3_calibrationFunctionLayout.addWidget(self.step3_calibrationFunctionExponentLineEdit,1,1)
     self.step3_applyCalibrationCollapsibleButtonLayout.addLayout(self.step3_calibrationFunctionLayout)
 
 
@@ -552,13 +555,13 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Connections
     self.step3_applyCalibrationButton.connect('clicked()', self.onApplyCalibrationButton)
     self.step3_loadCalibrationButton.connect('clicked()', self.onLoadCalibrationFunctionButton)
-    self.step3_calibrationFunctionOrder0LineEdit.connect('textChanged(QString)', self.onTextChanged)
-    self.step3_calibrationFunctionOrder1LineEdit.connect('textChanged(QString)', self.onTextChanged)
-    self.step3_calibrationFunctionOrder2LineEdit.connect('textChanged(QString)', self.onTextChanged)
-    self.step3_calibrationFunctionOrder3LineEdit.connect('textChanged(QString)', self.onTextChanged)
+    self.step3_calibrationFunctionOrder0LineEdit.connect('textChanged(QString)', self.onCalibrationFunctionLineEditChanged)
+    self.step3_calibrationFunctionOrder1LineEdit.connect('textChanged(QString)', self.onCalibrationFunctionLineEditChanged)
+    self.step3_calibrationFunctionOrder2LineEdit.connect('textChanged(QString)', self.onCalibrationFunctionLineEditChanged)
+    self.step3_calibrationFunctionExponentLineEdit.connect('textChanged(QString)', self.onCalibrationFunctionLineEditChanged)
 
   #------------------------------------------------------------------------------
-  def setup_step4_Registration(self):
+  def setup_Step4_Registration(self):
     # Step 2: Load data panel
     self.step4_CollapsibleButton.setProperty('collapsedHeight', 4)
     self.step4_CollapsibleButton.text = "4. Register film to plan"
@@ -588,7 +591,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step4_performRegistrationButton.connect('clicked()', self.onPerformRegistrationButtonClicked)
 
   #------------------------------------------------------------------------------
-  def setup_step5_GammaComparison(self):
+  def setup_Step5_GammaComparison(self):
   # TODO add to collapsible buttons group
     # Step 2: Load data panel
     self.step5_CollapsibleButton.setProperty('collapsedHeight', 4)
@@ -749,7 +752,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     calibrationBatchMrmlScene.Clear(1)
 
   #------------------------------------------------------------------------------
-  def onloadCalibrationBatchButton(self):
+  def onLoadCalibrationBatchButton(self):
     calibrationBatchDirectoryPath = qt.QFileDialog.getExistingDirectory(0, 'Open directory containing calibration batch')  
     #TODO put this all in a try/except
     os.chdir(os.path.normpath(calibrationBatchDirectoryPath))
@@ -816,28 +819,31 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     imageStat.Update()
     meanValueFloodField = imageStat.GetMean()[0]
     logging.info("Mean value for flood field image in ROI = " + str(meanValueFloodField))
-    self.calibrationValues.append([self.floodFieldAttributeValue, meanValueFloodField])
-    self.measuredOpticalDensities = []
+    
+    calibrationValues = [] # [entered dose, measured pixel value]   #TODO: Order is just reversed compared to measuredOpticalDensityToDoseMap
+    calibrationValues.append([self.floodFieldAttributeValue, meanValueFloodField])
+
+    self.measuredOpticalDensityToDoseMap = []
 
     #TODO check this OD calculation
 
     for currentCalibrationVolumeIndex in xrange(self.step1_numberOfCalibrationFilmsSpinBox.value):
       # Get current calibration image node
       currentCalibrationVolume = self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationVolumeIndex].currentNode()
-      currentCalibrationVolumeDose = self.step1_calibrationVolumeSelectorCGySpinBoxList[currentCalibrationVolumeIndex].value
+      currentCalibrationDose = self.step1_calibrationVolumeSelectorCGySpinBoxList[currentCalibrationVolumeIndex].value
 
       # Crop calibration images by last defined ROI
       cropVolumeLogic.CropVoxelBased(self.lastAddedRoiNode, currentCalibrationVolume, currentCalibrationVolume)
 
       # Measure dose value as average of the cropped calibration images
-      #self.calibrationValues[imageDose_cGy] = measuredValueInRoi
+      #calibrationValues[imageDose_cGy] = measuredValueInRoi
 
       imageStat = vtk.vtkImageAccumulate()
       imageStat.SetInputData(currentCalibrationVolume.GetImageData())
       imageStat.Update()
       meanValue = imageStat.GetMean()[0]
 
-      self.calibrationValues.append([meanValue, currentCalibrationVolumeDose])
+      calibrationValues.append([meanValue, currentCalibrationDose])
       # Optical density calculation
       opticalDensity = math.log10(float(meanValueFloodField)/meanValue) 
 
@@ -845,22 +851,30 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
         opticalDensity = 0.0
 
       # x = optical density, y = dose
-      self.measuredOpticalDensities.append([opticalDensity, currentCalibrationVolumeDose])
-      logging.info("Mean value for calibration image for " + str(currentCalibrationVolumeDose) + " cGy in ROI = " + str(meanValue))
+      self.measuredOpticalDensityToDoseMap.append([opticalDensity, currentCalibrationDose])
+      logging.info("Mean value for calibration image for " + str(currentCalibrationDose) + " cGy in ROI = " + str(meanValue))
 
-    self.measuredOpticalDensities.sort(key=lambda doseODPair: doseODPair[1])
+    self.measuredOpticalDensityToDoseMap.sort(key=lambda doseODPair: doseODPair[1])
 
+    # Perform calibration of OD to dose
+    self.findBestFittingCalibrationFunctionCoefficients()
+
+    # Show calibration plot
     self.createCalibrationCurvesWindow()
     self.showCalibrationCurves()
 
-    self.step3_calibrationFunctionOrder0LineEdit.text = str(self.bestCoefficients[2][0])
-    self.step3_calibrationFunctionOrder1LineEdit.text = str(self.bestCoefficients[2][1])
-    self.step3_calibrationFunctionOrder2LineEdit.text = str(self.bestCoefficients[2][2])
-    self.step3_calibrationFunctionOrder3LineEdit.text = str(self.bestCoefficients[1])
+    # Calibration entry line edits
+    aText = str(round(self.calibrationCoefficients[0],5))
+    bText = str(round(self.calibrationCoefficients[1],5))
+    cText = str(round(self.calibrationCoefficients[2],5))
+    nText = str(round(self.calibrationCoefficients[3],5))
+    self.step3_calibrationFunctionOrder0LineEdit.text = aText
+    self.step3_calibrationFunctionOrder1LineEdit.text = bText
+    self.step3_calibrationFunctionOrder2LineEdit.text = cText
+    self.step3_calibrationFunctionExponentLineEdit.text = nText
 
     # Calibration function label
-    calibrationFunctionString = "Dose (cGy) = " + str(self.bestCoefficients[2][0]) + " + " + str(self.bestCoefficients[2][1]) + " * OD + " + str(self.bestCoefficients[2][2]) + " * OD^" + str(self.bestCoefficients[1])
-    self.step1_2_performCalibrationFunctionLabel.text = calibrationFunctionString
+    self.step1_2_performCalibrationFunctionLabel.text = "Dose (cGy) = " + aText + " + " + bText + " * OD + " + cText + " * OD^" + nText
 
   #------------------------------------------------------------------------------
   def cropDoseByROI(self): 
@@ -893,15 +907,27 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     return croppedNode
 
   #------------------------------------------------------------------------------
-  def onTextChanged(self):
-    if not (self.step3_calibrationFunctionOrder0LineEdit.text == ''):
-      self.bestCoefficients[2][0] = round(float(self.step3_calibrationFunctionOrder0LineEdit.text),5) #TODO: Round only for display!
-    if not (self.step3_calibrationFunctionOrder1LineEdit.text  == ''):
-      self.bestCoefficients[2][1] = round(float(self.step3_calibrationFunctionOrder1LineEdit.text),5)
-    if not (self.step3_calibrationFunctionOrder2LineEdit.text == ''):
-      self.bestCoefficients[2][2] = round(float(self.step3_calibrationFunctionOrder2LineEdit.text),5)
-    if not (self.step3_calibrationFunctionOrder3LineEdit.text == ''):
-      self.bestCoefficients[1] = round(float(self.step3_calibrationFunctionOrder3LineEdit.text ),5)
+  def onCalibrationFunctionLineEditChanged(self):
+    if self.step3_calibrationFunctionOrder0LineEdit.text != '':
+      try:
+        self.calibrationCoefficients[0] = float(self.step3_calibrationFunctionOrder0LineEdit.text)
+      except ValueError:
+        logging.error("Invalid numeric value for calibration function coefficient 'A' " + self.step3_calibrationFunctionOrder0LineEdit.text)
+    if self.step3_calibrationFunctionOrder1LineEdit.text != '':
+      try:
+        self.calibrationCoefficients[1] = float(self.step3_calibrationFunctionOrder1LineEdit.text)
+      except ValueError:
+        logging.error("Invalid numeric value for calibration function coefficient 'B' " + self.step3_calibrationFunctionOrder1LineEdit.text)
+    if self.step3_calibrationFunctionOrder2LineEdit.text != '':
+      try:
+        self.calibrationCoefficients[2] = float(self.step3_calibrationFunctionOrder2LineEdit.text)
+      except ValueError:
+        logging.error("Invalid numeric value for calibration function coefficient 'C' " + self.step3_calibrationFunctionOrder2LineEdit.text)
+    if self.step3_calibrationFunctionExponentLineEdit.text != '':
+      try:
+        self.calibrationCoefficients[3] = float(self.step3_calibrationFunctionExponentLineEdit.text)
+      except ValueError:
+        logging.error("Invalid numeric value for calibration function coefficient 'N' " + self.step3_calibrationFunctionExponentLineEdit.text)
 
   #------------------------------------------------------------------------------
   def fitOpticalDensityFunction(self, doseVSOpticalDensityNestedList):
@@ -930,8 +956,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Set auto window/level for loaded dose volumes
     import vtkSlicerRtCommonPython as vtkSlicerRtCommon
     if vtkSlicerRtCommon.SlicerRtCommon.IsDoseVolumeNode(addedNode):
+      print('ZZZ dose added ' + addedNode.GetName()) #TODO:
       if addedNode.GetDisplayNode() is not None:
         addedNode.GetDisplayNode().AutoWindowLevelOn()
+        print('ZZZ display OK')
 
   #------------------------------------------------------------------------------
   def onSceneEndImport(self, caller, event): #TODO: Rely on attributes and not node names (which are duplicate!) + variable names etc.
@@ -958,6 +986,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     floodFieldSHFound = False
     CalibrationFilmsSHFound = False
     fileNotFoundError = False
+    lastLoadedCalibrationVolume = None
 
     while currentNode != None:
       if currentNode.GetAncestorAtLevel('Folder') == self.batchFolderToParse:
@@ -983,6 +1012,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
           if os.path.isfile(currentNode.GetAssociatedNode().GetStorageNode().GetFileName()) == True:
             # Setting scalar volume to combobox
             loadedCalibrationVolume = slicer.mrmlScene.GetNodeByID(currentNode.GetAssociatedNodeID())
+            lastLoadedCalibrationVolume = loadedCalibrationVolume
             self.step1_calibrationVolumeSelectorComboBoxList[calibrationVolumeIndex].setCurrentNode(loadedCalibrationVolume)
 
             # Setting dose attribute to combobox
@@ -1003,23 +1033,27 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # TODO fix placement of popup boxes on screen relative to load slider thing
 
     # Error messages for issues with loading
-    if result:
-      qt.QMessageBox.information(None, "Calibration image loading", 'Success! Saved calibration values loaded')
-    else:
+    if not result:
       message = "Failed to load saved calibration batch"
       qt.QMessageBox.critical(None, 'Error', message)
       logging.error(message)
       return
-
     if fileNotFoundError:
       qt.QMessageBox.critical(None, 'Error', "File not found for flood file image or calibration image(s)")
       slicer.mrmlScene.Clear(0)
       return
-
     if floodFieldSHFound == False:
       qt.QMessageBox.warning(None, 'Warning', 'No flood field image.')
     if CalibrationFilmsSHFound == False:
       qt.QMessageBox.warning(None, 'Warning', 'No calibration film images.')
+
+    # Show last loaded film
+    if lastLoadedCalibrationVolume is not None:
+      appLogic = slicer.app.applicationLogic()
+      selectionNode = appLogic.GetSelectionNode()
+      selectionNode.SetActiveVolumeID(lastLoadedCalibrationVolume.GetID())
+      selectionNode.SetSecondaryVolumeID(None)
+      appLogic.PropagateVolumeSelection()
 
   #------------------------------------------------------------------------------
   def createCalibrationCurvesWindow(self):
@@ -1033,7 +1067,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   def showCalibrationCurves(self):
     # Create CALIBRATION dose vs. optical density plot
     self.calibrationCurveDataTable = vtk.vtkTable()
-    calibrationNumberOfRows = len(self.measuredOpticalDensities)
+    calibrationNumberOfRows = len(self.measuredOpticalDensityToDoseMap)
 
     opticalDensityArray = vtk.vtkDoubleArray()
     opticalDensityArray.SetName("Optical Density")
@@ -1044,8 +1078,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calibrationCurveDataTable.SetNumberOfRows(calibrationNumberOfRows)
 
     for rowIndex in xrange(calibrationNumberOfRows):
-      self.calibrationCurveDataTable.SetValue(rowIndex, 0, self.measuredOpticalDensities[rowIndex][0])
-      self.calibrationCurveDataTable.SetValue(rowIndex, 1, self.measuredOpticalDensities[rowIndex][1])
+      self.calibrationCurveDataTable.SetValue(rowIndex, 0, self.measuredOpticalDensityToDoseMap[rowIndex][0])
+      self.calibrationCurveDataTable.SetValue(rowIndex, 1, self.measuredOpticalDensityToDoseMap[rowIndex][1])
 
     if hasattr(self, 'calibrationMeanOpticalAttenuationLine' ):
       self.calibrationCurveChart.RemovePlotInstance(self.calibrationMeanOpticalAttenuationLine)
@@ -1054,18 +1088,13 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calibrationMeanOpticalAttenuationLine.SetColor(0, 0, 255, 255)
     self.calibrationMeanOpticalAttenuationLine.SetWidth(2.0)
 
-    #-----
-    # Create and populate the calculated dose/OD curve with K function
-    #call function to find best coefficients
-
-    self.bestCoefficients = self.selectBestFunctionCoefficients()
-
-    opticalDensityList = [round(0 + 0.01*opticalDensityIncrement,2) for opticalDensityIncrement in xrange(120)]
+    # Create and populate the calculated dose/OD curve with function
+    opticalDensityList = [round(0 + 0.01*opticalDensityIncrement,2) for opticalDensityIncrement in xrange(120)] #TODO: Magic number 120?
     opticalDensities = []
 
     for calculatedEntryIndex in xrange(120):
-      newEntry = [opticalDensityList[calculatedEntryIndex], self.applyFitFunction(opticalDensityList[calculatedEntryIndex], self.bestCoefficients[1], self.bestCoefficients[2])]
-      opticalDensities.append(newEntry)  #AR here
+      newEntry = [opticalDensityList[calculatedEntryIndex], self.applyCalibrationFunction(opticalDensityList[calculatedEntryIndex], self.calibrationCoefficients[0], self.calibrationCoefficients[1], self.calibrationCoefficients[2], self.calibrationCoefficients[3])]
+      opticalDensities.append(newEntry)
 
     # Create plot for dose calibration fitted curve
     self.opticalDensityToDoseFunctionTable = vtk.vtkTable()
@@ -1101,111 +1130,91 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.renderWindow.Start()
 
   #------------------------------------------------------------------------------
-  def meanSquaredError(self, n, coeff):
-    sumMeanSquaredError = 0
-    for i in xrange(len(self.measuredOpticalDensities)):
-      newY = self.applyFitFunction(self.measuredOpticalDensities[i][0], n, coeff)
-      sumMeanSquaredError += ((self.measuredOpticalDensities[i][1] - newY)**2)
-    return round(sumMeanSquaredError/(len(self.measuredOpticalDensities)),5)
+  def meanSquaredError(self, a, b, c, n):
+    sumMeanSquaredError = 0.0
+    for i in xrange(len(self.measuredOpticalDensityToDoseMap)):
+      calculatedDose = self.applyCalibrationFunction(self.measuredOpticalDensityToDoseMap[i][0], a, b, c, n)
+      sumMeanSquaredError += ((self.measuredOpticalDensityToDoseMap[i][1] - calculatedDose)**2)
+    return sumMeanSquaredError / float(len(self.measuredOpticalDensityToDoseMap))
 
   #------------------------------------------------------------------------------
-  def applyFitFunction(self, OD, n, coeff):
-    return (coeff[0] + coeff[1]*OD + coeff[2]*(OD**n))
+  def applyCalibrationFunction(self, OD, a, b, c, n):
+    return a + b*OD + c*(OD**n)
 
   #------------------------------------------------------------------------------
-  def findCoefficients(self,n):
+  def findCoefficientsForExponent(self,n):
     # Calculate matrix A
-    #print "findCoefficients"
     functionTermsMatrix = []
-    #opticalDensity
-    for row in xrange(len(self.measuredOpticalDensities)):
-      opticalDensity = self.measuredOpticalDensities[row][0]
+
+    # Optical density
+    for row in xrange(len(self.measuredOpticalDensityToDoseMap)):
+      opticalDensity = self.measuredOpticalDensityToDoseMap[row][0]
       functionTermsMatrix.append([1,opticalDensity,opticalDensity**n])
     functionTermsMatrix = numpy.asmatrix(functionTermsMatrix)
-    #print functionTermsMatrix
+
     # Calculate constant term coefficient vector
-    # functionDoseTerms
     functionDoseTerms = []
-    for row in xrange(len(self.measuredOpticalDensities)):
-      functionDoseTerms+= [self.measuredOpticalDensities[row][1]]
-        #print "functionDoseTerms is ", functionDoseTerms
-        # Find x
-        #functionConstantTerms
+    for row in xrange(len(self.measuredOpticalDensityToDoseMap)):
+      functionDoseTerms += [self.measuredOpticalDensityToDoseMap[row][1]]
     functionConstantTerms = numpy.linalg.lstsq(functionTermsMatrix,functionDoseTerms)
     coefficients = functionConstantTerms[0].tolist()
 
     for coefficientIndex in xrange(len(coefficients)):
-      coefficients[coefficientIndex] = round(coefficients[coefficientIndex],5)
+      coefficients[coefficientIndex] = coefficients[coefficientIndex]
 
     return coefficients
 
   #------------------------------------------------------------------------------
-  def selectBestFunctionCoefficients(self):
-    bestN = [] # Entries are [MSE, n, answer]
+  def findBestFittingCalibrationFunctionCoefficients(self):
+    bestN = [] # Entries are [MSE, n, coefficients]
 
     for n in xrange(1000,4001):
       n/=1000.0
-      coeff = self.findCoefficients(n)
-      MSE = self.meanSquaredError(n,coeff)
-      bestN.append([MSE, n, coeff])
+      coeffs = self.findCoefficientsForExponent(n)
+      MSE = self.meanSquaredError(coeffs[0],coeffs[1],coeffs[2],n)
+      bestN.append([MSE, n, coeffs])
 
     bestN.sort(key=lambda bestNEntry: bestNEntry[0]) 
-    self.bestCoefficients = bestN[0]
-    #print "best 10 coefficients are: \n", bestN[0:10]
-    print "best coefficients ", bestN[0]
-
-    return bestN[0]
+    self.calibrationCoefficients = [ bestN[0][2][0], bestN[0][2][1], bestN[0][2][2], bestN[0][1] ]
+    logging.info("Best fitting calibration function coefficients: A,B,C=" + str(bestN[0][2]) + ", N=" + str(bestN[0][1]) + " (mean square error: "  + str(bestN[0][0]))
 
   #------------------------------------------------------------------------------
   def exportCalibrationResultToFile(self):
-    #TODO change name, create success message
-    import csv
-    self.outputDir = qt.QFileDialog.getExistingDirectory(0, 'Open dir')
-    if not os.access(self.outputDir, os.F_OK):
-      os.mkdir(self.outputDir)
+    outputDir = qt.QFileDialog.getExistingDirectory(0, 'Select directory for saving calibration results')
+    if not os.access(outputDir, os.F_OK):
+      os.mkdir(outputDir)
 
     # Assemble file name for calibration curve points file
     from time import gmtime, strftime
-    fileName = self.outputDir + '/' + strftime("%Y%m%d_%H%M%S_", gmtime()) + self.calibrationFunctionFileName
+    fileName = outputDir + '/' + strftime("%Y%m%d_%H%M%S_", gmtime()) + self.calibrationFunctionFileName + ".txt"
 
-    if not os.path.isfile(fileName):
-      file = open(fileName, 'w')
-      file.close()
-    file = open(fileName, 'r+')
-    file.seek(0)
-    file.truncate()
-
-    self.recSave(file, self.bestCoefficients)
-
+    file = open(fileName, 'w')
+    file.write('# Film dosimetry calibration function coefficients (' + strftime("%Y.%m.%d. %H:%M:%S", gmtime()) + ')')
+    file.write('# Coefficients in order: A, B, C, N')
+    for coefficient in self.calibrationCoefficients:
+      file.write(str(coefficient) + '\n')
     file.close()
-
-  def recSave(self, file, lis): #TODO: Awful way to save the list. It would be much simpler to have a flat list instead of the complex bestCoefficients embedded lists
-    for x in lis:
-      if x is not None:
-        if type(x) is not list:
-          #print x
-          file.write(str(x) + '\n')
-        else:
-          self.recSave(file, x)
 
   #------------------------------------------------------------------------------
   def onLoadCalibrationFunctionButton(self):
     savedFilePath = qt.QFileDialog.getOpenFileName(0, 'Open file')
 
     file = open(savedFilePath, 'r+')
-    content = file.readlines()
-    if len(content)!= 5:
-      qt.QMessageBox.critical(None, 'Error', "Invalid function file")
+    lines = file.readlines()
+    if len(lines) != 6:
+      message = "Invalid calibration coefficients file!"
+      logging.error(message)
+      qt.QMessageBox.critical(None, 'Error', message)
+      return
 
-    self.bestCoefficients[0] = float(content[0].rstrip())
-    self.bestCoefficients[1] = float(content[1].rstrip())
-    self.step3_calibrationFunctionOrder3LineEdit.text = content[1].rstrip()
-    self.bestCoefficients[2][0] = float(content[2].rstrip())
-    self.step3_calibrationFunctionOrder0LineEdit.text = content[2].rstrip()
-    self.bestCoefficients[2][1] = float(content[3].rstrip())
-    self.step3_calibrationFunctionOrder1LineEdit.text = content[3].rstrip()
-    self.bestCoefficients[2][2] = float(content[4].rstrip())
-    self.step3_calibrationFunctionOrder2LineEdit.text = content[4].rstrip()
+    self.calibrationCoefficients[0] = float(lines[2].rstrip())
+    self.step3_calibrationFunctionOrder0LineEdit.text = lines[2].rstrip()
+    self.calibrationCoefficients[1] = float(lines[3].rstrip())
+    self.step3_calibrationFunctionOrder1LineEdit.text = lines[3].rstrip()
+    self.calibrationCoefficients[2] = float(lines[4].rstrip())
+    self.step3_calibrationFunctionOrder2LineEdit.text = lines[4].rstrip()
+    self.calibrationCoefficients[3] = float(lines[5].rstrip())
+    self.step3_calibrationFunctionExponentLineEdit.text = lines[5].rstrip()
 
     file.close()
 
@@ -1218,28 +1227,28 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     
   #------------------------------------------------------------------------------
   def calculateDoseFromExperimentalFilmImage(self):
-    #TODO this should be done in simpleITK
+    #TODO: This should be done in SimpleITK
+
     experimentalFilmArray = self.volumeToNumpyArray(self.step2_experimentalFilmSelectorComboBox.currentNode())  
     floodFieldArray = self.volumeToNumpyArray(self.step2_floodFieldImageSelectorComboBox.currentNode())
 
     if len(experimentalFilmArray) != len(floodFieldArray):
-      qt.QMessageBox.critical(None, 'Error', "Experimental and flood field images must be the same size")
+      message = "Experimental and flood field images must be the same size! (Experimental: " + str(len(experimentalFilmArray)) + ", FloodField: " + str(len(floodFieldArray))
+      logging.error(message)
+      qt.QMessageBox.critical(None, 'Error', message)
       return 
 
     doseArrayGy = numpy.zeros(len(floodFieldArray))
-    inexcept = 0
     for rowIndex in xrange(len(experimentalFilmArray)):
-      
-      opticalDensity = 0
+      opticalDensity = 0.0
       try:
         opticalDensity = math.log10(float(floodFieldArray[rowIndex])/experimentalFilmArray[rowIndex])
       except:
-        inexcept+=1
-        opticalDensity = 0
+        logging.error('Failure when calculating optical density for experimental film image. Failing values: FloodField=' + str(floodFieldArray[rowIndex]) + ', PixelValue=' + str(experimentalFilmArray[rowIndex]))
+        opticalDensity = 0.0
       if opticalDensity <= 0.0:
-        opticalDensity = 0
-      doseArrayGy[rowIndex] = self.applyFitFunction(opticalDensity, self.bestCoefficients[1],self.bestCoefficients[2] )/100.0
-      # TODO       
+        opticalDensity = 0.0
+      doseArrayGy[rowIndex] = self.applyCalibrationFunction(opticalDensity, self.calibrationCoefficients[0], self.calibrationCoefficients[1], self.calibrationCoefficients[2], self.calibrationCoefficients[3]) / 100.0
         
       if doseArrayGy[rowIndex] < 0.0:
         doseArrayGy[rowIndex] = 0.0
@@ -1248,31 +1257,44 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   def onApplyCalibrationButton(self):
-    if self.bestCoefficients is self.bestCoefficients[1] == 0: #TODO see why this isn't working
-      message = "No calibration function in slicelet"
+    if self.calibrationCoefficients is None or len(self.calibrationCoefficients) != 4:
+      message = "Invalid calibration function"
       qt.QMessageBox.critical(None, 'Error', message)
       logging.error(message)
       return 
-    
+
+    experimentalFilmVolumeNode = self.step2_experimentalFilmSelectorComboBox.currentNode()
+    if experimentalFilmVolumeNode is None:
+      logging.error("Invalid experimental film selection!")
+      return
+
+    # Perform calibration
     calculatedDoseDoubleArrayGy = self.calculateDoseFromExperimentalFilmImage()
-    calculatedDoseVolume = slicer.vtkMRMLScalarVolumeNode()
+
+    # Expand the calibrated image to 5 slices (for registration)
     calculatedDoseVolumeArrayGy = numpy.tile(calculatedDoseDoubleArrayGy,5)
+
+    # Convert numpy array to VTK image data
     calculatedDoseVolumeScalarsGy = numpy_support.numpy_to_vtk(calculatedDoseVolumeArrayGy)
-    calculatedDoseVolumeScalarsGyCopy = vtk.vtkDoubleArray()  #current 
+    calculatedDoseVolumeScalarsGyCopy = vtk.vtkDoubleArray()
     calculatedDoseVolumeScalarsGyCopy.DeepCopy(calculatedDoseVolumeScalarsGy)
     calculatedDoseImageData = vtk.vtkImageData()
     calculatedDoseImageData.GetPointData().SetScalars(calculatedDoseVolumeScalarsGyCopy)
-    calculatedDoseImageData.SetDimensions(self.step2_experimentalFilmSelectorComboBox.currentNode().GetImageData().GetDimensions()[0:2] + (5,))
+    calculatedDoseImageData.SetDimensions(experimentalFilmVolumeNode.GetImageData().GetDimensions()[0:2] + (5,)) #TODO: doesn't look too stable
+
+    # Create scalar volume node for calibrated film
+    calculatedDoseVolume = slicer.vtkMRMLScalarVolumeNode()
     calculatedDoseVolume.SetAndObserveImageData(calculatedDoseImageData)
-    calculatedDoseVolume.SetName(self.experimentalFilmDoseVolumeName)
+    calculatedDoseVolume.SetName(experimentalFilmVolumeNode.GetName() + self.experimentalFilmDoseVolumeNamePostfix)
     slicer.mrmlScene.AddNode(calculatedDoseVolume)
     calculatedDoseVolume.CreateDefaultDisplayNodes()
     self.experimentalFilmDoseVolume = calculatedDoseVolume
-    qt.QMessageBox.information(None, "Step 3" , "Calibration function successfully applied")
+
+    qt.QMessageBox.information(None, "Calibration" , "Calibration successfully finished!")
     
   #------------------------------------------------------------------------------
   def onResolutionLineEditTextChanged(self):
-    self.resolutionMM_ToPixel = round(float(self.step4_resolutionLineEdit.text),5)   
+    self.resolutionMM_ToPixel = float(self.step4_resolutionLineEdit.text)
         
   #------------------------------------------------------------------------------
   def onPerformRegistrationButtonClicked(self):
