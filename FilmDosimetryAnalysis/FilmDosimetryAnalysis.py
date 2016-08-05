@@ -551,6 +551,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step4_registrationCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
     self.step4_registrationCollapsibleButtonLayout.setSpacing(4)
     
+    # Registration label
+    self.step4_registrationLabel = qt.QLabel("Register film to plan dose slice.\nSlice at specified position will be extracted and registered to experimental film")
+    self.step4_registrationLabel.wordWrap = True
+    self.step4_registrationCollapsibleButtonLayout.addWidget(self.step4_registrationLabel)
+
     # Add empty row
     self.step4_registrationCollapsibleButtonLayout.addWidget(qt.QLabel(''))
 
@@ -1055,7 +1060,13 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       logging.error(message)
 
     qt.QApplication.restoreOverrideCursor()
-    # TODO have success message pop up
+
+    # Show registered images
+    appLogic = slicer.app.applicationLogic()
+    selectionNode = appLogic.GetSelectionNode()
+    selectionNode.SetActiveVolumeID(self.logic.paddedCalibratedExperimentalFilmVolumeNode.GetID())
+    selectionNode.SetSecondaryVolumeID(self.logic.paddedPlanDoseSliceVolumeNode.GetID())
+    appLogic.PropagateVolumeSelection()
 
   #------------------------------------------------------------------------------
   # Step 5
@@ -1113,9 +1124,15 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Step 4
     #
-    # Perform registration #TODO: Move up to step 2
+    # Perform registration
     self.logic.registerExperimentalFilmToPlanDose()
 
+    # Show registered images
+    appLogic = slicer.app.applicationLogic()
+    selectionNode = appLogic.GetSelectionNode()
+    selectionNode.SetActiveVolumeID(self.logic.paddedCalibratedExperimentalFilmVolumeNode.GetID())
+    selectionNode.SetSecondaryVolumeID(self.logic.paddedPlanDoseSliceVolumeNode.GetID())
+    appLogic.PropagateVolumeSelection()
 
 #
 # FilmDosimetryAnalysis
