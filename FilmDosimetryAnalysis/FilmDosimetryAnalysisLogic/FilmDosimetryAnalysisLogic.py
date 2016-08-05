@@ -30,24 +30,41 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     self.floodFieldAttributeValue = "FloodField"
     self.calibrationBatchSceneFileNamePostfix = "CalibrationBatchScene"
     self.calibrationFunctionFileNamePostfix = "FilmDosimetryCalibrationFunctionCoefficients"
-    self.experimentalFilmDoseVolumeNamePostfix = "_Calibrated"
+    self.calibratedExperimentalFilmVolumeNamePostfix = "_Calibrated"
 
     # Declare member variables (mainly for documentation)
     self.lastAddedRoiNode = None
     self.calibrationCoefficients = [0,0,0,0] # Calibration coefficients [a,b,c,n] in calibration function dose = a + b*OD + c*OD^n
-    self.experimentalFilmPixelSpacing = None
-    self.calibratedExperimentalFilmVolumeNode = None 
     self.experimentalFloodFieldImageNode = None
     self.experimentalFilmImageNode = None 
+    self.experimentalFilmPixelSpacing = None
+    self.calibratedExperimentalFilmVolumeNode = None 
     self.planDoseVolumeNode = None
+    self.croppedPlanDoseVolumeNode = None
     self.resampledPlanDoseVolumeNode = None
     self.experimentalToDoseTransform = None #TODO: Needed?
+    self.experimentalCenter2DoseCenterTransformName = "Experimental to dose translation" #TODO
+    self.experimentalAxialToExperimentalCoronalTransformName = "Experimental film axial to coronal transform"
+    self.experimentalRotate90APTransformName = "Experimental rotate 90 around AP axis"
+    self.experimentalToDoseTransformName = "Experimental film to dose transform"
     
     self.measuredOpticalDensityToDoseMap = [] #TODO: Make it a real map (need to sort by key where it is created)
 
     # Set logic instance to the global variable that supplies it to the calibration curve alignment minimizer function
     global filmDosimetryLogicInstanceGlobal
     filmDosimetryLogicInstanceGlobal = self
+
+  # ---------------------------------------------------------------------------
+  def setAutoWindowLevelToAllDoseVolumes(self):
+    import vtkSlicerRtCommonPython as vtkSlicerRtCommon
+
+    slicer.mrmlScene.InitTraversal()
+    currentVolumeNode = slicer.mrmlScene.GetNextNodeByClass("vtkMRMLScalarVolumeNode")
+    while currentVolumeNode:
+      if vtkSlicerRtCommon.SlicerRtCommon.IsDoseVolumeNode(currentVolumeNode):
+        if currentVolumeNode.GetDisplayNode() is not None:
+          currentVolumeNode.GetDisplayNode().AutoWindowLevelOn()    
+      currentVolumeNode = slicer.mrmlScene.GetNextNodeByClass("vtkMRMLScalarVolumeNode")
 
   # ---------------------------------------------------------------------------
   def saveCalibrationBatch(self, calibrationBatchDirectoryPath, floodFieldImageVolumeNode, calibrationDoseToVolumeNodeMap):
@@ -135,16 +152,18 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     return ""
 
   #------------------------------------------------------------------------------
-  def meanSquaredError(self, a, b, c, n):
-    sumMeanSquaredError = 0.0
-    for i in xrange(len(self.measuredOpticalDensityToDoseMap)):
-      calculatedDose = self.applyCalibrationFunctionOnSingleOpticalDensityValue(self.measuredOpticalDensityToDoseMap[i][0], a, b, c, n)
-      sumMeanSquaredError += ((self.measuredOpticalDensityToDoseMap[i][1] - calculatedDose)**2)
-    return sumMeanSquaredError / float(len(self.measuredOpticalDensityToDoseMap))
+  def findBestFittingCalibrationFunctionCoefficients(self):
+    bestN = [] # Entries are [MSE, n, coefficients]
 
-  #------------------------------------------------------------------------------
-  def applyCalibrationFunctionOnSingleOpticalDensityValue(self, OD, a, b, c, n):
-    return a + b*OD + c*(OD**n)
+    for n in xrange(1000,4001):
+      n/=1000.0
+      coeffs = self.findCoefficientsForExponent(n)
+      MSE = self.meanSquaredError(coeffs[0],coeffs[1],coeffs[2],n)
+      bestN.append([MSE, n, coeffs])
+
+    bestN.sort(key=lambda bestNEntry: bestNEntry[0]) 
+    self.calibrationCoefficients = [ bestN[0][2][0], bestN[0][2][1], bestN[0][2][2], bestN[0][1] ]
+    logging.info("Optimized calibration function coefficients: A,B,C=" + str(round(bestN[0][2],4)) + ", N=" + str(round(bestN[0][1],4)) + " (mean square error: "  + str(round(bestN[0][0],4)))
 
   #------------------------------------------------------------------------------
   def findCoefficientsForExponent(self,n):
@@ -170,18 +189,16 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     return coefficients
 
   #------------------------------------------------------------------------------
-  def findBestFittingCalibrationFunctionCoefficients(self):
-    bestN = [] # Entries are [MSE, n, coefficients]
+  def meanSquaredError(self, a, b, c, n):
+    sumMeanSquaredError = 0.0
+    for i in xrange(len(self.measuredOpticalDensityToDoseMap)):
+      calculatedDose = self.applyCalibrationFunctionOnSingleOpticalDensityValue(self.measuredOpticalDensityToDoseMap[i][0], a, b, c, n)
+      sumMeanSquaredError += ((self.measuredOpticalDensityToDoseMap[i][1] - calculatedDose)**2)
+    return sumMeanSquaredError / float(len(self.measuredOpticalDensityToDoseMap))
 
-    for n in xrange(1000,4001):
-      n/=1000.0
-      coeffs = self.findCoefficientsForExponent(n)
-      MSE = self.meanSquaredError(coeffs[0],coeffs[1],coeffs[2],n)
-      bestN.append([MSE, n, coeffs])
-
-    bestN.sort(key=lambda bestNEntry: bestNEntry[0]) 
-    self.calibrationCoefficients = [ bestN[0][2][0], bestN[0][2][1], bestN[0][2][2], bestN[0][1] ]
-    logging.info("Best fitting calibration function coefficients: A,B,C=" + str(bestN[0][2]) + ", N=" + str(bestN[0][1]) + " (mean square error: "  + str(bestN[0][0]))
+  #------------------------------------------------------------------------------
+  def applyCalibrationFunctionOnSingleOpticalDensityValue(self, OD, a, b, c, n):
+    return a + b*OD + c*(OD**n)
 
   # ---------------------------------------------------------------------------
   def performCalibration(self, floodFieldImageVolumeNode, calibrationDoseToVolumeNodeMap):
@@ -209,7 +226,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     imageStat.SetInputData(croppedFloodFieldVolumeNode.GetImageData())
     imageStat.Update()
     meanValueFloodField = imageStat.GetMean()[0]
-    logging.info("Mean value for flood field image in ROI = " + str(meanValueFloodField))
+    logging.info("Calibration: Mean value for flood field image in ROI = " + str(round(meanValueFloodField,4)))
     # Remove cropped volume
     slicer.mrmlScene.RemoveNode(croppedFloodFieldShNode)
     
@@ -247,7 +264,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
       # x = optical density, y = dose
       self.measuredOpticalDensityToDoseMap.append([opticalDensity, currentCalibrationDose])
-      logging.info("Mean value for calibration image for " + str(currentCalibrationDose) + " cGy in ROI = " + str(meanValue))
+      logging.info("Calibration: Mean value for calibration image for " + str(round(currentCalibrationDose,4)) + " cGy in ROI = " + str(round(meanValue,4)) + ", OD = " + str(round(opticalDensity,5)))
 
     self.measuredOpticalDensityToDoseMap.sort(key=lambda doseODPair: doseODPair[1])
 
@@ -292,13 +309,6 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     file.close()
 
   #------------------------------------------------------------------------------
-  def volumeToNumpyArray(self, currentVolume):
-    volumeData = currentVolume.GetImageData()
-    volumeDataScalars = volumeData.GetPointData().GetScalars()
-    numpyArrayVolume = numpy_support.vtk_to_numpy(volumeDataScalars)
-    return numpyArrayVolume
-
-  #------------------------------------------------------------------------------
   def calculateDoseFromExperimentalFilmImage(self, experimentalFilmVolumeNode, experimentalFloodFieldVolumeNode):
     #TODO: This should be done in SimpleITK
     experimentalFilmArray = self.volumeToNumpyArray(experimentalFilmVolumeNode)
@@ -310,30 +320,48 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       qt.QMessageBox.critical(None, 'Error', message)
       return
 
-    doseArrayGy = numpy.zeros(len(floodFieldArray))
-    for rowIndex in xrange(len(experimentalFilmArray)):
+    doseArray_cGy = numpy.zeros(len(floodFieldArray))
+    for index in xrange(len(experimentalFilmArray)):
       opticalDensity = 0.0
       try:
-        opticalDensity = math.log10(float(floodFieldArray[rowIndex])/experimentalFilmArray[rowIndex])
+        opticalDensity = math.log10(float(floodFieldArray[index])/experimentalFilmArray[index])
       except:
-        logging.error('Failure when calculating optical density for experimental film image. Failing values: FloodField=' + str(floodFieldArray[rowIndex]) + ', PixelValue=' + str(experimentalFilmArray[rowIndex]))
+        logging.error('Failure when calculating optical density for experimental film image. Failing values: FloodField=' + str(floodFieldArray[index]) + ', PixelValue=' + str(experimentalFilmArray[index]))
         opticalDensity = 0.0
       if opticalDensity <= 0.0:
         opticalDensity = 0.0
-      doseArrayGy[rowIndex] = self.applyCalibrationFunctionOnSingleOpticalDensityValue(opticalDensity, self.calibrationCoefficients[0], self.calibrationCoefficients[1], self.calibrationCoefficients[2], self.calibrationCoefficients[3]) / 100.0
+      doseArray_cGy[index] = self.applyCalibrationFunctionOnSingleOpticalDensityValue(opticalDensity, self.calibrationCoefficients[0], self.calibrationCoefficients[1], self.calibrationCoefficients[2], self.calibrationCoefficients[3]) / 100.0
+      if doseArray_cGy[index] < 0.0:
+        doseArray_cGy[index] = 0.0
+      # if index%1000==0: # Debugging snippet
+        # print('DEBUG: ExpFilm=' + str(experimentalFilmArray[index]) + ', Flood=' + str(floodFieldArray[index]) + ', OD=' + str(opticalDensity) + ', Dose=' + str(doseArray_cGy[index]))
 
-      if doseArrayGy[rowIndex] < 0.0:
-        doseArrayGy[rowIndex] = 0.0
-
-    return doseArrayGy
+    return doseArray_cGy
 
   #------------------------------------------------------------------------------
-  def applyCalibrationFunctionOnExperimentalFilm(self, experimentalFilmVolumeNode, experimentalFloodFieldVolumeNode):
+  def volumeToNumpyArray(self, currentVolume):
+    volumeData = currentVolume.GetImageData()
+    volumeDataScalars = volumeData.GetPointData().GetScalars()
+    numpyArrayVolume = numpy_support.vtk_to_numpy(volumeDataScalars)
+    return numpyArrayVolume
+
+  #------------------------------------------------------------------------------
+  def applyCalibrationOnExperimentalFilm(self):
+    if self.experimentalFilmImageNode is None:
+      message = "Invalid experimental film selection!"
+      logging.error(message)
+      return message
+    if self.experimentalFloodFieldImageNode is None:
+      message = "Invalid experimental flood field image selection!"
+      logging.error(message)
+      return message
     if self.calibrationCoefficients is None or len(self.calibrationCoefficients) != 4:
-      return  "Invalid calibration function"
+      message = "Invalid calibration function"
+      logging.error(message)
+      return message
 
     # Perform calibration
-    calculatedDoseDoubleArrayGy = self.calculateDoseFromExperimentalFilmImage(experimentalFilmVolumeNode, experimentalFloodFieldVolumeNode)
+    calculatedDoseDoubleArrayGy = self.calculateDoseFromExperimentalFilmImage(self.experimentalFilmImageNode, self.experimentalFloodFieldImageNode)
 
     # Expand the calibrated image to 5 slices (for registration)
     calculatedDoseVolumeArrayGy = numpy.tile(calculatedDoseDoubleArrayGy,5)
@@ -344,26 +372,26 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     calculatedDoseVolumeScalarsGyCopy.DeepCopy(calculatedDoseVolumeScalarsGy)
     calculatedDoseImageData = vtk.vtkImageData()
     calculatedDoseImageData.GetPointData().SetScalars(calculatedDoseVolumeScalarsGyCopy)
-    calculatedDoseImageData.SetDimensions(experimentalFilmVolumeNode.GetImageData().GetDimensions()[0:2] + (5,)) #TODO: doesn't look too stable
+    calculatedDoseImageData.SetDimensions(self.experimentalFilmImageNode.GetImageData().GetDimensions()[0:2] + (5,)) #TODO: doesn't look too stable
 
     # Create scalar volume node for calibrated film
     calculatedDoseVolumeNode = slicer.vtkMRMLScalarVolumeNode()
     calculatedDoseVolumeNode.SetAndObserveImageData(calculatedDoseImageData)
-    calculatedDoseVolumeNode.SetName(experimentalFilmVolumeNode.GetName() + self.experimentalFilmDoseVolumeNamePostfix)
+    calculatedDoseVolumeNode.SetName(self.experimentalFilmImageNode.GetName() + self.calibratedExperimentalFilmVolumeNamePostfix)
     slicer.mrmlScene.AddNode(calculatedDoseVolumeNode)
     calculatedDoseVolumeNode.CreateDefaultDisplayNodes()
     
     # Set same geometry as experimental film
-    calculatedDoseVolumeNode.SetOrigin(experimentalFilmVolumeNode.GetOrigin())
-    calculatedDoseVolumeNode.SetSpacing(experimentalFilmVolumeNode.GetSpacing())
-    calculatedDoseVolumeNode.CopyOrientation(experimentalFilmVolumeNode)
+    calculatedDoseVolumeNode.SetOrigin(self.experimentalFilmImageNode.GetOrigin())
+    calculatedDoseVolumeNode.SetSpacing(self.experimentalFilmImageNode.GetSpacing())
+    calculatedDoseVolumeNode.CopyOrientation(self.experimentalFilmImageNode)
 
     self.calibratedExperimentalFilmVolumeNode = calculatedDoseVolumeNode
 
     # Show calibrated and original experimental images
     appLogic = slicer.app.applicationLogic()
     selectionNode = appLogic.GetSelectionNode()
-    selectionNode.SetActiveVolumeID(experimentalFilmVolumeNode.GetID())
+    selectionNode.SetActiveVolumeID(self.experimentalFilmImageNode.GetID())
     selectionNode.SetSecondaryVolumeID(calculatedDoseVolumeNode.GetID())
     appLogic.PropagateVolumeSelection()
 
@@ -380,51 +408,21 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     return ""
 
   #------------------------------------------------------------------------------
-  def cropDoseByROI(self): #TODO: Rename
-    doseVolume = self.step2_doseVolumeSelector.currentNode()
-    if doseVolume is None:
-      logging.error()
-
-    roiNode = slicer.vtkMRMLAnnotationROINode()
-    roiNode.SetName(self.cropDoseByROIName)
-    slicer.mrmlScene.AddNode(roiNode)
-    doseVolumeBounds = [0]*6
-    doseVolume.GetRASBounds(doseVolumeBounds)  
-    roiBounds = [0]*6
-    doseVolumeCenter = [(doseVolumeBounds[0]+doseVolumeBounds[1])/2, (doseVolumeBounds[2]+doseVolumeBounds[3])/2, (doseVolumeBounds[4]+doseVolumeBounds[5])/2]
-    #print "center of the ROI - doseVolumeCenter: ", doseVolumeCenter 
-    newRadiusROI = [abs(doseVolumeBounds[1]-doseVolumeBounds[0])/2, 0.5*doseVolume.GetSpacing()[1], abs(doseVolumeBounds[5]-doseVolumeBounds[4])/2]
-    #print "newRadiusROI : ", newRadiusROI
-    
-    roiNode.SetXYZ(doseVolumeCenter)
-    roiNode.SetRadiusXYZ(newRadiusROI)
-    # TODO why does the cropVolume radius not match ROI radius??
-    cropParams = slicer.vtkMRMLCropVolumeParametersNode()
-    cropParams.SetInputVolumeNodeID(doseVolume.GetID())
-    cropParams.SetROINodeID(roiNode.GetID())
-    cropParams.SetVoxelBased(False) 
-    cropLogic = slicer.modules.cropvolume.logic()
-    cropLogic.Apply(cropParams)
-    croppedNode = slicer.mrmlScene.GetNodeByID( cropParams.GetOutputVolumeNodeID() )
-    self.planDoseVolumeNode = croppedNode
-    return croppedNode
-
-  #------------------------------------------------------------------------------
   def registerExperimentalFilmToPlanDose(self): #TODO:
     if self.experimentalFilmPixelSpacing is None:
       return "Invalid mm/pixel resolution for the experimental film must be entered"
 
-    # Set auto window/level for dose volume
-    self.step2_doseVolumeSelector.currentNode().GetDisplayNode().AutoWindowLevelOn() #TODO
-            
     # Set spacing of the experimental film volume
     if self.calibratedExperimentalFilmVolumeNode is None:
       return "Unable to access calibrated experimental film"
     self.calibratedExperimentalFilmVolumeNode.SetSpacing(self.experimentalFilmPixelSpacing, self.experimentalFilmPixelSpacing, self.planDoseVolumeNode.GetSpacing()[1])
     
     # Crop the dose volume by the ROI
-    croppedDoseVolumeNode = self.cropDoseByROI()
-    
+    message = self.cropPlanDoseVolumeToSlice(0) #TODO: Add position entry widgets to UI
+    if message != "" or self.croppedPlanDoseVolumeNode is None:
+      logging.error("Failed to crop plan dose volume")
+      return message
+      
     # TODO just in case I need the resampling code,
     # # Resample cropped dose volume 
     # self.resampledPlanDoseVolumeNode = slicer.vtkMRMLScalarVolumeNode()
@@ -434,29 +432,29 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     # slicer.cli.run(slicer.modules.resamplescalarvolume, None, resampleParameters, wait_for_completion=True)
     # self.resampledPlanDoseVolumeNode.SetSpacing(2,2,2)
  
-    doseArray = self.volumeToNumpyArray(croppedDoseVolumeNode)
-    doseArrayList = []
-    #doseArray = doseArray.reshape(151,106)
-    doseArray = doseArray.reshape(croppedDoseVolumeNode.GetImageData().GetExtent()[5]+1, croppedDoseVolumeNode.GetImageData().GetExtent()[1]+1)
-    for x in xrange(len(doseArray)):
-      doseArrayList.append(numpy.tile(doseArray[x],5).tolist())
+    croppedPlanDoseArray = self.volumeToNumpyArray(self.croppedPlanDoseVolumeNode)
+    croppedPlanDoseArrayList = []
+    #croppedPlanDoseArray = croppedPlanDoseArray.reshape(151,106)
+    croppedPlanDoseArray = croppedPlanDoseArray.reshape(self.croppedPlanDoseVolumeNode.GetImageData().GetExtent()[5]+1, self.croppedPlanDoseVolumeNode.GetImageData().GetExtent()[1]+1)
+    for x in xrange(len(croppedPlanDoseArray)):
+      croppedPlanDoseArrayList.append(numpy.tile(croppedPlanDoseArray[x],5).tolist())
       
-    doseArrayList = numpy.asarray(doseArrayList)
-    doseArrayList = numpy.ravel(doseArrayList)
+    croppedPlanDoseArrayList = numpy.asarray(croppedPlanDoseArrayList)
+    croppedPlanDoseArrayList = numpy.ravel(croppedPlanDoseArrayList)
     newScalarVolume = slicer.vtkMRMLScalarVolumeNode()
-    new3dScalars = numpy_support.numpy_to_vtk(doseArrayList)
+    new3dScalars = numpy_support.numpy_to_vtk(croppedPlanDoseArrayList)
     new3dScalarsCopy = vtk.vtkDoubleArray()
     new3dScalarsCopy.DeepCopy(new3dScalars)
     new3dImageData = vtk.vtkImageData()
     new3dImageData.GetPointData().SetScalars(new3dScalarsCopy)
-    newExtent = croppedDoseVolumeNode.GetImageData().GetExtent()
+    newExtent = self.croppedPlanDoseVolumeNode.GetImageData().GetExtent()
     newExtent = newExtent[0:3] +(4,) + newExtent[4:]
-    new3dImageData.SetExtent(newExtent) #TODO replace with SetDimensions
+    new3dImageData.SetExtent(newExtent)
     newScalarVolume.SetAndObserveImageData(new3dImageData)
     newScalarVolume.SetName("Dose volume for registration")
     slicer.mrmlScene.AddNode(newScalarVolume)
     self.resampledPlanDoseVolumeNode = newScalarVolume
-    newScalarVolume.CopyOrientation(croppedDoseVolumeNode)
+    newScalarVolume.CopyOrientation(self.croppedPlanDoseVolumeNode)
         
     # Set up transform pipeline 
     
@@ -531,6 +529,51 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       waitCount += 1
     #self.delayDisplay("Register experimental film to dose using rigid registration finished")
     print cliBrainsFitRigidNode.GetStatusString()
+
+  #------------------------------------------------------------------------------
+  def cropPlanDoseVolumeToSlice(self, slicePositionAP): #TODO: Rename
+    if self.planDoseVolumeNode is None:
+      message = "No plan dose volume is selected!"
+      logging.error(message)
+      return message
+
+    # Create ROI for cropping dose volume to selected slice
+    roiNode = slicer.vtkMRMLAnnotationROINode()
+    roiNode.SetName("CropPlanDoseVolumeROI")
+    slicer.mrmlScene.AddNode(roiNode)
+
+    #TODO: Support non-axis-aligned volumes too
+    #TODO: Support orientations other than AP
+    bounds = [0]*6
+    self.planDoseVolumeNode.GetRASBounds(bounds)  
+    doseVolumeCenter = [(bounds[0]+bounds[1])/2, (bounds[2]+bounds[3])/2, (bounds[4]+bounds[5])/2]
+    cropCenter = [doseVolumeCenter[0], slicePositionAP, doseVolumeCenter[2]]
+    doseVolumeDimensionsMm = [abs(bounds[1]-bounds[0])/2, abs(bounds[3]-bounds[2])/2, abs(bounds[5]-bounds[4])/2]
+    cropRadius = [doseVolumeDimensionsMm[0], 0.5*self.planDoseVolumeNode.GetSpacing()[1], doseVolumeDimensionsMm[2]]
+    # print("DEBUG: Dose volume center: " + repr(doseVolumeCenter)) #TODO: Debug statement
+    # print("DEBUG: Cropping ROI center: " + repr(cropCenter)) #TODO: Debug statement
+    # print("DEBUG: Dose volume dimensions: " + repr(doseVolumeDimensionsMm)) #TODO: Debug statement
+    # print("DEBUG: Cropping ROI radius: " + repr(cropRadius)) #TODO: Debug statement
+    roiNode.SetXYZ(cropCenter)
+    roiNode.SetRadiusXYZ(cropRadius)
+
+    # Perform cropping
+    cropVolumeParameterNode = slicer.vtkMRMLCropVolumeParametersNode()
+    slicer.mrmlScene.AddNode(cropVolumeParameterNode)
+    cropVolumeParameterNode.SetInputVolumeNodeID(self.planDoseVolumeNode.GetID())
+    cropVolumeParameterNode.SetROINodeID(roiNode.GetID())
+    cropVolumeParameterNode.SetVoxelBased(False) 
+    cropLogic = slicer.modules.cropvolume.logic()
+
+    cropLogic.Apply(cropVolumeParameterNode)
+    self.croppedPlanDoseVolumeNode = slicer.mrmlScene.GetNodeByID(cropVolumeParameterNode.GetOutputVolumeNodeID())
+
+    # Delete ROI and parameter nodes
+    #TODO: Comment out only for debugging
+    # slicer.mrmlScene.RemoveNode(roiNode)
+    # slicer.mrmlScene.RemoveNode(cropVolumeParameterNode)
+
+    return ""
 
 
 
