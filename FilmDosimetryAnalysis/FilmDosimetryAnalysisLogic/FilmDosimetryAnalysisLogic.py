@@ -31,6 +31,9 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     self.calibrationBatchSceneFileNamePostfix = "CalibrationBatchScene"
     self.calibrationFunctionFileNamePostfix = "FilmDosimetryCalibrationFunctionCoefficients"
     self.calibratedExperimentalFilmVolumeNamePostfix = "_Calibrated"
+    self.croppedPlanDoseVolumeNamePostfix = "_Slice"
+    self.paddedPlanDoseVolumeNamePostfix = "_ForRegistration"
+    self.numberOfSlicesToPad = 5
 
     # Declare member variables (mainly for documentation)
     self.lastAddedRoiNode = None
@@ -41,7 +44,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     self.calibratedExperimentalFilmVolumeNode = None 
     self.planDoseVolumeNode = None
     self.croppedPlanDoseVolumeNode = None
-    self.resampledPlanDoseVolumeNode = None
+    self.paddedPlanDoseSliceVolumeNode = None
     self.experimentalToDoseTransform = None #TODO: Needed?
     self.experimentalCenter2DoseCenterTransformName = "Experimental to dose translation" #TODO
     self.experimentalAxialToExperimentalCoronalTransformName = "Experimental film axial to coronal transform"
@@ -264,7 +267,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
       # x = optical density, y = dose
       self.measuredOpticalDensityToDoseMap.append([opticalDensity, currentCalibrationDose])
-      logging.info("Calibration: Mean value for calibration image for " + str(round(currentCalibrationDose,4)) + " cGy in ROI = " + str(round(meanValue,4)) + ", OD = " + str(round(opticalDensity,5)))
+      logging.info("Calibration: Mean value for calibration image for " + str(round(currentCalibrationDose,4)) + " cGy in ROI = " + str(round(meanValue,4)) + ", OD = " + str(round(opticalDensity,4)))
 
     self.measuredOpticalDensityToDoseMap.sort(key=lambda doseODPair: doseODPair[1])
 
@@ -364,7 +367,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     calculatedDoseDoubleArrayGy = self.calculateDoseFromExperimentalFilmImage(self.experimentalFilmImageNode, self.experimentalFloodFieldImageNode)
 
     # Expand the calibrated image to 5 slices (for registration)
-    calculatedDoseVolumeArrayGy = numpy.tile(calculatedDoseDoubleArrayGy,5)
+    calculatedDoseVolumeArrayGy = numpy.tile(calculatedDoseDoubleArrayGy,self.numberOfSlicesToPad)
 
     # Convert numpy array to VTK image data
     calculatedDoseVolumeScalarsGy = numpy_support.numpy_to_vtk(calculatedDoseVolumeArrayGy)
@@ -422,113 +425,50 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     if message != "" or self.croppedPlanDoseVolumeNode is None:
       logging.error("Failed to crop plan dose volume")
       return message
-      
-    # TODO just in case I need the resampling code,
-    # # Resample cropped dose volume 
-    # self.resampledPlanDoseVolumeNode = slicer.vtkMRMLScalarVolumeNode()
-    # self.resampledPlanDoseVolumeNode.SetName(self.resampledPlanDoseVolumeNodeName)
-    # slicer.mrmlScene.AddNode(self.resampledPlanDoseVolumeNode)
-    # resampleParameters = {'outputPixelSpacing':'2,0.4,2', 'interpolationType':'linear', 'InputVolume':self.planDoseVolumeNode.GetID(), 'OutputVolume':self.resampledPlanDoseVolumeNode.GetID()}
-    # slicer.cli.run(slicer.modules.resamplescalarvolume, None, resampleParameters, wait_for_completion=True)
-    # self.resampledPlanDoseVolumeNode.SetSpacing(2,2,2)
- 
-    croppedPlanDoseArray = self.volumeToNumpyArray(self.croppedPlanDoseVolumeNode)
-    croppedPlanDoseArrayList = []
-    #croppedPlanDoseArray = croppedPlanDoseArray.reshape(151,106)
-    croppedPlanDoseArray = croppedPlanDoseArray.reshape(self.croppedPlanDoseVolumeNode.GetImageData().GetExtent()[5]+1, self.croppedPlanDoseVolumeNode.GetImageData().GetExtent()[1]+1)
-    for x in xrange(len(croppedPlanDoseArray)):
-      croppedPlanDoseArrayList.append(numpy.tile(croppedPlanDoseArray[x],5).tolist())
-      
-    croppedPlanDoseArrayList = numpy.asarray(croppedPlanDoseArrayList)
-    croppedPlanDoseArrayList = numpy.ravel(croppedPlanDoseArrayList)
-    newScalarVolume = slicer.vtkMRMLScalarVolumeNode()
-    new3dScalars = numpy_support.numpy_to_vtk(croppedPlanDoseArrayList)
-    new3dScalarsCopy = vtk.vtkDoubleArray()
-    new3dScalarsCopy.DeepCopy(new3dScalars)
-    new3dImageData = vtk.vtkImageData()
-    new3dImageData.GetPointData().SetScalars(new3dScalarsCopy)
-    newExtent = self.croppedPlanDoseVolumeNode.GetImageData().GetExtent()
-    newExtent = newExtent[0:3] +(4,) + newExtent[4:]
-    new3dImageData.SetExtent(newExtent)
-    newScalarVolume.SetAndObserveImageData(new3dImageData)
-    newScalarVolume.SetName("Dose volume for registration")
-    slicer.mrmlScene.AddNode(newScalarVolume)
-    self.resampledPlanDoseVolumeNode = newScalarVolume
-    newScalarVolume.CopyOrientation(self.croppedPlanDoseVolumeNode)
-        
-    # Set up transform pipeline 
-    
-    experimentalAxialToCoronalRotationTransform = vtk.vtkTransform()
-    experimentalAxialToCoronalRotationTransform.RotateWXYZ(90,[1,0,0])
-    experimentalAxialToExperimentalCoronalTransformMRML = slicer.vtkMRMLLinearTransformNode()
-    experimentalAxialToExperimentalCoronalTransformMRML.SetName(self.experimentalAxialToExperimentalCoronalTransformName)
-    slicer.mrmlScene.AddNode(experimentalAxialToExperimentalCoronalTransformMRML)
-    experimentalAxialToExperimentalCoronalTransformMRML.SetMatrixTransformToParent(experimentalAxialToCoronalRotationTransform.GetMatrix())
-    self.calibratedExperimentalFilmVolumeNode.SetAndObserveTransformNodeID(experimentalAxialToExperimentalCoronalTransformMRML.GetID())
-    
-    # Rotate 90 degrees about [0,1,0]
 
-    rotate90APTransform = vtk.vtkTransform()
-    rotate90APTransform.RotateWXYZ(-90,[0,1,0])
-    # TODO this may be a 90 or -90 rotation, it is unclear what orientation the films should be in 
-    rotate90APTransformMRML = slicer.vtkMRMLLinearTransformNode()
-    rotate90APTransformMRML.SetMatrixTransformToParent(rotate90APTransform.GetMatrix())
-    rotate90APTransformMRML.SetName(self.experimentalRotate90APTransformName)    
-    slicer.mrmlScene.AddNode(rotate90APTransformMRML)
-    experimentalAxialToExperimentalCoronalTransformMRML.SetAndObserveTransformNodeID(rotate90APTransformMRML.GetID())
+    # Prepare plan dose slice for registration by resampling into 5 slices
+    message = self.padPlanDoseSliceForRegistration()
+    if message != "" or self.paddedPlanDoseSliceVolumeNode is None:
+      logging.error("Failed to prepare plan dose volume for registration")
+      return message
 
-    # Translate to center of the dose volume 
-    expBounds = [0]*6
-    self.calibratedExperimentalFilmVolumeNode.GetRASBounds(expBounds)
-    doseBounds = [0]*6
-    self.resampledPlanDoseVolumeNode.GetRASBounds(doseBounds)
-    doseVolumeCenter = [(doseBounds[0]+doseBounds[1])/2, (doseBounds[2]+doseBounds[3])/2, (doseBounds[4]+doseBounds[5])/2]
-    expCenter = [(expBounds[0]+expBounds[1])/2, (expBounds[2]+expBounds[3])/2, (expBounds[4]+expBounds[5])/2]
-    exp2DoseTranslation = [doseVolumeCenter[x] - expCenter[x] for x in xrange(len(doseVolumeCenter))]
-    
-    # TODO test transformation chain on asymmetrical image 
-    
-    ExperimentalCenterToDoseCenterTransform = vtk.vtkTransform()
-    ExperimentalCenterToDoseCenterTransform.Translate(exp2DoseTranslation)
-    ExperimentalCenterToDoseCenterTransformMRML = slicer.vtkMRMLLinearTransformNode()
-    ExperimentalCenterToDoseCenterTransformMRML.SetName(self.experimentalCenter2DoseCenterTransformName)
-    ExperimentalCenterToDoseCenterTransformMRML.SetMatrixTransformToParent(ExperimentalCenterToDoseCenterTransform.GetMatrix())
-    slicer.mrmlScene.AddNode(ExperimentalCenterToDoseCenterTransformMRML)
-    rotate90APTransformMRML.SetAndObserveTransformNodeID(ExperimentalCenterToDoseCenterTransformMRML.GetID())
-    
-    slicer.vtkSlicerTransformLogic.hardenTransform(self.calibratedExperimentalFilmVolumeNode)
-    
-    # Apply BRAINSFit module 
-    qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
-    
+    # Pre-align calibrated film to plan dose slice
+    message = self.preAlignCalibratedFilmWithPlanDoseSlice()
+    if message != "":
+      logging.error("Failed to pre-align calibrated film with plan dose volume")
+      return message
+
+    # Create output transform node #TODO:
+    self.experimentalToDoseTransform = slicer.vtkMRMLLinearTransformNode()
+    slicer.mrmlScene.AddNode(self.experimentalToDoseTransform)
+    self.experimentalToDoseTransform.SetName(self.experimentalToDoseTransformName)
+
+    # Perform registration with BRAINS    
     parametersRigid = {}
-    parametersRigid["fixedVolume"] = self.resampledPlanDoseVolumeNode # current 
+    parametersRigid["fixedVolume"] = self.paddedPlanDoseSliceVolumeNode
     parametersRigid["movingVolume"] = self.calibratedExperimentalFilmVolumeNode
     parametersRigid["useRigid"] = True
     parametersRigid["samplingPercentage"] = 0.05
     parametersRigid["maximumStepLength"] = 15 # Start with long-range translations
     parametersRigid["relaxationFactor"] = 0.8 # Relax quickly
     parametersRigid["translationScale"] = 1000000 # Suppress rotation
-    self.experimentalToDoseTransform = slicer.vtkMRMLLinearTransformNode()
-    slicer.mrmlScene.AddNode(self.experimentalToDoseTransform)
-    self.experimentalToDoseTransform.SetName(self.experimentalToDoseTransformName)
     parametersRigid["linearTransform"] = self.experimentalToDoseTransform.GetID()
 
-    # Runs the brainsfit registration
-    brainsFit = slicer.modules.brainsfit
-    cliBrainsFitRigidNode = None
-    cliBrainsFitRigidNode = slicer.cli.run(brainsFit, None, parametersRigid)
+    # Runs the registration
+    # cliBrainsFitRigidNode = None
+    cliBrainsFitRigidNode = slicer.cli.run(slicer.modules.brainsfit, None, parametersRigid)
     
-    print "registration : \n"
-    self.brainsFit = cliBrainsFitRigidNode # TODO this is just for testing purposes 
+    # print "registration : \n"
+    # self.brainsFit = cliBrainsFitRigidNode # TODO this is just for testing purposes 
     
     waitCount = 0
     while cliBrainsFitRigidNode.GetStatusString() != 'Completed' and waitCount < 200:
-      #self.delayDisplay( "Register experimental film to dose using rigid registration... %d" % waitCount )
-      # TODO implement the delayDisplay function 
+      self.delayDisplay( "Register experimental film to dose using rigid registration... %d" % waitCount )
       waitCount += 1
-    #self.delayDisplay("Register experimental film to dose using rigid registration finished")
-    print cliBrainsFitRigidNode.GetStatusString()
+    self.delayDisplay("Register experimental film to dose using rigid registration finished")
+    print("DEBUG: Registration result: " + cliBrainsFitRigidNode.GetStatusString()) #TODO: Debugging snippet
+    
+    return ""
 
   #------------------------------------------------------------------------------
   def cropPlanDoseVolumeToSlice(self, slicePositionAP): #TODO: Rename
@@ -543,7 +483,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     slicer.mrmlScene.AddNode(roiNode)
 
     #TODO: Support non-axis-aligned volumes too
-    #TODO: Support orientations other than AP
+    #TODO: Support orientations other than AP (need to also fix padPlanDoseSliceForRegistration)
     bounds = [0]*6
     self.planDoseVolumeNode.GetRASBounds(bounds)  
     doseVolumeCenter = [(bounds[0]+bounds[1])/2, (bounds[2]+bounds[3])/2, (bounds[4]+bounds[5])/2]
@@ -567,12 +507,132 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
     cropLogic.Apply(cropVolumeParameterNode)
     self.croppedPlanDoseVolumeNode = slicer.mrmlScene.GetNodeByID(cropVolumeParameterNode.GetOutputVolumeNodeID())
+    croppedPlanDoseVolumeName = slicer.mrmlScene.GenerateUniqueName(self.planDoseVolumeNode.GetName() + self.croppedPlanDoseVolumeNamePostfix)
+    self.croppedPlanDoseVolumeNode.SetName(croppedPlanDoseVolumeName)
 
     # Delete ROI and parameter nodes
     #TODO: Comment out only for debugging
-    # slicer.mrmlScene.RemoveNode(roiNode)
-    # slicer.mrmlScene.RemoveNode(cropVolumeParameterNode)
+    slicer.mrmlScene.RemoveNode(roiNode)
+    slicer.mrmlScene.RemoveNode(cropVolumeParameterNode)
 
+    return ""
+
+  #------------------------------------------------------------------------------
+  def padPlanDoseSliceForRegistration(self):
+    if self.planDoseVolumeNode is None or self.croppedPlanDoseVolumeNode is None:
+      message = "No plan dose volume is selected or cropping to slice failed"
+      logging.error(message)
+      return message
+
+    # Duplicate cropped dose volume slice into multiple slices (padding)
+    croppedPlanDoseArray = self.volumeToNumpyArray(self.croppedPlanDoseVolumeNode)
+    croppedDoseSliceDimensions = self.croppedPlanDoseVolumeNode.GetImageData().GetDimensions()
+
+    #TODO: Not sure what this does, need to simplify ...
+    croppedPlanDoseArrayList = []
+    croppedPlanDoseArray = croppedPlanDoseArray.reshape(croppedDoseSliceDimensions[2], croppedDoseSliceDimensions[0])
+    for x in xrange(len(croppedPlanDoseArray)):
+      croppedPlanDoseArrayList.append(numpy.tile(croppedPlanDoseArray[x],self.numberOfSlicesToPad).tolist())
+    croppedPlanDoseArrayList = numpy.asarray(croppedPlanDoseArrayList)
+    croppedPlanDoseArrayList = numpy.ravel(croppedPlanDoseArrayList)
+    paddedPlanDoseImageScalars = numpy_support.numpy_to_vtk(croppedPlanDoseArrayList, 1)
+    #TODO ... but this scrambles the data
+    # paddedPlanDoseArray = numpy.tile(croppedPlanDoseArray,self.numberOfSlicesToPad)
+    # paddedPlanDoseImageScalars = numpy_support.numpy_to_vtk(paddedPlanDoseArray, 1)
+
+    # Set padded scalars into image data
+    paddedPlanDoseImageData = vtk.vtkImageData()
+    paddedPlanDoseImageData.GetPointData().SetScalars(paddedPlanDoseImageScalars)
+    paddedPlanDoseImageData.SetExtent(0,croppedDoseSliceDimensions[0]-1, 0,self.numberOfSlicesToPad-1, 0,croppedDoseSliceDimensions[2]-1)
+
+    # Create padded dose slice volume
+    self.paddedPlanDoseSliceVolumeNode = slicer.vtkMRMLScalarVolumeNode()
+    paddedPlanDoseSliceVolumeName = slicer.mrmlScene.GenerateUniqueName(self.planDoseVolumeNode.GetName() + self.paddedPlanDoseVolumeNamePostfix)
+    self.paddedPlanDoseSliceVolumeNode.SetName(paddedPlanDoseSliceVolumeName)
+    slicer.mrmlScene.AddNode(self.paddedPlanDoseSliceVolumeNode)
+    self.paddedPlanDoseSliceVolumeNode.SetAndObserveImageData(paddedPlanDoseImageData)
+    self.paddedPlanDoseSliceVolumeNode.CopyOrientation(self.croppedPlanDoseVolumeNode)
+
+    return ""
+    # TODO just in case I need the resampling code,
+    # # Resample cropped dose volume 
+    # self.paddedPlanDoseVolumeNode = slicer.vtkMRMLScalarVolumeNode()
+    # self.paddedPlanDoseVolumeNode.SetName(self.paddedPlanDoseVolumeNodeName)
+    # slicer.mrmlScene.AddNode(self.paddedPlanDoseVolumeNode)
+    # resampleParameters = {'outputPixelSpacing':'2,0.4,2', 'interpolationType':'linear', 'InputVolume':self.planDoseVolumeNode.GetID(), 'OutputVolume':self.paddedPlanDoseVolumeNode.GetID()}
+    # slicer.cli.run(slicer.modules.resamplescalarvolume, None, resampleParameters, wait_for_completion=True)
+    # self.paddedPlanDoseVolumeNode.SetSpacing(2,2,2)
+
+    #
+    # croppedPlanDoseArray = self.volumeToNumpyArray(self.croppedPlanDoseVolumeNode)
+    # croppedPlanDoseArrayList = []
+    # croppedPlanDoseArray = croppedPlanDoseArray.reshape(self.croppedPlanDoseVolumeNode.GetImageData().GetDimensions()[2], self.croppedPlanDoseVolumeNode.GetImageData().GetDimensions()[0])
+    # for x in xrange(len(croppedPlanDoseArray)):
+      # croppedPlanDoseArrayList.append(numpy.tile(croppedPlanDoseArray[x],self.numberOfSlicesToPad).tolist())
+      
+    # croppedPlanDoseArrayList = numpy.asarray(croppedPlanDoseArrayList)
+    # croppedPlanDoseArrayList = numpy.ravel(croppedPlanDoseArrayList)
+
+    # paddedPlanDoseSliceVolumeNode = slicer.vtkMRMLScalarVolumeNode()
+    # new3dScalars = numpy_support.numpy_to_vtk(croppedPlanDoseArrayList)
+    # new3dScalarsCopy = vtk.vtkDoubleArray()
+    # new3dScalarsCopy.DeepCopy(new3dScalars)
+    # new3dImageData = vtk.vtkImageData()
+    # new3dImageData.GetPointData().SetScalars(new3dScalarsCopy)
+    # newExtent = self.croppedPlanDoseVolumeNode.GetImageData().GetExtent()
+    # newExtent = newExtent[0:3] +(4,) + newExtent[4:]
+    # new3dImageData.SetExtent(newExtent)
+    # paddedPlanDoseSliceVolumeNode.SetAndObserveImageData(new3dImageData)
+    # paddedPlanDoseSliceVolumeNode.SetName("Dose volume for registration")
+    # slicer.mrmlScene.AddNode(paddedPlanDoseSliceVolumeNode)
+    # self.paddedPlanDoseVolumeNode = paddedPlanDoseSliceVolumeNode
+    # paddedPlanDoseSliceVolumeNode.CopyOrientation(self.croppedPlanDoseVolumeNode)
+
+    # return ""
+
+  #------------------------------------------------------------------------------
+  def preAlignCalibratedFilmWithPlanDoseSlice(self):
+    # Set up transform pipeline 
+    experimentalAxialToCoronalRotationTransform = vtk.vtkTransform()
+    experimentalAxialToCoronalRotationTransform.RotateWXYZ(90,[1,0,0])
+    experimentalAxialToExperimentalCoronalTransformMRML = slicer.vtkMRMLLinearTransformNode()
+    experimentalAxialToExperimentalCoronalTransformMRML.SetName(self.experimentalAxialToExperimentalCoronalTransformName)
+    slicer.mrmlScene.AddNode(experimentalAxialToExperimentalCoronalTransformMRML)
+    experimentalAxialToExperimentalCoronalTransformMRML.SetMatrixTransformToParent(experimentalAxialToCoronalRotationTransform.GetMatrix())
+    self.calibratedExperimentalFilmVolumeNode.SetAndObserveTransformNodeID(experimentalAxialToExperimentalCoronalTransformMRML.GetID())
+    
+    # Rotate 90 degrees about [0,1,0]
+    rotate90APTransform = vtk.vtkTransform()
+    rotate90APTransform.RotateWXYZ(-90,[0,1,0])
+    #TODO: this may be a 90 or -90 rotation, it is unclear what orientation the films should be in 
+    rotate90APTransformMRML = slicer.vtkMRMLLinearTransformNode()
+    rotate90APTransformMRML.SetMatrixTransformToParent(rotate90APTransform.GetMatrix())
+    rotate90APTransformMRML.SetName(self.experimentalRotate90APTransformName)    
+    slicer.mrmlScene.AddNode(rotate90APTransformMRML)
+    experimentalAxialToExperimentalCoronalTransformMRML.SetAndObserveTransformNodeID(rotate90APTransformMRML.GetID())
+
+    # Translate to center of the dose volume 
+    expBounds = [0]*6
+    self.calibratedExperimentalFilmVolumeNode.GetRASBounds(expBounds)
+    doseBounds = [0]*6
+    self.paddedPlanDoseSliceVolumeNode.GetRASBounds(doseBounds)
+
+    doseCenter = [(doseBounds[0]+doseBounds[1])/2, (doseBounds[2]+doseBounds[3])/2, (doseBounds[4]+doseBounds[5])/2]
+    expCenter = [(expBounds[0]+expBounds[1])/2, (expBounds[2]+expBounds[3])/2, (expBounds[4]+expBounds[5])/2]
+    exp2DoseTranslation = [doseCenter[x] - expCenter[x] for x in xrange(len(doseCenter))]
+    
+    # TODO test transformation chain on asymmetrical image 
+    
+    ExperimentalCenterToDoseCenterTransform = vtk.vtkTransform()
+    ExperimentalCenterToDoseCenterTransform.Translate(exp2DoseTranslation)
+    ExperimentalCenterToDoseCenterTransformMRML = slicer.vtkMRMLLinearTransformNode()
+    ExperimentalCenterToDoseCenterTransformMRML.SetName(self.experimentalCenter2DoseCenterTransformName)
+    ExperimentalCenterToDoseCenterTransformMRML.SetMatrixTransformToParent(ExperimentalCenterToDoseCenterTransform.GetMatrix())
+    slicer.mrmlScene.AddNode(ExperimentalCenterToDoseCenterTransformMRML)
+    rotate90APTransformMRML.SetAndObserveTransformNodeID(ExperimentalCenterToDoseCenterTransformMRML.GetID())
+
+    slicer.vtkSlicerTransformLogic.hardenTransform(self.calibratedExperimentalFilmVolumeNode)
+    
     return ""
 
 

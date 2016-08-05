@@ -1044,7 +1044,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   def onPerformRegistrationButtonClicked(self): #TODO:
-    # TODO merge step 3 and step 4
+    # TODO merge step 2 and step 4
+
+    qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
 
     # Perform registration
     message = self.logic.registerExperimentalFilmToPlanDose()
@@ -1101,11 +1103,18 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     
     self.saveExperimentalDataSelection()
 
+    # Step 3
+    #
     # Load calibration from file
     self.loadCalibrationFunctionFromFile(calibrationFunctionFilePath)
     
     # Apply calibration
     self.logic.applyCalibrationOnExperimentalFilm()
+
+    # Step 4
+    #
+    # Perform registration #TODO: Move up to step 2
+    self.logic.registerExperimentalFilmToPlanDose()
 
 
 #
