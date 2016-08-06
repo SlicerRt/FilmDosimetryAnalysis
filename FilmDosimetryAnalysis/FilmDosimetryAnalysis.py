@@ -89,7 +89,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step2_loadExperimentalDataCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step3_applyCalibrationCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step4_registrationCollapsibleButton = ctk.ctkCollapsibleButton()
-    self.step5_CollapsibleButton = ctk.ctkCollapsibleButton()
+    self.step5_doseComparisonCollapsibleButton = ctk.ctkCollapsibleButton()
     self.testButton = ctk.ctkCollapsibleButton()
 
     self.collapsibleButtonsGroup = qt.QButtonGroup()
@@ -98,7 +98,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.collapsibleButtonsGroup.addButton(self.step2_loadExperimentalDataCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step3_applyCalibrationCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step4_registrationCollapsibleButton)
-    self.collapsibleButtonsGroup.addButton(self.step5_CollapsibleButton)   
+    self.collapsibleButtonsGroup.addButton(self.step5_doseComparisonCollapsibleButton)   
 
     self.collapsibleButtonsGroup.addButton(self.testButton)
 
@@ -170,6 +170,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_loadCalibrationButton.disconnect('clicked()', self.onLoadCalibrationFunctionFromFileButton)
     self.step3_applyCalibrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep3_ApplyCalibrationCollapsed)
     self.step4_performRegistrationButton.disconnect('clicked()', self.onPerformRegistrationButtonClicked)
+    self.step5_doseComparisonCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep5_DoseComparisonSelected)
+    self.step5_maskSegmentationSelector.disconnect('currentNodeChanged(vtkMRMLNode*)', self.onStep5_MaskSegmentationSelectionChanged)
+    self.step5_maskSegmentationSelector.disconnect('currentSegmentChanged(QString)', self.onStep5_MaskSegmentSelectionChanged)
+    self.step5_referenceDoseUseMaximumDoseRadioButton.disconnect('toggled(bool)', self.onUseMaximumDoseRadioButtonToggled)
+    self.step5_computeGammaButton.disconnect('clicked()', self.onGammaDoseComparison)
+    self.step5_showGammaReportButton.disconnect('clicked()', self.onShowGammaReport)
 
   #------------------------------------------------------------------------------
   def setup_Step0_LayoutSelection(self):
@@ -572,18 +578,125 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   def setup_Step5_GammaComparison(self):
-  # TODO add to collapsible buttons group
-    # Step 2: Load data panel
-    self.step5_CollapsibleButton.setProperty('collapsedHeight', 4)
-    self.step5_CollapsibleButton.text = "5. Gamma comparison"
-    self.sliceletPanelLayout.addWidget(self.step5_CollapsibleButton)
+    # Step 5: Dose comparison and analysis
+    self.step5_doseComparisonCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.step5_doseComparisonCollapsibleButton.text = "5. Gamma comparison"
+    self.sliceletPanelLayout.addWidget(self.step5_doseComparisonCollapsibleButton)
 
-    self.step5_CollapsibleButtonLayout = qt.QVBoxLayout(self.step5_CollapsibleButton)
-    self.step5_CollapsibleButtonLayout.setContentsMargins(12,4,4,4)
-    self.step5_CollapsibleButtonLayout.setSpacing(4)
-    self.sliceletPanelLayout.addStretch(1) # TODO this may need to be moved
-    
-    # TODO follow onGammaDoseComparison in Gel 
+    self.step5_doseComparisonCollapsibleButtonLayout = qt.QFormLayout(self.step5_doseComparisonCollapsibleButton)
+    self.step5_doseComparisonCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
+    self.step5_doseComparisonCollapsibleButtonLayout.setSpacing(4)
+
+    # Info label
+    self.step5_doseComparisonReferenceVolumeLabel = qt.QLabel('Need to assign data in step 2!')
+    self.step5_doseComparisonReferenceVolumeLabel.wordWrap = True
+    self.step5_doseComparisonCollapsibleButtonLayout.addRow('Plan dose slice (reference):', self.step5_doseComparisonReferenceVolumeLabel)
+    self.step5_doseComparisonEvaluatedVolumeLabel = qt.QLabel('Need to assign data in step 2!')
+    self.step5_doseComparisonEvaluatedVolumeLabel.wordWrap = True
+    self.step5_doseComparisonCollapsibleButtonLayout.addRow('Calibrated experimental film (evaluated):', self.step5_doseComparisonEvaluatedVolumeLabel)
+
+    # Mask segmentation selector
+    self.step5_maskSegmentationSelector = slicer.qMRMLSegmentSelectorWidget()
+    self.step5_maskSegmentationSelector.setMRMLScene(slicer.mrmlScene)
+    self.step5_maskSegmentationSelector.noneEnabled = True
+    self.step5_doseComparisonCollapsibleButtonLayout.addRow("Mask structure: ", self.step5_maskSegmentationSelector)
+
+    # DTA
+    self.step5_dtaDistanceToleranceMmSpinBox = qt.QDoubleSpinBox()
+    self.step5_dtaDistanceToleranceMmSpinBox.setValue(3.0)
+    self.step5_doseComparisonCollapsibleButtonLayout.addRow('Distance-to-agreement criteria (mm): ', self.step5_dtaDistanceToleranceMmSpinBox)
+
+    # Dose difference tolerance criteria
+    self.step5_doseDifferenceToleranceLayout = qt.QHBoxLayout(self.step5_doseComparisonCollapsibleButton)
+    self.step5_doseDifferenceToleranceLabelBefore = qt.QLabel('Dose difference criteria is ')
+    self.step5_doseDifferenceTolerancePercentSpinBox = qt.QDoubleSpinBox()
+    self.step5_doseDifferenceTolerancePercentSpinBox.setValue(3.0)
+    self.step5_doseDifferenceToleranceLabelAfter = qt.QLabel('% of:  ')
+    self.step5_doseDifferenceToleranceLayout.addWidget(self.step5_doseDifferenceToleranceLabelBefore)
+    self.step5_doseDifferenceToleranceLayout.addWidget(self.step5_doseDifferenceTolerancePercentSpinBox)
+    self.step5_doseDifferenceToleranceLayout.addWidget(self.step5_doseDifferenceToleranceLabelAfter)
+
+    self.step5_referenceDoseLayout = qt.QVBoxLayout()
+    self.step5_referenceDoseUseMaximumDoseRadioButton = qt.QRadioButton('the maximum dose\n(calculated from plan dose volume)')
+    self.step5_referenceDoseUseCustomValueLayout = qt.QHBoxLayout(self.step5_doseComparisonCollapsibleButton)
+    self.step5_referenceDoseUseCustomValueGyRadioButton = qt.QRadioButton('a custom dose value (cGy):')
+    self.step5_referenceDoseCustomValueCGySpinBox = qt.QDoubleSpinBox()
+    self.step5_referenceDoseCustomValueCGySpinBox.value = 5.0
+    self.step5_referenceDoseCustomValueCGySpinBox.maximum = 99999
+    self.step5_referenceDoseCustomValueCGySpinBox.maximumWidth = 48
+    self.step5_referenceDoseCustomValueCGySpinBox.enabled = False
+    self.step5_referenceDoseUseCustomValueLayout.addWidget(self.step5_referenceDoseUseCustomValueGyRadioButton)
+    self.step5_referenceDoseUseCustomValueLayout.addWidget(self.step5_referenceDoseCustomValueCGySpinBox)
+    self.step5_referenceDoseUseCustomValueLayout.addStretch(1) 
+    self.step5_referenceDoseLayout.addWidget(self.step5_referenceDoseUseMaximumDoseRadioButton)
+    self.step5_referenceDoseLayout.addLayout(self.step5_referenceDoseUseCustomValueLayout)
+    self.step5_doseDifferenceToleranceLayout.addLayout(self.step5_referenceDoseLayout)
+
+    self.step5_doseComparisonCollapsibleButtonLayout.addRow(self.step5_doseDifferenceToleranceLayout)
+
+    # Analysis threshold
+    self.step5_analysisThresholdLayout = qt.QHBoxLayout(self.step5_doseComparisonCollapsibleButton)
+    self.step5_analysisThresholdLabelBefore = qt.QLabel('Do not calculate gamma values for voxels below ')
+    self.step5_analysisThresholdPercentSpinBox = qt.QDoubleSpinBox()
+    self.step5_analysisThresholdPercentSpinBox.value = 0.0
+    self.step5_analysisThresholdPercentSpinBox.maximumWidth = 48
+    self.step5_analysisThresholdLabelAfter = qt.QLabel('% of the maximum dose,')
+    self.step5_analysisThresholdLabelAfter.wordWrap = True
+    self.step5_analysisThresholdLayout.addWidget(self.step5_analysisThresholdLabelBefore)
+    self.step5_analysisThresholdLayout.addWidget(self.step5_analysisThresholdPercentSpinBox)
+    self.step5_analysisThresholdLayout.addWidget(self.step5_analysisThresholdLabelAfter)
+    self.step5_doseComparisonCollapsibleButtonLayout.addRow(self.step5_analysisThresholdLayout)
+    self.step5_doseComparisonCollapsibleButtonLayout.addRow(qt.QLabel('                                            or the custom dose value (depending on selection above).'))
+
+    # Use linear interpolation
+    self.step5_useLinearInterpolationCheckBox = qt.QCheckBox()
+    self.step5_useLinearInterpolationCheckBox.checked = True
+    self.step5_useLinearInterpolationCheckBox.setToolTip('Flag determining whether linear interpolation is used when resampling the compare dose volume to reference grid. Nearest neighbour is used if unchecked.')
+    self.step5_doseComparisonCollapsibleButtonLayout.addRow('Use linear interpolation: ', self.step5_useLinearInterpolationCheckBox)
+
+    # Maximum gamma
+    self.step5_maximumGammaSpinBox = qt.QDoubleSpinBox()
+    self.step5_maximumGammaSpinBox.setValue(2.0)
+    self.step5_doseComparisonCollapsibleButtonLayout.addRow('Upper bound for gamma calculation: ', self.step5_maximumGammaSpinBox)
+
+    # Gamma volume selector
+    self.step5_gammaVolumeSelectorLayout = qt.QHBoxLayout(self.step5_doseComparisonCollapsibleButton)
+    self.step5_gammaVolumeSelector = slicer.qMRMLNodeComboBox()
+    self.step5_gammaVolumeSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
+    self.step5_gammaVolumeSelector.addEnabled = True
+    self.step5_gammaVolumeSelector.removeEnabled = False
+    self.step5_gammaVolumeSelector.setMRMLScene( slicer.mrmlScene )
+    self.step5_gammaVolumeSelector.setToolTip( "Select output gamma volume" )
+    self.step5_gammaVolumeSelector.setProperty('baseName', 'GammaVolume')
+    self.step5_helpLabel = qt.QLabel()
+    self.step5_helpLabel.pixmap = qt.QPixmap(':Icons/Help.png')
+    self.step5_helpLabel.maximumWidth = 24
+    self.step5_helpLabel.toolTip = "A gamma volume must be selected to contain the output. You can create a new volume by selecting 'Create new Volume'"
+    self.step5_gammaVolumeSelectorLayout.addWidget(self.step5_gammaVolumeSelector)
+    self.step5_gammaVolumeSelectorLayout.addWidget(self.step5_helpLabel)
+    self.step5_doseComparisonCollapsibleButtonLayout.addRow("Gamma volume: ", self.step5_gammaVolumeSelectorLayout)
+
+    self.step5_computeGammaButton = qt.QPushButton('Calculate gamma volume')
+    self.step5_doseComparisonCollapsibleButtonLayout.addRow(self.step5_computeGammaButton)
+
+    self.step5_gammaStatusLabel = qt.QLabel()
+    self.step5_doseComparisonCollapsibleButtonLayout.addRow(self.step5_gammaStatusLabel)
+
+    self.step5_showGammaReportButton = qt.QPushButton('Show report')
+    self.step5_showGammaReportButton.enabled = False
+    self.step5_doseComparisonCollapsibleButtonLayout.addRow(self.step5_showGammaReportButton)
+
+    # Make sure first panels appear when steps are first opened (done before connections to avoid
+    # executing those steps, which are only needed when actually switching there during the workflow)
+    self.step5_referenceDoseUseMaximumDoseRadioButton.setChecked(True)
+
+    # Connections
+    self.step5_doseComparisonCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep5_DoseComparisonSelected)
+    self.step5_maskSegmentationSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onStep5_MaskSegmentationSelectionChanged)
+    self.step5_maskSegmentationSelector.connect('currentSegmentChanged(QString)', self.onStep5_MaskSegmentSelectionChanged)
+    self.step5_referenceDoseUseMaximumDoseRadioButton.connect('toggled(bool)', self.onUseMaximumDoseRadioButtonToggled)
+    self.step5_computeGammaButton.connect('clicked()', self.onGammaDoseComparison)
+    self.step5_showGammaReportButton.connect('clicked()', self.onShowGammaReport)
     
     
   #
@@ -1070,6 +1183,289 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   # Step 5
+  def onStep5_DoseComparisonSelected(self, collapsed):
+    # Initialize mask segmentation selector to select plan structures
+    # self.step5_maskSegmentationSelector.setCurrentNode(self.planStructuresNode)
+    # self.onStep5_MaskSegmentationSelectionChanged(self.planStructuresNode)
+
+    # Turn scalar bar on/off
+    if collapsed == False:
+      self.sliceAnnotations.scalarBarEnabled = 1
+      # Update gamma input selection
+      self.refreshDoseComparisonInfoLabel()
+
+      appLogic = slicer.app.applicationLogic()
+      selectionNode = appLogic.GetSelectionNode()
+      if self.logic.calibratedExperimentalFilmVolumeNode:
+        selectionNode.SetActiveVolumeID(self.logic.calibratedExperimentalFilmVolumeNode.GetID())
+      else:
+        selectionNode.SetActiveVolumeID(None)
+      if self.logic.croppedPlanDoseSliceVolumeNode:
+        selectionNode.SetSecondaryVolumeID(self.logic.croppedPlanDoseSliceVolumeNode.GetID())
+      else:
+        selectionNode.SetSecondaryVolumeID(None)
+      appLogic.PropagateVolumeSelection()
+
+    else:
+      self.sliceAnnotations.scalarBarEnabled = 0
+    self.sliceAnnotations.updateSliceViewFromGUI()
+    # Reset 3D view
+    self.layoutWidget.layoutManager().threeDWidget(0).threeDView().resetFocalPoint()
+
+  #------------------------------------------------------------------------------
+  def onStep5_MaskSegmentationSelectionChanged(self, node):
+    # Hide previously selected mask segmentation
+    if self.logic.maskSegmentationNode is not None:
+      self.logic.maskSegmentationNode.GetDisplayNode().SetVisibility(0)
+    # Set new mask segmentation
+    self.logic.maskSegmentationNode = node
+    self.onStep5_MaskSegmentSelectionChanged(self.step5_maskSegmentationSelector.currentSegmentID())
+    # Show new mask segmentation
+    if self.logic.maskSegmentationNode is not None:
+      self.logic.maskSegmentationNode.GetDisplayNode().SetVisibility(1)
+
+  #------------------------------------------------------------------------------
+  def onStep5_MaskSegmentSelectionChanged(self, segmentID):
+    if self.logic.maskSegmentationNode is None:
+      return
+    # Set new mask segment
+    self.logic.maskSegmentID = segmentID
+    # Show new mask segment
+    if self.logic.maskSegmentID is not None and self.logic.maskSegmentID != '':
+      # Hide other segments
+      import vtkSegmentationCorePython as vtkSegmentationCore
+      segmentIDs = vtk.vtkStringArray()
+      self.logic.maskSegmentationNode.GetSegmentation().GetSegmentIDs(segmentIDs)
+      for segmentIndex in xrange(0,segmentIDs.GetNumberOfValues()):
+        currentSegmentID = segmentIDs.GetValue(segmentIndex)
+        self.logic.maskSegmentationNode.GetDisplayNode().SetSegmentVisibility(currentSegmentID, False)
+      # Show only selected segment, make it semi-transparent
+      self.logic.maskSegmentationNode.GetDisplayNode().SetSegmentVisibility(self.logic.maskSegmentID, True)
+      self.logic.maskSegmentationNode.GetDisplayNode().SetSegmentOpacity3D(self.logic.maskSegmentID, 0.5)
+
+  #------------------------------------------------------------------------------
+  def refreshDoseComparisonInfoLabel(self):
+    if self.logic.croppedPlanDoseSliceVolumeNode is None:
+      self.step5_doseComparisonReferenceVolumeLabel.text = 'Not selected!'
+    else:
+      self.step5_doseComparisonReferenceVolumeLabel.text = 'OK'
+    if self.logic.calibratedExperimentalFilmVolumeNode is None:
+      self.step5_doseComparisonEvaluatedVolumeLabel.text = 'Not selected!'
+    else:
+      self.step5_doseComparisonEvaluatedVolumeLabel.text = 'OK'
+
+  #------------------------------------------------------------------------------
+  def onUseMaximumDoseRadioButtonToggled(self, toggled):
+    self.step5_referenceDoseCustomValueCGySpinBox.setEnabled(not toggled)
+
+  #------------------------------------------------------------------------------
+  def onGammaDoseComparison(self):
+    try:
+      slicer.modules.dosecomparison
+
+      if self.step5_gammaVolumeSelector.currentNode() is None:
+        qt.QMessageBox.warning(None, 'Warning', 'Gamma volume not selected. If there is no suitable output gamma volume, create one.')
+        return
+      else:
+        self.logic.gammaVolumeNode = self.step5_gammaVolumeSelector.currentNode()
+
+      # Set up gamma computation parameters
+      gammaParameterSetNode = slicer.vtkMRMLDoseComparisonNode()
+      slicer.mrmlScene.AddNode(gammaParameterSetNode)
+      gammaParameterSetNode.SetAndObserveReferenceDoseVolumeNode(self.logic.croppedPlanDoseSliceVolumeNode)
+      gammaParameterSetNode.SetAndObserveCompareDoseVolumeNode(self.logic.calibratedExperimentalFilmVolumeNode)
+      gammaParameterSetNode.SetAndObserveMaskSegmentationNode(self.logic.maskSegmentationNode)
+      if self.logic.maskSegmentID is not None and self.logic.maskSegmentID != '':
+        gammaParameterSetNode.SetMaskSegmentID(self.logic.maskSegmentID)
+      gammaParameterSetNode.SetAndObserveGammaVolumeNode(self.logic.gammaVolumeNode)
+      gammaParameterSetNode.SetDtaDistanceToleranceMm(self.step5_dtaDistanceToleranceMmSpinBox.value)
+      gammaParameterSetNode.SetDoseDifferenceTolerancePercent(self.step5_doseDifferenceTolerancePercentSpinBox.value)
+      gammaParameterSetNode.SetUseMaximumDose(self.step5_referenceDoseUseMaximumDoseRadioButton.isChecked())
+      gammaParameterSetNode.SetUseLinearInterpolation(self.step5_useLinearInterpolationCheckBox.isChecked())
+      gammaParameterSetNode.SetReferenceDoseGy(self.step5_referenceDoseCustomValueCGySpinBox.value / 100.0)
+      gammaParameterSetNode.SetAnalysisThresholdPercent(self.step5_analysisThresholdPercentSpinBox.value)
+      gammaParameterSetNode.SetDoseThresholdOnReferenceOnly(True)
+      gammaParameterSetNode.SetMaximumGamma(self.step5_maximumGammaSpinBox.value)
+
+      # Create progress bar
+      from vtkSlicerRtCommonPython import SlicerRtCommon
+      doseComparisonLogic = slicer.modules.dosecomparison.logic()
+      self.addObserver(doseComparisonLogic, SlicerRtCommon.ProgressUpdated, self.onGammaProgressUpdated)
+      self.gammaProgressDialog = qt.QProgressDialog(self.parent)
+      self.gammaProgressDialog.setModal(True)
+      self.gammaProgressDialog.setMinimumDuration(150)
+      self.gammaProgressDialog.labelText = "Computing gamma dose difference..."
+      self.gammaProgressDialog.show()
+      slicer.app.processEvents()
+      
+      # Perform gamma comparison
+      qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
+      errorMessage = doseComparisonLogic.ComputeGammaDoseDifference(gammaParameterSetNode)
+      
+      self.gammaProgressDialog.hide()
+      self.gammaProgressDialog = None
+      self.removeObserver(doseComparisonLogic, SlicerRtCommon.ProgressUpdated, self.onGammaProgressUpdated)
+      qt.QApplication.restoreOverrideCursor()
+
+      if gammaParameterSetNode.GetResultsValid():
+        self.step5_gammaStatusLabel.setText('Gamma dose comparison succeeded\nPass fraction: {0:.2f}%'.format(gammaParameterSetNode.GetPassFractionPercent()))
+        self.step5_showGammaReportButton.enabled = True
+        self.gammaReport = gammaParameterSetNode.GetReportString()
+      else:
+        self.step5_gammaStatusLabel.setText(errorMessage)
+        self.step5_showGammaReportButton.enabled = False
+
+      # Show gamma volume
+      appLogic = slicer.app.applicationLogic()
+      selectionNode = appLogic.GetSelectionNode()
+      selectionNode.SetActiveVolumeID(self.step5_gammaVolumeSelector.currentNodeID)
+      selectionNode.SetSecondaryVolumeID(None)
+      appLogic.PropagateVolumeSelection()
+
+      # Show mask structure with some transparency
+      if self.logic.maskSegmentationNode:
+        self.logic.maskSegmentationNode.GetDisplayNode().SetVisibility(1)
+        if self.logic.maskSegmentID:
+          self.logic.maskSegmentationNode.GetDisplayNode().SetSegmentVisibility(self.logic.maskSegmentID, True)
+          self.logic.maskSegmentationNode.GetDisplayNode().SetSegmentOpacity3D(self.logic.maskSegmentID, 0.5)
+
+      # Show gamma slice in 3D view
+      layoutManager = self.layoutWidget.layoutManager()
+      sliceViewerWidgetRed = layoutManager.sliceWidget('Red')
+      sliceLogicRed = sliceViewerWidgetRed.sliceLogic()
+      sliceLogicRed.StartSliceNodeInteraction(slicer.vtkMRMLSliceNode.SliceVisibleFlag)
+      sliceLogicRed.GetSliceNode().SetSliceVisible(1)
+      sliceLogicRed.EndSliceNodeInteraction()
+
+      # Set gamma window/level
+      maximumGamma = self.step5_maximumGammaSpinBox.value
+      gammaDisplayNode = self.logic.gammaVolumeNode.GetDisplayNode()
+      gammaDisplayNode.AutoWindowLevelOff()
+      gammaDisplayNode.SetWindowLevel(maximumGamma/2, maximumGamma/2)
+      gammaDisplayNode.ApplyThresholdOn()
+      gammaDisplayNode.AutoThresholdOff()
+      gammaDisplayNode.SetLowerThreshold(0.001)
+
+      # Center 3D view
+      layoutManager = self.layoutWidget.layoutManager()
+      threeDWidget = layoutManager.threeDWidget(0)
+      if threeDWidget is not None and threeDWidget.threeDView() is not None:
+        threeDWidget.threeDView().resetFocalPoint()
+      
+    except Exception, e:
+      import traceback
+      traceback.print_exc()
+      logging.error('Failed to perform gamma dose comparison!')
+
+  #------------------------------------------------------------------------------
+  def onGammaProgressUpdated(self, logic, event):
+    if self.gammaProgressDialog:
+      self.gammaProgressDialog.value = logic.GetProgress() * 100.0
+      slicer.app.processEvents()
+
+  #------------------------------------------------------------------------------
+  def onShowGammaReport(self):
+    if hasattr(self,"gammaReport"):
+      qt.QMessageBox.information(None, 'Gamma computation report', self.gammaReport)
+    else:
+      qt.QMessageBox.information(None, 'Gamma computation report missing', 'No report available!')
+    
+  #------------------------------------------------------------------------------
+  def onStepT1_LineProfileSelected(self, collapsed):
+    appLogic = slicer.app.applicationLogic()
+    selectionNode = appLogic.GetSelectionNode()
+
+    # Change to quantitative view on enter, change back on leave
+    if collapsed == False:
+      self.currentLayoutIndex = self.step0_viewSelectorComboBox.currentIndex
+      self.onViewSelect(5)
+
+      # Switch to place ruler mode
+      selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLAnnotationRulerNode")
+    else:
+      self.onViewSelect(self.currentLayoutIndex)
+
+    # Show dose volumes
+    if self.planDoseVolumeNode:
+      selectionNode.SetActiveVolumeID(self.planDoseVolumeNode.GetID())
+    if self.calibratedMeasuredVolumeNode:
+      selectionNode.SetSecondaryVolumeID(self.calibratedMeasuredVolumeNode.GetID())
+    appLogic = slicer.app.applicationLogic()
+    appLogic.PropagateVolumeSelection()
+
+  #------------------------------------------------------------------------------
+  def onCreateLineProfileButton(self):
+    # Create array nodes for the results
+    if not hasattr(self, 'planDoseLineProfileArrayNode'):
+      self.planDoseLineProfileArrayNode = slicer.vtkMRMLDoubleArrayNode()
+      slicer.mrmlScene.AddNode(self.planDoseLineProfileArrayNode)
+    if not hasattr(self, 'calibratedMeasuredDoseLineProfileArrayNode'):
+      self.calibratedMeasuredDoseLineProfileArrayNode = slicer.vtkMRMLDoubleArrayNode()
+      slicer.mrmlScene.AddNode(self.calibratedMeasuredDoseLineProfileArrayNode)
+    if self.gammaVolumeNode and not hasattr(self, 'gammaLineProfileArrayNode'):
+      self.gammaLineProfileArrayNode = slicer.vtkMRMLDoubleArrayNode()
+      slicer.mrmlScene.AddNode(self.gammaLineProfileArrayNode)
+
+    lineProfileLogic = GelDosimetryAnalysisLogic.LineProfileLogic()
+    lineResolutionMm = float(self.stepT1_lineResolutionMmSliderWidget.value)
+    selectedRuler = self.stepT1_inputRulerSelector.currentNode()
+    rulerLengthMm = lineProfileLogic.computeRulerLength(selectedRuler)
+    numberOfLineSamples = int( (rulerLengthMm / lineResolutionMm) + 0.5 )
+
+    # Get number of samples based on selected sampling density
+    if self.planDoseVolumeNode:
+      lineProfileLogic.run(self.planDoseVolumeNode, selectedRuler, self.planDoseLineProfileArrayNode, numberOfLineSamples)
+    if self.calibratedMeasuredVolumeNode:
+      lineProfileLogic.run(self.calibratedMeasuredVolumeNode, selectedRuler, self.calibratedMeasuredDoseLineProfileArrayNode, numberOfLineSamples)
+    if self.gammaVolumeNode:
+      lineProfileLogic.run(self.gammaVolumeNode, selectedRuler, self.gammaLineProfileArrayNode, numberOfLineSamples)
+
+  #------------------------------------------------------------------------------
+  def onSelectLineProfileParameters(self):
+    self.stepT1_createLineProfileButton.enabled = self.planDoseVolumeNode and self.measuredVolumeNode and self.stepT1_inputRulerSelector.currentNode()
+
+  #------------------------------------------------------------------------------
+  def onExportLineProfiles(self):
+    import csv
+    import os
+
+    self.outputDir = slicer.app.temporaryPath + '/FilmDosimetry'
+    if not os.access(self.outputDir, os.F_OK):
+      os.mkdir(self.outputDir)
+    if not hasattr(self, 'planDoseLineProfileArrayNode') and not hasattr(self, 'calibratedMeasuredDoseLineProfileArrayNode'):
+      return 'Dose line profiles not computed yet!\nClick Create line profile\n'
+
+    # Assemble file name for calibration curve points file
+    from time import gmtime, strftime
+    fileName = self.outputDir + '/' + strftime("%Y%m%d_%H%M%S_", gmtime()) + 'LineProfiles.csv'
+
+    # Write calibration curve points CSV file
+    with open(fileName, 'w') as fp:
+      csvWriter = csv.writer(fp, delimiter=',', lineterminator='\n')
+
+      planDoseLineProfileArray = self.planDoseLineProfileArrayNode.GetArray()
+      calibratedDoseLineProfileArray = self.calibratedMeasuredDoseLineProfileArrayNode.GetArray()
+      gammaLineProfileArray = None
+      if hasattr(self, 'gammaLineProfileArrayNode'):
+        data = [['PlanDose','CalibratedMeasuredDose','Gamma']]
+        gammaLineProfileArray = self.gammaLineProfileArrayNode.GetArray()
+      else:
+        data = [['PlanDose','CalibratedMeasuredDose']]
+
+      numOfSamples = planDoseLineProfileArray.GetNumberOfTuples()
+      for index in xrange(numOfSamples):
+        planDoseSample = planDoseLineProfileArray.GetTuple(index)[1]
+        calibratedDoseSample = calibratedDoseLineProfileArray.GetTuple(index)[1]
+        if gammaLineProfileArray:
+          gammaSample = gammaLineProfileArray.GetTuple(index)[1]
+          samples = [planDoseSample, calibratedDoseSample, gammaSample]
+        else:
+          samples = [planDoseSample, calibratedDoseSample]
+        data.append(samples)
+      csvWriter.writerows(data)
+
+    message = 'Dose line profiles saved in file\n' + fileName + '\n\n'
+    qt.QMessageBox.information(None, 'Line profiles values exported', message)
 
 
   #
@@ -1128,11 +1524,18 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.logic.registerExperimentalFilmToPlanDose()
 
     # Show registered images
-    appLogic = slicer.app.applicationLogic()
-    selectionNode = appLogic.GetSelectionNode()
-    selectionNode.SetActiveVolumeID(self.logic.paddedCalibratedExperimentalFilmVolumeNode.GetID())
-    selectionNode.SetSecondaryVolumeID(self.logic.paddedPlanDoseSliceVolumeNode.GetID())
-    appLogic.PropagateVolumeSelection()
+    # appLogic = slicer.app.applicationLogic()
+    # selectionNode = appLogic.GetSelectionNode()
+    # selectionNode.SetActiveVolumeID(self.logic.paddedCalibratedExperimentalFilmVolumeNode.GetID())
+    # selectionNode.SetSecondaryVolumeID(self.logic.paddedPlanDoseSliceVolumeNode.GetID())
+    # appLogic.PropagateVolumeSelection()
+
+    # Step 5
+    self.step5_doseComparisonCollapsibleButton.setChecked(True)
+    self.step5_maskSegmentationSelector.setCurrentNode(None) #TODO: Use mask
+    self.step5_gammaVolumeSelector.addNode()
+    self.onGammaDoseComparison()
+
 
 #
 # FilmDosimetryAnalysis

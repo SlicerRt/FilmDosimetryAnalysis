@@ -37,12 +37,16 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     self.experimentalFloodFieldImageNode = None
     self.experimentalFilmImageNode = None 
     self.experimentalFilmPixelSpacing = None
-    self.calibratedExperimentalFilmVolumeNode = None 
+    self.planDoseSlicePositionAP = 0
+    self.calibratedExperimentalFilmVolumeNode = None
     self.paddedCalibratedExperimentalFilmVolumeNode = None
     self.planDoseVolumeNode = None
-    self.croppedPlanDoseVolumeNode = None
+    self.croppedPlanDoseSliceVolumeNode = None
     self.paddedPlanDoseSliceVolumeNode = None
     self.experimentalFilmToDoseSliceTransformNode = None
+    self.maskSegmentationNode = None
+    self.maskSegmentID = None
+    self.gammaVolumeNode = None
     
     self.measuredOpticalDensityToDoseMap = [] #TODO: Make it a real map (need to sort by key where it is created)
 
@@ -438,7 +442,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     
     # Crop the dose volume by the ROI
     message = self.cropPlanDoseVolumeToSlice(0) #TODO: Add position entry widgets to UI
-    if message != "" or self.croppedPlanDoseVolumeNode is None:
+    if message != "" or self.croppedPlanDoseSliceVolumeNode is None:
       logging.error("Failed to crop plan dose volume")
       return message
 
@@ -480,6 +484,11 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
     logging.info("Registration status: " + cliBrainsFitRigidNode.GetStatusString())
     
+    # Set transform to calibrated experimental film
+    self.calibratedExperimentalFilmVolumeNode.SetAndObserveTransformNodeID(self.experimentalFilmToDoseSliceTransformNode.GetID())
+
+    #TODO: Check AP translation and rotation parameters, warn if transform takes slice off-plane
+
     return ""
 
   #------------------------------------------------------------------------------
@@ -489,13 +498,16 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       logging.error(message)
       return message
 
+    self.planDoseSlicePositionAP = slicePositionAP
+
     # Create ROI for cropping dose volume to selected slice
     roiNode = slicer.vtkMRMLAnnotationROINode()
     roiNode.SetName("CropPlanDoseVolumeROI")
     slicer.mrmlScene.AddNode(roiNode)
 
+    #TODO: Support orientations other than AP
+    #      (need to also fix padPlanDoseSliceForRegistration, preAlignCalibratedFilmWithPlanDoseSlice, etc.)
     #TODO: Support non-axis-aligned volumes too
-    #TODO: Support orientations other than AP (need to also fix padPlanDoseSliceForRegistration)
     bounds = [0]*6
     self.planDoseVolumeNode.GetRASBounds(bounds)  
     doseVolumeCenter = [(bounds[0]+bounds[1])/2, (bounds[2]+bounds[3])/2, (bounds[4]+bounds[5])/2]
@@ -514,9 +526,9 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     cropLogic = slicer.modules.cropvolume.logic()
 
     cropLogic.Apply(cropVolumeParameterNode)
-    self.croppedPlanDoseVolumeNode = slicer.mrmlScene.GetNodeByID(cropVolumeParameterNode.GetOutputVolumeNodeID())
+    self.croppedPlanDoseSliceVolumeNode = slicer.mrmlScene.GetNodeByID(cropVolumeParameterNode.GetOutputVolumeNodeID())
     croppedPlanDoseVolumeName = slicer.mrmlScene.GenerateUniqueName(self.planDoseVolumeNode.GetName() + self.croppedPlanDoseVolumeNamePostfix)
-    self.croppedPlanDoseVolumeNode.SetName(croppedPlanDoseVolumeName)
+    self.croppedPlanDoseSliceVolumeNode.SetName(croppedPlanDoseVolumeName)
 
     # Delete ROI and parameter nodes
     #TODO: Comment out only for debugging
@@ -527,14 +539,14 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
   #------------------------------------------------------------------------------
   def padPlanDoseSliceForRegistration(self):
-    if self.planDoseVolumeNode is None or self.croppedPlanDoseVolumeNode is None:
+    if self.planDoseVolumeNode is None or self.croppedPlanDoseSliceVolumeNode is None:
       message = "No plan dose volume is selected or cropping to slice failed"
       logging.error(message)
       return message
 
     # Duplicate cropped dose volume slice into multiple slices (padding)
-    croppedPlanDoseArray = self.volumeToNumpyArray(self.croppedPlanDoseVolumeNode)
-    croppedDoseSliceDimensions = self.croppedPlanDoseVolumeNode.GetImageData().GetDimensions()
+    croppedPlanDoseArray = self.volumeToNumpyArray(self.croppedPlanDoseSliceVolumeNode)
+    croppedDoseSliceDimensions = self.croppedPlanDoseSliceVolumeNode.GetImageData().GetDimensions()
 
     #TODO: Not sure what this does, need to simplify ...
     croppedPlanDoseArrayList = []
@@ -559,10 +571,10 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     self.paddedPlanDoseSliceVolumeNode.SetName(paddedPlanDoseSliceVolumeName)
     slicer.mrmlScene.AddNode(self.paddedPlanDoseSliceVolumeNode)
     self.paddedPlanDoseSliceVolumeNode.SetAndObserveImageData(paddedPlanDoseImageData)
-    self.paddedPlanDoseSliceVolumeNode.CopyOrientation(self.croppedPlanDoseVolumeNode)
+    self.paddedPlanDoseSliceVolumeNode.CopyOrientation(self.croppedPlanDoseSliceVolumeNode)
     self.paddedPlanDoseSliceVolumeNode.CreateDefaultDisplayNodes()
     self.paddedPlanDoseSliceVolumeNode.GetDisplayNode().AutoWindowLevelOn()
-    self.paddedPlanDoseSliceVolumeNode.GetDisplayNode().SetAndObserveColorNodeID(self.croppedPlanDoseVolumeNode.GetDisplayNode().GetColorNodeID())
+    self.paddedPlanDoseSliceVolumeNode.GetDisplayNode().SetAndObserveColorNodeID(self.croppedPlanDoseSliceVolumeNode.GetDisplayNode().GetColorNodeID())
 
     return ""
 
@@ -606,6 +618,8 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     slicer.vtkSlicerTransformLogic.hardenTransform(self.paddedCalibratedExperimentalFilmVolumeNode)
     self.calibratedExperimentalFilmVolumeNode.SetAndObserveTransformNodeID(experimentalFilmPreAlignmentTransformNode.GetID())
     slicer.vtkSlicerTransformLogic.hardenTransform(self.calibratedExperimentalFilmVolumeNode)
+    # Set AP position for calibrated film to specified slice
+    self.calibratedExperimentalFilmVolumeNode.SetOrigin(self.calibratedExperimentalFilmVolumeNode.GetOrigin()[0], self.planDoseSlicePositionAP, self.calibratedExperimentalFilmVolumeNode.GetOrigin()[2])
 
     slicer.mrmlScene.RemoveNode(experimentalFilmPreAlignmentTransformNode)
 
