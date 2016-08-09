@@ -162,7 +162,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
     bestN.sort(key=lambda bestNEntry: bestNEntry[0]) 
     self.calibrationCoefficients = [ bestN[0][2][0], bestN[0][2][1], bestN[0][2][2], bestN[0][1] ]
-    logging.info("Optimized calibration function coefficients: A,B,C=" + str(round(bestN[0][2],4)) + ", N=" + str(round(bestN[0][1],4)) + " (mean square error: "  + str(round(bestN[0][0],4)))
+    logging.info("Optimized calibration function coefficients: A=" + str(round(self.calibrationCoefficients[0],4)) + ", B=" + str(round(self.calibrationCoefficients[1],4)) + ", C=" + str(round(self.calibrationCoefficients[2],4)) + ", N=" + str(round(self.calibrationCoefficients[3],4)) + " (mean square error: "  + str(round(bestN[0][0],4)) + ")")
 
   #------------------------------------------------------------------------------
   def findCoefficientsForExponent(self,n):

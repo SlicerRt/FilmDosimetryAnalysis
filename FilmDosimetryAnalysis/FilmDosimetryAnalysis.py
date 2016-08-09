@@ -381,7 +381,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_saveCalibrationFunctionToFileButton.toolTip = "Save calibration function for later use"
     self.step1_2_performCalibrationLayout.addWidget(self.step1_saveCalibrationFunctionToFileButton)
 
-    self.step1_1_bottomCalibrationSubLayout.addStretch(1)
+    self.step1_2_performCalibrationLayout.addStretch(1)
 
     # Step 1 sub button group
     self.step1_calibrationCollapsibleButtonGroup = qt.QButtonGroup()
@@ -475,6 +475,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     self.step2_loadExperimentalDataCollapsibleButtonLayout.addLayout(self.step2_assignDataLayout)
 
+    self.step2_loadExperimentalDataCollapsibleButtonLayout.addStretch(1)
+
     # Enter plane position
     self.step2_planePositionLabel = qt.QLabel('Plane position :')
     self.step2_planePositionLineEdit = qt.QLineEdit()
@@ -537,6 +539,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_applyCalibrationButton.toolTip = "Apply calibration to experimental film."
     self.step3_applyCalibrationCollapsibleButtonLayout.addWidget(self.step3_applyCalibrationButton)
 
+    self.step3_applyCalibrationCollapsibleButtonLayout.addStretch(1)
+
     # Connections
     self.step3_applyCalibrationButton.connect('clicked()', self.onApplyCalibrationButton)
     self.step3_loadCalibrationButton.connect('clicked()', self.onLoadCalibrationFunctionFromFileButton)
@@ -570,8 +574,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step4_performRegistrationButton.toolTip = "Registers dose volume to the experimental output \n "
     self.step4_registrationCollapsibleButtonLayout.addWidget(self.step4_performRegistrationButton)
     
-    # Add empty row
-    self.step4_registrationCollapsibleButtonLayout.addWidget(qt.QLabel(''))
+    self.step4_registrationCollapsibleButtonLayout.addStretch(1)
 
     # Connections 
     self.step4_performRegistrationButton.connect('clicked()', self.onPerformRegistrationButtonClicked)
