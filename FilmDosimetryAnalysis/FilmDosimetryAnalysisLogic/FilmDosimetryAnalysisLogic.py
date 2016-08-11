@@ -242,7 +242,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       # Crop calibration images by last defined ROI into a cloned volume node
       calibrationShNode = slicer.vtkMRMLSubjectHierarchyNode.GetAssociatedSubjectHierarchyNode(currentCalibrationVolumeNode)
       calibrationVolumeNodeNodeCloneName = currentCalibrationVolumeNode.GetName() + '_Cropped'
-      croppedCalibrationFilmShNode = cloner.cloneSubjectHierarchyNode(calibrationShNode, calibrationVolumeNodeNodeCloneName)    
+      croppedCalibrationFilmShNode = slicer.vtkSlicerSubjectHierarchyModuleLogic.CloneSubjectHierarchyNode(calibrationShNode, calibrationVolumeNodeNodeCloneName)    
       croppedCalibrationFilmVolumeNode = croppedCalibrationFilmShNode.GetAssociatedNode()
       cropVolumeLogic.CropVoxelBased(self.lastAddedRoiNode, currentCalibrationVolumeNode, croppedCalibrationFilmVolumeNode)
 
