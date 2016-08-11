@@ -211,12 +211,11 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       return "Empty calibration does to film map!"
 
     cropVolumeLogic = slicer.modules.cropvolume.logic()
-    cloner = slicer.qSlicerSubjectHierarchyCloneNodePlugin()
 
     # Crop flood field volume by defined ROI into a cloned volume node
     floodFieldShNode = slicer.vtkMRMLSubjectHierarchyNode.GetAssociatedSubjectHierarchyNode(floodFieldImageVolumeNode)
     floodFieldVolumeNodeNodeCloneName = floodFieldImageVolumeNode.GetName() + '_Cropped'
-    croppedFloodFieldShNode = cloner.cloneSubjectHierarchyNode(floodFieldShNode, floodFieldVolumeNodeNodeCloneName)
+    croppedFloodFieldShNode = slicer.vtkSlicerSubjectHierarchyModuleLogic.CloneSubjectHierarchyNode(floodFieldShNode, floodFieldVolumeNodeNodeCloneName)
     croppedFloodFieldVolumeNode = croppedFloodFieldShNode.GetAssociatedNode()
     cropVolumeLogic.CropVoxelBased(self.lastAddedRoiNode, floodFieldImageVolumeNode, croppedFloodFieldVolumeNode)
 
