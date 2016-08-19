@@ -3,7 +3,7 @@ import unittest
 import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
-import FilmDosimetryAnalysisLogic
+from FilmDosimetryAnalysisLogic import *
 import DataProbeLib
 from slicer.util import VTKObservationMixin
 from vtk.util import numpy_support
@@ -17,7 +17,7 @@ import glob
 # 3D film-based radiation dosimetry.
 #
 # The all-caps terms correspond to data objects in the film dosimetry data flow diagram
-# https://subversion.assembla.com/svn/slicerrt/trunk/FilmDosimetryAnalysis/doc/FilmDosimetryFlowchart.pdf
+# https://subversion.assembla.com/svn/slicerrt/trunk/FilmDosimetryAnalysis/doc/FilmDosimetryFlowchart.png
 #
 
 #
@@ -105,7 +105,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_calibrationCollapsibleButton.setProperty('collapsed', False)
 
     # Create module logic
-    self.logic = FilmDosimetryAnalysisLogic.FilmDosimetryAnalysisLogic()
+    self.logic = FilmDosimetryAnalysisLogic()
 
     # Declare member variables (selected at certain steps and then from then on for the workflow)
     self.batchFolderToParse = None
@@ -135,12 +135,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.sliceAnnotations.updateSliceViewFromGUI()
 
     # Set up step panels
-    self.setup_Step0_LayoutSelection()
-    self.setup_Step1_Calibration()
-    self.setup_Step2_LoadExperimentalData()
-    self.setup_Step3_ApplyCalibration()
-    self.setup_Step4_Registration()
-    self.setup_Step5_GammaComparison()
+    self.setupStep0_LayoutSelection()
+    self.setupStep1_Calibration()
+    self.setupStep2_LoadExperimentalData()
+    self.setupStep3_ApplyCalibration()
+    self.setupStep4_Registration()
+    self.setupStep5_GammaComparison()
 
     if widgetClass:
       self.widget = widgetClass(self.parent)
@@ -150,7 +150,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   # Disconnect all connections made to the slicelet to enable the garbage collector to destruct the slicelet object on quit
   def disconnect(self):
     self.selfTestButton.disconnect('clicked()', self.onSelfTestButtonClicked)
-    self.step0_viewSelectorComboBox.disconnect('activated(int)', self.onViewSelect)
+    self.step0_viewSelectorComboBox.disconnect('currentIndexChanged(int)', self.onViewSelect)
     self.step1_loadImageFilesButton.disconnect('clicked()', self.onLoadImageFilesButton)
     self.step1_numberOfCalibrationFilmsSpinBox.disconnect('valueChanged(int)', self.onNumberOfCalibrationFilmsSpinBoxValueChanged)
     self.step1_saveCalibrationBatchButton.disconnect('clicked()', self.onSaveCalibrationBatchButton)
@@ -160,6 +160,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_performCalibrationButton.disconnect('clicked()', self.onPerformCalibrationButton)
     self.step2_loadNonDicomDataButton.disconnect('clicked()', self.onLoadImageFilesButton)
     self.step2_showDicomBrowserButton.disconnect('clicked()', self.onDicomLoad)
+    self.step2_experimentalFilmSliceOrientationComboBox.disconnect('currentIndexChanged(QString)', self.onExperimentalFilmSliceOrientationChanged)
+    self.step2_experimentalFilmSlicePositionSpinBox.disconnect('valueChanged(double)', self.onExperimentalFilmSlicePositionChanged)
     self.step2_experimentalFilmSpacingLineEdit.disconnect('textChanged(QString)', self.onExperimentalFilmSpacingChanged)
     self.step2_loadExperimentalDataCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep2_loadExperimentalDataCollapsed)
     self.step3_calibrationFunctionOrder0LineEdit.disconnect('textChanged()', self.onCalibrationFunctionLineEditChanged)
@@ -178,7 +180,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step5_showGammaReportButton.disconnect('clicked()', self.onShowGammaReport)
 
   #------------------------------------------------------------------------------
-  def setup_Step0_LayoutSelection(self):
+  def setupStep0_LayoutSelection(self):
     # Layout selection step
     self.step0_layoutSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step0_layoutSelectionCollapsibleButton.text = "Layout selector"
@@ -197,7 +199,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step0_viewSelectorComboBox.addItem("Four-up plus plot view")
     self.step0_viewSelectorComboBox.addItem("Plot only view")
     self.step0_layoutSelectionCollapsibleButtonLayout.addRow("Layout: ", self.step0_viewSelectorComboBox)
-    self.step0_viewSelectorComboBox.connect('activated(int)', self.onViewSelect)
+    self.step0_viewSelectorComboBox.connect('currentIndexChanged(int)', self.onViewSelect)
 
     # Mode Selector: Radio-buttons
     self.step0_modeSelectorLayout = qt.QGridLayout()
@@ -210,7 +212,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step0_modeSelectorLayout.addWidget(self.step0_preclinicalModeRadioButton, 0, 2)
 
   #------------------------------------------------------------------------------
-  def setup_Step1_Calibration(self):
+  def setupStep1_Calibration(self):
     # Step 1: Load data panel
     self.step1_calibrationCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step1_calibrationCollapsibleButton.text = "1. Calibration (optional)"
@@ -367,14 +369,13 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_calibrationFunctionLabel = qt.QLabel('Optical density to dose calibration function: ')
     self.step1_2_performCalibrationLayout.addWidget(self.step1_calibrationFunctionLabel)
 
-    #TODO:
-    self.blankLabel = qt.QLabel('')
-    self.step1_2_performCalibrationLayout.addWidget(self.blankLabel)
+    self.step1_2_performCalibrationLayout.addWidget(qt.QLabel(''))
+
     # Dose calibration function label
     self.step1_2_performCalibrationFunctionLabel = qt.QLabel(" ")
     self.step1_2_performCalibrationLayout.addWidget(self.step1_2_performCalibrationFunctionLabel)
 
-    self.step1_2_performCalibrationLayout.addWidget(self.blankLabel)
+    self.step1_2_performCalibrationLayout.addWidget(qt.QLabel(''))
 
     # Save calibration function button
     self.step1_saveCalibrationFunctionToFileButton = qt.QPushButton("Save calibration function to file")
@@ -403,7 +404,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_saveCalibrationFunctionToFileButton.connect('clicked()', self.onSaveCalibrationFunctionToFileButton)
 
   #------------------------------------------------------------------------------
-  def setup_Step2_LoadExperimentalData(self):
+  def setupStep2_LoadExperimentalData(self):
   # Step 2: Load data panel
     self.step2_loadExperimentalDataCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step2_loadExperimentalDataCollapsibleButton.text = "2. Load experimental data"
@@ -452,8 +453,31 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Experimental film resolution mm/pixel
     self.step2_experimentalFilmSpacingLineEdit = qt.QLineEdit()
-    self.step2_experimentalFilmSpacingLineEdit.toolTip = "Experimental film resultion (mm/pixel)"
-    self.step2_assignDataLayout.addRow('Experimental Film Resolution (mm/pixel): ', self.step2_experimentalFilmSpacingLineEdit)
+    self.step2_experimentalFilmSpacingLineEdit.toolTip = "Experimental film pixel spacing in mm (isotropic)"
+    self.step2_assignDataLayout.addRow('  Experimental film resolution (mm/pixel): ', self.step2_experimentalFilmSpacingLineEdit)
+
+    # Experimental film slice position
+    self.step2_experimentalFilmSlicePositionWidget = qt.QWidget()
+    self.step2_experimentalFilmSlicePositionSpinBox = qt.QDoubleSpinBox()
+    self.step2_experimentalFilmSlicePositionSpinBox.value = 0.0
+    self.step2_experimentalFilmSlicePositionSpinBox.minimum = -10000.0
+    self.step2_experimentalFilmSlicePositionSpinBox.maximum = 10000.0
+    self.step2_experimentalFilmSlicePositionSpinBox.singleStep = 10.0
+    self.step2_experimentalFilmSliceOrientationLabel = qt.QLabel('mm, orientation: ')
+    self.step2_experimentalFilmSliceOrientationComboBox = qt.QComboBox()
+    self.step2_experimentalFilmSliceOrientationComboBox.addItem(AXIAL)
+    self.step2_experimentalFilmSliceOrientationComboBox.addItem(CORONAL)
+    self.step2_experimentalFilmSliceOrientationComboBox.addItem(SAGITTAL)
+    self.step2_experimentalFilmSlicePositionWidgetLayout = qt.QHBoxLayout(self.step2_experimentalFilmSlicePositionWidget)
+    self.step2_experimentalFilmSlicePositionWidgetLayout.spacing = 4
+    self.step2_experimentalFilmSlicePositionWidgetLayout.margin = 0
+    self.step2_experimentalFilmSlicePositionWidgetLayout.addWidget(self.step2_experimentalFilmSlicePositionSpinBox)
+    self.step2_experimentalFilmSlicePositionWidgetLayout.addWidget(self.step2_experimentalFilmSliceOrientationLabel)
+    self.step2_experimentalFilmSlicePositionWidgetLayout.addWidget(self.step2_experimentalFilmSliceOrientationComboBox)
+    self.step2_assignDataLayout.addRow('  Experimental film slice position: ', self.step2_experimentalFilmSlicePositionWidget)
+    # Set default to CORONAL
+    self.step2_experimentalFilmSliceOrientationComboBox.currentIndex = 1
+    self.onExperimentalFilmSliceOrientationChanged(CORONAL)
 
     # Experimental flood field image selector
     self.step2_floodFieldImageSelectorComboBox = slicer.qMRMLNodeComboBox()
@@ -477,21 +501,16 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     self.step2_loadExperimentalDataCollapsibleButtonLayout.addStretch(1)
 
-    # Enter plane position
-    self.step2_planePositionLabel = qt.QLabel('Plane position :')
-    self.step2_planePositionLineEdit = qt.QLineEdit()
-    self.step2_planePositionQHBoxLayout = qt.QHBoxLayout()
-    self.step2_planePositionQHBoxLayout.addWidget(self.step2_planePositionLabel)
-    self.step2_planePositionQHBoxLayout.addWidget(self.step2_planePositionLineEdit)
-
     # Connections
     self.step2_loadNonDicomDataButton.connect('clicked()', self.onLoadImageFilesButton)
     self.step2_showDicomBrowserButton.connect('clicked()', self.onDicomLoad)
     self.step2_experimentalFilmSpacingLineEdit.connect('textChanged(QString)', self.onExperimentalFilmSpacingChanged)
+    self.step2_experimentalFilmSlicePositionSpinBox.connect('valueChanged(double)', self.onExperimentalFilmSlicePositionChanged)
+    self.step2_experimentalFilmSliceOrientationComboBox.connect('currentIndexChanged(QString)', self.onExperimentalFilmSliceOrientationChanged)
     self.step2_loadExperimentalDataCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_loadExperimentalDataCollapsed)
 
   #------------------------------------------------------------------------------
-  def setup_Step3_ApplyCalibration(self):
+  def setupStep3_ApplyCalibration(self):
   # Step 2: Load data panel
     self.step3_applyCalibrationCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step3_applyCalibrationCollapsibleButton.text = "3. Apply calibration"
@@ -551,7 +570,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_applyCalibrationCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep3_ApplyCalibrationCollapsed)
 
   #------------------------------------------------------------------------------
-  def setup_Step4_Registration(self):
+  def setupStep4_Registration(self):
     # Step 2: Load data panel
     self.step4_registrationCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step4_registrationCollapsibleButton.text = "4. Register film to plan"
@@ -580,7 +599,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step4_performRegistrationButton.connect('clicked()', self.onPerformRegistrationButtonClicked)
 
   #------------------------------------------------------------------------------
-  def setup_Step5_GammaComparison(self):
+  def setupStep5_GammaComparison(self):
     # Step 5: Dose comparison and analysis
     self.step5_doseComparisonCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step5_doseComparisonCollapsibleButton.text = "5. Gamma comparison"
@@ -931,6 +950,15 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.logic.experimentalFilmPixelSpacing = float(self.step2_experimentalFilmSpacingLineEdit.text)
     except ValueError:
       return
+
+  #------------------------------------------------------------------------------
+  def onExperimentalFilmSliceOrientationChanged(self, text):
+    self.logic.experimentalFilmSliceOrientation = text
+
+  #------------------------------------------------------------------------------
+  def onExperimentalFilmSlicePositionChanged(self, position):
+    self.logic.experimentalFilmSlicePosition = position
+
   #------------------------------------------------------------------------------
   def onStep2_loadExperimentalDataCollapsed(self, collapsed):
     if collapsed:
@@ -1027,14 +1055,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
         self.logic.calibrationCoefficients[3] = float(self.step3_calibrationFunctionExponentLineEdit.text)
       except ValueError:
         logging.error("Invalid numeric value for calibration function coefficient 'N' " + self.step3_calibrationFunctionExponentLineEdit.text)
-
-  #------------------------------------------------------------------------------
-  def fitOpticalDensityFunction(self, doseVSOpticalDensityNestedList): #TODO: Unused function!
-    x = [ODEntry[0] for ODEntry in doseVSOpticalDensityNestedList]
-    y = [ODEntry[1] for ODEntry in doseVSOpticalDensityNestedList]
-    self.opticalDensityCurve = numpy.polyfit(x,y,3)
-    opticalDensityToDosePolynomialFunction = numpy.poly1d(self.opticalDensityCurve)
-    return opticalDensityToDosePolynomialFunction
 
   #------------------------------------------------------------------------------
   def createCalibrationCurvesWindow(self):
@@ -1164,8 +1184,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   # Step 4
 
   #------------------------------------------------------------------------------
-  def onPerformRegistrationButtonClicked(self): #TODO:
-    # TODO merge step 2 and step 4
+  def onPerformRegistrationButtonClicked(self):
+    # TODO merge step 2 and step 4?
 
     qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
 
@@ -1186,6 +1206,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   # Step 5
+
+  #------------------------------------------------------------------------------
   def onStep5_DoseComparisonSelected(self, collapsed):
     # Initialize mask segmentation selector to select plan structures
     # self.step5_maskSegmentationSelector.setCurrentNode(self.planStructuresNode)
@@ -1602,7 +1624,9 @@ class FilmDosimetryAnalysisWidget(ScriptedLoadableModuleWidget):
   def onSliceletClosed(self):
     logging.debug('Slicelet closed')
 
-# # ---------------------------------------------------------------------------
+#
+# FilmDosimetryAnalysisTest
+#
 class FilmDosimetryAnalysisTest(ScriptedLoadableModuleTest):
   """
   This is the test case for your scripted module.

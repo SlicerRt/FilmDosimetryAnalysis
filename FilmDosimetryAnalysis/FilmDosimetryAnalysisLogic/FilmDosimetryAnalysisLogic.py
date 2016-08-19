@@ -37,7 +37,8 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     self.experimentalFloodFieldImageNode = None
     self.experimentalFilmImageNode = None 
     self.experimentalFilmPixelSpacing = None
-    self.planDoseSlicePositionAP = 0
+    self.experimentalFilmSliceOrientation = ''
+    self.experimentalFilmSlicePosition = 0
     self.calibratedExperimentalFilmVolumeNode = None
     self.paddedCalibratedExperimentalFilmVolumeNode = None
     self.planDoseVolumeNode = None
@@ -352,11 +353,8 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     paddedCalculatedDoseVolumeArrayGy = numpy.tile(calculatedDoseDoubleArrayGy,self.numberOfSlicesToPad)
     # Convert numpy array to VTK image data
     paddedCalculatedDoseVolumeScalarsGy = numpy_support.numpy_to_vtk(paddedCalculatedDoseVolumeArrayGy,1)
-    # paddedCalculatedDoseVolumeScalarsGyCopy = vtk.vtkDoubleArray()
-    # paddedCalculatedDoseVolumeScalarsGyCopy.DeepCopy(paddedCalculatedDoseVolumeArrayGy)
     paddedCalculatedDoseImageData = vtk.vtkImageData()
     paddedCalculatedDoseImageData.GetPointData().SetScalars(paddedCalculatedDoseVolumeScalarsGy)
-    # paddedCalculatedDoseImageData.GetPointData().SetScalars(paddedCalculatedDoseVolumeScalarsGyCopy)
     paddedCalculatedDoseImageData.SetExtent(experimentalFilmExtent[0],experimentalFilmExtent[1], experimentalFilmExtent[2],experimentalFilmExtent[3], 0,self.numberOfSlicesToPad-1)
     # Create scalar volume node for calibrated film
     self.paddedCalibratedExperimentalFilmVolumeNode = slicer.vtkMRMLScalarVolumeNode()
@@ -368,6 +366,9 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     self.paddedCalibratedExperimentalFilmVolumeNode.SetOrigin(self.experimentalFilmImageNode.GetOrigin())
     self.paddedCalibratedExperimentalFilmVolumeNode.SetSpacing(self.experimentalFilmImageNode.GetSpacing())
     self.paddedCalibratedExperimentalFilmVolumeNode.CopyOrientation(self.experimentalFilmImageNode)
+    # Auto window-level
+    self.paddedCalibratedExperimentalFilmVolumeNode.CreateDefaultDisplayNodes()
+    self.paddedCalibratedExperimentalFilmVolumeNode.GetDisplayNode().AutoWindowLevelOn()
 
     # Show calibrated and original experimental images
     appLogic = slicer.app.applicationLogic()
@@ -429,7 +430,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
   # Step 4
 
   #------------------------------------------------------------------------------
-  def registerExperimentalFilmToPlanDose(self): #TODO:
+  def registerExperimentalFilmToPlanDose(self):
     if self.experimentalFilmPixelSpacing is None:
       return "Invalid mm/pixel resolution for the experimental film must be entered"
 
@@ -440,7 +441,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     self.paddedCalibratedExperimentalFilmVolumeNode.SetSpacing(self.experimentalFilmPixelSpacing, self.experimentalFilmPixelSpacing, self.planDoseVolumeNode.GetSpacing()[1])
     
     # Crop the dose volume by the ROI
-    message = self.cropPlanDoseVolumeToSlice(0) #TODO: Add position entry widgets to UI
+    message = self.cropPlanDoseVolumeToSlice()
     if message != "" or self.croppedPlanDoseSliceVolumeNode is None:
       logging.error("Failed to crop plan dose volume")
       return message
@@ -491,28 +492,31 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     return ""
 
   #------------------------------------------------------------------------------
-  def cropPlanDoseVolumeToSlice(self, slicePositionAP):
+  def cropPlanDoseVolumeToSlice(self):
     if self.planDoseVolumeNode is None:
       message = "No plan dose volume is selected!"
       logging.error(message)
       return message
-
-    self.planDoseSlicePositionAP = slicePositionAP
 
     # Create ROI for cropping dose volume to selected slice
     roiNode = slicer.vtkMRMLAnnotationROINode()
     roiNode.SetName("CropPlanDoseVolumeROI")
     slicer.mrmlScene.AddNode(roiNode)
 
-    #TODO: Support orientations other than AP
-    #      (need to also fix padPlanDoseSliceForRegistration, preAlignCalibratedFilmWithPlanDoseSlice, etc.)
     #TODO: Support non-axis-aligned volumes too
     bounds = [0]*6
     self.planDoseVolumeNode.GetRASBounds(bounds)  
-    doseVolumeCenter = [(bounds[0]+bounds[1])/2, (bounds[2]+bounds[3])/2, (bounds[4]+bounds[5])/2]
-    cropCenter = [doseVolumeCenter[0], slicePositionAP, doseVolumeCenter[2]]
-    doseVolumeDimensionsMm = [abs(bounds[1]-bounds[0])/2, abs(bounds[3]-bounds[2])/2, abs(bounds[5]-bounds[4])/2]
-    cropRadius = [doseVolumeDimensionsMm[0], 0.5*self.planDoseVolumeNode.GetSpacing()[1], doseVolumeDimensionsMm[2]]
+    cropCenter = [(bounds[0]+bounds[1])/2, (bounds[2]+bounds[3])/2, (bounds[4]+bounds[5])/2]
+    cropRadius = [abs(bounds[1]-bounds[0])/2, abs(bounds[3]-bounds[2])/2, abs(bounds[5]-bounds[4])/2]
+    if self.experimentalFilmSliceOrientation == AXIAL:
+      cropCenter[2] = self.experimentalFilmSlicePosition
+      cropRadius[2] = 0.5*self.planDoseVolumeNode.GetSpacing()[2]
+    elif self.experimentalFilmSliceOrientation == CORONAL:
+      cropCenter[1] = self.experimentalFilmSlicePosition
+      cropRadius[1] = 0.5*self.planDoseVolumeNode.GetSpacing()[1]
+    elif self.experimentalFilmSliceOrientation == SAGITTAL:
+      cropCenter[0] = self.experimentalFilmSlicePosition
+      cropRadius[0] = 0.5*self.planDoseVolumeNode.GetSpacing()[0]
     roiNode.SetXYZ(cropCenter)
     roiNode.SetRadiusXYZ(cropRadius)
 
@@ -530,7 +534,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     self.croppedPlanDoseSliceVolumeNode.SetName(croppedPlanDoseVolumeName)
 
     # Delete ROI and parameter nodes
-    #TODO: Comment out only for debugging
+    # Test code - Comment out only for debugging
     slicer.mrmlScene.RemoveNode(roiNode)
     slicer.mrmlScene.RemoveNode(cropVolumeParameterNode)
 
@@ -549,7 +553,12 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
     #TODO: Not sure what this does, need to simplify ...
     croppedPlanDoseArrayList = []
-    croppedPlanDoseArray = croppedPlanDoseArray.reshape(croppedDoseSliceDimensions[2], croppedDoseSliceDimensions[0])
+    if self.experimentalFilmSliceOrientation == AXIAL:
+      croppedPlanDoseArray = croppedPlanDoseArray.reshape(croppedDoseSliceDimensions[1], croppedDoseSliceDimensions[0])
+    elif self.experimentalFilmSliceOrientation == CORONAL:
+      croppedPlanDoseArray = croppedPlanDoseArray.reshape(croppedDoseSliceDimensions[2], croppedDoseSliceDimensions[0])
+    elif self.experimentalFilmSliceOrientation == SAGITTAL:
+      croppedPlanDoseArray = croppedPlanDoseArray.reshape(croppedDoseSliceDimensions[2], croppedDoseSliceDimensions[1])
     for x in xrange(len(croppedPlanDoseArray)):
       croppedPlanDoseArrayList.append(numpy.tile(croppedPlanDoseArray[x],self.numberOfSlicesToPad).tolist())
     croppedPlanDoseArrayList = numpy.asarray(croppedPlanDoseArrayList)
@@ -562,7 +571,14 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     # Set padded scalars into image data
     paddedPlanDoseImageData = vtk.vtkImageData()
     paddedPlanDoseImageData.GetPointData().SetScalars(paddedPlanDoseImageScalars)
-    paddedPlanDoseImageData.SetExtent(0,croppedDoseSliceDimensions[0]-1, 0,self.numberOfSlicesToPad-1, 0,croppedDoseSliceDimensions[2]-1)
+    paddedPlanDoseImageDataExtent = [0,croppedDoseSliceDimensions[0]-1, 0,croppedDoseSliceDimensions[1]-1, 0,croppedDoseSliceDimensions[2]-1]
+    if self.experimentalFilmSliceOrientation == AXIAL:
+      paddedPlanDoseImageDataExtent[5] = self.numberOfSlicesToPad-1
+    elif self.experimentalFilmSliceOrientation == CORONAL:
+      paddedPlanDoseImageDataExtent[3] = self.numberOfSlicesToPad-1
+    elif self.experimentalFilmSliceOrientation == SAGITTAL:
+      paddedPlanDoseImageDataExtent[1] = self.numberOfSlicesToPad-1
+    paddedPlanDoseImageData.SetExtent(paddedPlanDoseImageDataExtent)
 
     # Create padded dose slice volume
     self.paddedPlanDoseSliceVolumeNode = slicer.vtkMRMLScalarVolumeNode()
@@ -587,11 +603,18 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     experimentalFilmPreAlignmentTransformNode.SetName("ExperimentalFilmPreAlignmentTransform")
     slicer.mrmlScene.AddNode(experimentalFilmPreAlignmentTransformNode)
     
-    # Rotate around the LR axis (from axial to coronal orientation)
-    experimentalFilmPreAlignmentTransform.RotateWXYZ(90,[1,0,0])
-    # Rotate around the PA axis
-    #TODO: this may be a 90 or -90 rotation, it is unclear what orientation the films should be in 
-    experimentalFilmPreAlignmentTransform.RotateWXYZ(-90,[0,1,0])
+    if self.experimentalFilmSliceOrientation == CORONAL:
+      # Rotate around the LR axis (from axial to coronal orientation)
+      experimentalFilmPreAlignmentTransform.RotateWXYZ(90,[1,0,0])
+      # Rotate around the PA axis
+      #TODO: this may be a 90 or -90 rotation, it is unclear what orientation the films should be in 
+      experimentalFilmPreAlignmentTransform.RotateWXYZ(-90,[0,1,0])
+    elif self.experimentalFilmSliceOrientation == SAGITTAL:
+      # Rotate around the PA axis (from axial to sagittal orientation)
+      experimentalFilmPreAlignmentTransform.RotateWXYZ(90,[0,1,0])
+      # Rotate around the LR axis
+      #TODO: this may be a 90 or -90 rotation, it is unclear what orientation the films should be in 
+      experimentalFilmPreAlignmentTransform.RotateWXYZ(-90,[1,0,0])
 
     # Transform calibrated and padded experimental films
     experimentalFilmPreAlignmentTransformNode.SetMatrixTransformToParent(experimentalFilmPreAlignmentTransform.GetMatrix())
@@ -617,13 +640,27 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     slicer.vtkSlicerTransformLogic.hardenTransform(self.paddedCalibratedExperimentalFilmVolumeNode)
     self.calibratedExperimentalFilmVolumeNode.SetAndObserveTransformNodeID(experimentalFilmPreAlignmentTransformNode.GetID())
     slicer.vtkSlicerTransformLogic.hardenTransform(self.calibratedExperimentalFilmVolumeNode)
-    # Set AP position for calibrated film to specified slice
-    self.calibratedExperimentalFilmVolumeNode.SetOrigin(self.calibratedExperimentalFilmVolumeNode.GetOrigin()[0], self.planDoseSlicePositionAP, self.calibratedExperimentalFilmVolumeNode.GetOrigin()[2])
+
+    # Set slice position for calibrated film to specified slice
+    if self.experimentalFilmSliceOrientation == AXIAL:
+      self.calibratedExperimentalFilmVolumeNode.SetOrigin(self.calibratedExperimentalFilmVolumeNode.GetOrigin()[0], self.calibratedExperimentalFilmVolumeNode.GetOrigin()[1], self.experimentalFilmSlicePosition)
+    elif self.experimentalFilmSliceOrientation == CORONAL:
+      self.calibratedExperimentalFilmVolumeNode.SetOrigin(self.calibratedExperimentalFilmVolumeNode.GetOrigin()[0], self.experimentalFilmSlicePosition, self.calibratedExperimentalFilmVolumeNode.GetOrigin()[2])
+    elif self.experimentalFilmSliceOrientation == SAGITTAL:
+      self.calibratedExperimentalFilmVolumeNode.SetOrigin(self.experimentalFilmSlicePosition, self.calibratedExperimentalFilmVolumeNode.GetOrigin()[1], self.calibratedExperimentalFilmVolumeNode.GetOrigin()[2])
 
     slicer.mrmlScene.RemoveNode(experimentalFilmPreAlignmentTransformNode)
 
     return ""
 
+
+
+#
+# Constants
+#
+AXIAL = 'Axial'
+CORONAL = 'Coronal'
+SAGITTAL = 'Sagittal'
 
 
 
