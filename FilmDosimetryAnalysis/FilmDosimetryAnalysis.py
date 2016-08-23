@@ -970,9 +970,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   def saveExperimentalDataSelection(self):
-    self.logic.experimentalFloodFieldImageNode = self.step2_floodFieldImageSelectorComboBox.currentNode()
-    self.logic.experimentalFilmImageNode = self.step2_experimentalFilmSelectorComboBox.currentNode()
+    self.logic.experimentalFloodFieldVolumeNode = self.step2_floodFieldImageSelectorComboBox.currentNode()
+    self.logic.experimentalFilmVolumeNode = self.step2_experimentalFilmSelectorComboBox.currentNode()
     self.logic.planDoseVolumeNode = self.step2_planDoseVolumeSelector.currentNode()
+    
+    return self.logic.experimentalFloodFieldVolumeNode is not None and self.logic.experimentalFilmVolumeNode is not None and self.logic.planDoseVolumeNode is not None
 
   #------------------------------------------------------------------------------
   # Step 3
@@ -982,8 +984,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     if not collapsed:
       appLogic = slicer.app.applicationLogic()
       selectionNode = appLogic.GetSelectionNode()
-      if self.logic.experimentalFilmImageNode is not None:
-        selectionNode.SetActiveVolumeID(self.logic.experimentalFilmImageNode.GetID())
+      if self.logic.experimentalFilmVolumeNode is not None:
+        selectionNode.SetActiveVolumeID(self.logic.experimentalFilmVolumeNode.GetID())
       else:
         selectionNode.SetActiveVolumeID(None)
       selectionNode.SetSecondaryVolumeID(None)
@@ -1302,6 +1304,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       gammaParameterSetNode.SetAndObserveMaskSegmentationNode(self.logic.maskSegmentationNode)
       if self.logic.maskSegmentID is not None and self.logic.maskSegmentID != '':
         gammaParameterSetNode.SetMaskSegmentID(self.logic.maskSegmentID)
+      else:
+        gammaParameterSetNode.SetMaskSegmentID(None)
       gammaParameterSetNode.SetAndObserveGammaVolumeNode(self.logic.gammaVolumeNode)
       gammaParameterSetNode.SetDtaDistanceToleranceMm(self.step5_dtaDistanceToleranceMmSpinBox.value)
       gammaParameterSetNode.SetDoseDifferenceTolerancePercent(self.step5_doseDifferenceTolerancePercentSpinBox.value)
@@ -1513,7 +1517,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     #
     # Load calibration batch
     success = slicer.util.loadScene(calibrationBatchMrmlSceneFilePath)
-
+    print("Batch loaded successfully: " + str(success))
+    
     #TODO: Test perform calibration too
     
     # Step 2
@@ -1521,19 +1526,23 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Load experimental film and set spacing
     slicer.util.loadVolume(experimentalFilmFilePath)
     self.step2_experimentalFilmSpacingLineEdit.text = experimentalFilmSpacing
+    print("Experimental film loaded")
 
-    # Load pan dose from DICOM
+    # Load plan dose from DICOM
     dicomRtPluginInstance = slicer.modules.dicomPlugins['DicomRtImportExportPlugin']()
     loadables = dicomRtPluginInstance.examineForImport([[planDoseVolumeFilePath]])
     dicomRtPluginInstance.load(loadables[0])
     self.logic.setAutoWindowLevelToAllDoseVolumes()
+    print("DICOM loaded")
     
     # Assign roles
     self.step2_floodFieldImageSelectorComboBox.setCurrentNode(slicer.util.getNode(floodFieldImageNodeName))
     self.step2_experimentalFilmSelectorComboBox.setCurrentNode(slicer.util.getNode(experimentalFilmNodeName))
     self.step2_planDoseVolumeSelector.setCurrentNode(slicer.util.getNode(planDoseVolumeNodeName))
     
-    self.saveExperimentalDataSelection()
+    if not self.saveExperimentalDataSelection():
+      logging.error("Experimental data selection invalid!")
+      return
 
     # Step 3
     #
