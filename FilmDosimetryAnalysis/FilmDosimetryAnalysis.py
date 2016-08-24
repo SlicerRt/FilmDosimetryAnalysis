@@ -90,6 +90,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_applyCalibrationCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step4_registrationCollapsibleButton = ctk.ctkCollapsibleButton()
     self.step5_doseComparisonCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.stepT1_lineProfileCollapsibleButton = ctk.ctkCollapsibleButton()
     self.testButton = ctk.ctkCollapsibleButton()
 
     self.collapsibleButtonsGroup = qt.QButtonGroup()
@@ -99,6 +100,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.collapsibleButtonsGroup.addButton(self.step3_applyCalibrationCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step4_registrationCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step5_doseComparisonCollapsibleButton)   
+    self.collapsibleButtonsGroup.addButton(self.stepT1_lineProfileCollapsibleButton)
 
     self.collapsibleButtonsGroup.addButton(self.testButton)
 
@@ -135,12 +137,13 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.sliceAnnotations.updateSliceViewFromGUI()
 
     # Set up step panels
-    self.setupStep0_LayoutSelection()
-    self.setupStep1_Calibration()
-    self.setupStep2_LoadExperimentalData()
-    self.setupStep3_ApplyCalibration()
-    self.setupStep4_Registration()
-    self.setupStep5_GammaComparison()
+    self.setup_Step0_LayoutSelection()
+    self.setup_Step1_Calibration()
+    self.setup_Step2_LoadExperimentalData()
+    self.setup_Step3_ApplyCalibration()
+    self.setup_Step4_Registration()
+    self.setup_Step5_GammaComparison()
+    self.setup_StepT1_lineProfileCollapsibleButton()
 
     if widgetClass:
       self.widget = widgetClass(self.parent)
@@ -178,9 +181,13 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step5_referenceDoseUseMaximumDoseRadioButton.disconnect('toggled(bool)', self.onUseMaximumDoseRadioButtonToggled)
     self.step5_computeGammaButton.disconnect('clicked()', self.onGammaDoseComparison)
     self.step5_showGammaReportButton.disconnect('clicked()', self.onShowGammaReport)
+    self.stepT1_lineProfileCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStepT1_LineProfileSelected)
+    self.stepT1_createLineProfileButton.disconnect('clicked(bool)', self.onCreateLineProfileButton)
+    self.stepT1_inputRulerSelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
+    self.stepT1_exportLineProfilesToCSV.disconnect('clicked()', self.onExportLineProfiles)
 
   #------------------------------------------------------------------------------
-  def setupStep0_LayoutSelection(self):
+  def setup_Step0_LayoutSelection(self):
     # Layout selection step
     self.step0_layoutSelectionCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step0_layoutSelectionCollapsibleButton.text = "Layout selector"
@@ -212,7 +219,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step0_modeSelectorLayout.addWidget(self.step0_preclinicalModeRadioButton, 0, 2)
 
   #------------------------------------------------------------------------------
-  def setupStep1_Calibration(self):
+  def setup_Step1_Calibration(self):
     # Step 1: Load data panel
     self.step1_calibrationCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step1_calibrationCollapsibleButton.text = "1. Calibration (optional)"
@@ -404,7 +411,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_saveCalibrationFunctionToFileButton.connect('clicked()', self.onSaveCalibrationFunctionToFileButton)
 
   #------------------------------------------------------------------------------
-  def setupStep2_LoadExperimentalData(self):
+  def setup_Step2_LoadExperimentalData(self):
   # Step 2: Load data panel
     self.step2_loadExperimentalDataCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step2_loadExperimentalDataCollapsibleButton.text = "2. Load experimental data"
@@ -510,7 +517,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step2_loadExperimentalDataCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep2_loadExperimentalDataCollapsed)
 
   #------------------------------------------------------------------------------
-  def setupStep3_ApplyCalibration(self):
+  def setup_Step3_ApplyCalibration(self):
   # Step 2: Load data panel
     self.step3_applyCalibrationCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step3_applyCalibrationCollapsibleButton.text = "3. Apply calibration"
@@ -570,7 +577,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_applyCalibrationCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep3_ApplyCalibrationCollapsed)
 
   #------------------------------------------------------------------------------
-  def setupStep4_Registration(self):
+  def setup_Step4_Registration(self):
     # Step 2: Load data panel
     self.step4_registrationCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step4_registrationCollapsibleButton.text = "4. Register film to plan"
@@ -599,7 +606,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step4_performRegistrationButton.connect('clicked()', self.onPerformRegistrationButtonClicked)
 
   #------------------------------------------------------------------------------
-  def setupStep5_GammaComparison(self):
+  def setup_Step5_GammaComparison(self):
     # Step 5: Dose comparison and analysis
     self.step5_doseComparisonCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step5_doseComparisonCollapsibleButton.text = "5. Gamma comparison"
@@ -720,7 +727,68 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step5_computeGammaButton.connect('clicked()', self.onGammaDoseComparison)
     self.step5_showGammaReportButton.connect('clicked()', self.onShowGammaReport)
     
+  def setup_StepT1_lineProfileCollapsibleButton(self):
+    # Step T1: Line profile tool
+    self.stepT1_lineProfileCollapsibleButton.setProperty('collapsedHeight', 4)
+    self.stepT1_lineProfileCollapsibleButton.text = "Tool: Line profile"
+    self.sliceletPanelLayout.addWidget(self.stepT1_lineProfileCollapsibleButton)
+    self.stepT1_lineProfileCollapsibleButtonLayout = qt.QFormLayout(self.stepT1_lineProfileCollapsibleButton)
+    self.stepT1_lineProfileCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
+    self.stepT1_lineProfileCollapsibleButtonLayout.setSpacing(4)
     
+    # Ruler creator
+    self.stepT1_rulerCreationButton = slicer.qSlicerMouseModeToolBar()
+    self.stepT1_rulerCreationButton.setApplicationLogic(slicer.app.applicationLogic())
+    self.stepT1_rulerCreationButton.setMRMLScene(slicer.app.mrmlScene())
+    self.stepT1_rulerCreationButton.setToolTip( "Create ruler (line segment) for line profile" )
+    self.stepT1_lineProfileCollapsibleButtonLayout.addRow("Create ruler: ", self.stepT1_rulerCreationButton)
+
+    # Input ruler selector
+    self.stepT1_inputRulerSelector = slicer.qMRMLNodeComboBox()
+    self.stepT1_inputRulerSelector.nodeTypes = ["vtkMRMLAnnotationRulerNode"]
+    self.stepT1_inputRulerSelector.selectNodeUponCreation = True
+    self.stepT1_inputRulerSelector.addEnabled = False
+    self.stepT1_inputRulerSelector.removeEnabled = False
+    self.stepT1_inputRulerSelector.noneEnabled = False
+    self.stepT1_inputRulerSelector.showHidden = False
+    self.stepT1_inputRulerSelector.showChildNodeTypes = False
+    self.stepT1_inputRulerSelector.setMRMLScene( slicer.mrmlScene )
+    self.stepT1_inputRulerSelector.setToolTip( "Pick the ruler that defines the sampling line." )
+    self.stepT1_lineProfileCollapsibleButtonLayout.addRow("Input ruler: ", self.stepT1_inputRulerSelector)
+
+    # Line sampling resolution in mm
+    self.stepT1_lineResolutionMmSliderWidget = ctk.ctkSliderWidget()
+    self.stepT1_lineResolutionMmSliderWidget.decimals = 1
+    self.stepT1_lineResolutionMmSliderWidget.singleStep = 0.1
+    self.stepT1_lineResolutionMmSliderWidget.minimum = 0.1
+    self.stepT1_lineResolutionMmSliderWidget.maximum = 2
+    self.stepT1_lineResolutionMmSliderWidget.value = 0.5
+    self.stepT1_lineResolutionMmSliderWidget.setToolTip("Sampling density along the line in mm")
+    self.stepT1_lineProfileCollapsibleButtonLayout.addRow("Line resolution (mm): ", self.stepT1_lineResolutionMmSliderWidget)
+
+    # Create line profile button
+    self.stepT1_createLineProfileButton = qt.QPushButton("Create line profile")
+    self.stepT1_createLineProfileButton.toolTip = "Compute and show line profile"
+    self.stepT1_createLineProfileButton.enabled = False
+    self.stepT1_lineProfileCollapsibleButtonLayout.addRow(self.stepT1_createLineProfileButton)
+    self.onSelectLineProfileParameters()
+
+    # Export line profiles to CSV button
+    self.stepT1_exportLineProfilesToCSV = qt.QPushButton("Export line profiles to CSV")
+    self.stepT1_exportLineProfilesToCSV.toolTip = "Export calculated line profiles to CSV"
+    self.stepT1_lineProfileCollapsibleButtonLayout.addRow(self.stepT1_exportLineProfilesToCSV)
+
+    # Hint label
+    self.stepT1_lineProfileCollapsibleButtonLayout.addRow(' ', None)
+    self.stepT1_lineProfileHintLabel = qt.QLabel("Hint: Full screen plot view is available in the layout selector tab (top one)")
+    self.stepT1_lineProfileCollapsibleButtonLayout.addRow(self.stepT1_lineProfileHintLabel)
+
+    # Connections
+    self.stepT1_lineProfileCollapsibleButton.connect('contentsCollapsed(bool)', self.onStepT1_LineProfileSelected)
+    self.stepT1_createLineProfileButton.connect('clicked(bool)', self.onCreateLineProfileButton)
+    self.stepT1_inputRulerSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
+    self.stepT1_exportLineProfilesToCSV.connect('clicked()', self.onExportLineProfiles)
+
   #
   # -----------------------
   # Event handler functions
@@ -1414,11 +1482,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     else:
       self.onViewSelect(self.currentLayoutIndex)
 
-    # Show dose volumes
-    if self.planDoseVolumeNode:
-      selectionNode.SetActiveVolumeID(self.planDoseVolumeNode.GetID())
-    if self.calibratedMeasuredVolumeNode:
-      selectionNode.SetSecondaryVolumeID(self.calibratedMeasuredVolumeNode.GetID())
+    # Show volumes
+    if self.logic.croppedPlanDoseSliceVolumeNode:
+      selectionNode.SetActiveVolumeID(self.logic.croppedPlanDoseSliceVolumeNode.GetID())
+    if self.logic.calibratedExperimentalFilmVolumeNode:
+      selectionNode.SetSecondaryVolumeID(self.logic.calibratedExperimentalFilmVolumeNode.GetID())
     appLogic = slicer.app.applicationLogic()
     appLogic.PropagateVolumeSelection()
 
@@ -1428,30 +1496,30 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     if not hasattr(self, 'planDoseLineProfileArrayNode'):
       self.planDoseLineProfileArrayNode = slicer.vtkMRMLDoubleArrayNode()
       slicer.mrmlScene.AddNode(self.planDoseLineProfileArrayNode)
-    if not hasattr(self, 'calibratedMeasuredDoseLineProfileArrayNode'):
-      self.calibratedMeasuredDoseLineProfileArrayNode = slicer.vtkMRMLDoubleArrayNode()
-      slicer.mrmlScene.AddNode(self.calibratedMeasuredDoseLineProfileArrayNode)
-    if self.gammaVolumeNode and not hasattr(self, 'gammaLineProfileArrayNode'):
+    if not hasattr(self, 'calibratedExperimentalFilmLineProfileArrayNode'):
+      self.calibratedExperimentalFilmLineProfileArrayNode = slicer.vtkMRMLDoubleArrayNode()
+      slicer.mrmlScene.AddNode(self.calibratedExperimentalFilmLineProfileArrayNode)
+    if self.logic.gammaVolumeNode and not hasattr(self, 'gammaLineProfileArrayNode'):
       self.gammaLineProfileArrayNode = slicer.vtkMRMLDoubleArrayNode()
       slicer.mrmlScene.AddNode(self.gammaLineProfileArrayNode)
 
-    lineProfileLogic = GelDosimetryAnalysisLogic.LineProfileLogic()
+    lineProfileLogic = LineProfileLogic()
     lineResolutionMm = float(self.stepT1_lineResolutionMmSliderWidget.value)
     selectedRuler = self.stepT1_inputRulerSelector.currentNode()
     rulerLengthMm = lineProfileLogic.computeRulerLength(selectedRuler)
     numberOfLineSamples = int( (rulerLengthMm / lineResolutionMm) + 0.5 )
 
     # Get number of samples based on selected sampling density
-    if self.planDoseVolumeNode:
-      lineProfileLogic.run(self.planDoseVolumeNode, selectedRuler, self.planDoseLineProfileArrayNode, numberOfLineSamples)
-    if self.calibratedMeasuredVolumeNode:
-      lineProfileLogic.run(self.calibratedMeasuredVolumeNode, selectedRuler, self.calibratedMeasuredDoseLineProfileArrayNode, numberOfLineSamples)
-    if self.gammaVolumeNode:
-      lineProfileLogic.run(self.gammaVolumeNode, selectedRuler, self.gammaLineProfileArrayNode, numberOfLineSamples)
+    if self.logic.croppedPlanDoseSliceVolumeNode:
+      lineProfileLogic.run(self.logic.croppedPlanDoseSliceVolumeNode, selectedRuler, self.planDoseLineProfileArrayNode, numberOfLineSamples)
+    if self.logic.calibratedExperimentalFilmVolumeNode:
+      lineProfileLogic.run(self.logic.calibratedExperimentalFilmVolumeNode, selectedRuler, self.calibratedExperimentalFilmLineProfileArrayNode, numberOfLineSamples)
+    if self.logic.gammaVolumeNode:
+      lineProfileLogic.run(self.logic.gammaVolumeNode, selectedRuler, self.gammaLineProfileArrayNode, numberOfLineSamples)
 
   #------------------------------------------------------------------------------
   def onSelectLineProfileParameters(self):
-    self.stepT1_createLineProfileButton.enabled = self.planDoseVolumeNode and self.measuredVolumeNode and self.stepT1_inputRulerSelector.currentNode()
+    self.stepT1_createLineProfileButton.enabled = self.logic.croppedPlanDoseSliceVolumeNode and self.logic.calibratedExperimentalFilmVolumeNode and self.stepT1_inputRulerSelector.currentNode()
 
   #------------------------------------------------------------------------------
   def onExportLineProfiles(self):
@@ -1461,7 +1529,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.outputDir = slicer.app.temporaryPath + '/FilmDosimetry'
     if not os.access(self.outputDir, os.F_OK):
       os.mkdir(self.outputDir)
-    if not hasattr(self, 'planDoseLineProfileArrayNode') and not hasattr(self, 'calibratedMeasuredDoseLineProfileArrayNode'):
+    if not hasattr(self, 'planDoseLineProfileArrayNode') and not hasattr(self, 'calibratedExperimentalFilmLineProfileArrayNode'):
       return 'Dose line profiles not computed yet!\nClick Create line profile\n'
 
     # Assemble file name for calibration curve points file
@@ -1473,13 +1541,13 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       csvWriter = csv.writer(fp, delimiter=',', lineterminator='\n')
 
       planDoseLineProfileArray = self.planDoseLineProfileArrayNode.GetArray()
-      calibratedDoseLineProfileArray = self.calibratedMeasuredDoseLineProfileArrayNode.GetArray()
+      calibratedDoseLineProfileArray = self.calibratedExperimentalFilmLineProfileArrayNode.GetArray()
       gammaLineProfileArray = None
       if hasattr(self, 'gammaLineProfileArrayNode'):
-        data = [['PlanDose','CalibratedMeasuredDose','Gamma']]
+        data = [['PlanDose','CalibratedExperimentalFilmDose','Gamma']]
         gammaLineProfileArray = self.gammaLineProfileArrayNode.GetArray()
       else:
-        data = [['PlanDose','CalibratedMeasuredDose']]
+        data = [['PlanDose','CalibratedExperimentalFilmDose']]
 
       numOfSamples = planDoseLineProfileArray.GetNumberOfTuples()
       for index in xrange(numOfSamples):
@@ -1504,7 +1572,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   #
   def onSelfTestButtonClicked(self):
     # Test data
-    calibrationBatchMrmlSceneFilePath = "d:/images/RT/20160624_FilmDosimetry_TestDataset/Batch/20160804_221203__CalibrationBatchScene.mrml"
+    calibrationBatchMrmlSceneFilePath = "d:/images/RT/20160624_FilmDosimetry_TestDataset/Batch/20160804_221203_CalibrationBatchScene.mrml"
     experimentalFilmFilePath = 'd:/images/RT/20160624_FilmDosimetry_TestDataset/20160624_FSRTFilms/experiment.png'
     experimentalFilmSpacing = 0.426
     planDoseVolumeFilePath = "d:/images/RT/20160624_FilmDosimetry_TestDataset/RD.PYPHANTOMTEST_.dcm"
