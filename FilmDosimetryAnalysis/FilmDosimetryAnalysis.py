@@ -8,7 +8,7 @@ import DataProbeLib
 from slicer.util import VTKObservationMixin
 from vtk.util import numpy_support
 import glob
-
+from collections import OrderedDict
 
 #
 # Film dosimetry analysis slicelet
@@ -185,6 +185,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.stepT1_createLineProfileButton.disconnect('clicked(bool)', self.onCreateLineProfileButton)
     self.stepT1_inputRulerSelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
     self.stepT1_exportLineProfilesToCSV.disconnect('clicked()', self.onExportLineProfiles)
+
+    # Remove scene observations
+    self.removeObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
+    self.removeObserver(slicer.mrmlScene, slicer.vtkMRMLScene.EndImportEvent, self.onSceneEndImport)
 
   #------------------------------------------------------------------------------
   def setup_Step0_LayoutSelection(self):
@@ -869,7 +873,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   def collectCalibrationFilms(self):
-    calibrationDoseToVolumeNodeMap = {}
+    calibrationDoseToVolumeNodeMap = OrderedDict()
     for currentCalibrationVolumeIndex in xrange(self.step1_numberOfCalibrationFilmsSpinBox.value):
       currentCalibrationVolumeNode = self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationVolumeIndex].currentNode()
       currentCalibrationDose = self.step1_calibrationVolumeSelectorCGySpinBoxList[currentCalibrationVolumeIndex].value
@@ -1060,11 +1064,43 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       appLogic.PropagateVolumeSelection()
 
   #------------------------------------------------------------------------------
+  def containsRgbImage(self, input):
+    # Input can be dictionary or node
+    import types
+    if type(input) is OrderedDict:
+      for node in input.values():
+        if node.IsA('vtkMRMLVectorVolumeNode'):
+          return True
+      return False
+    else:
+      try:
+        return input.IsA('vtkMRMLVectorVolumeNode')
+      except (AttributeError, TypeError) as e:
+        return False
+  
+  #------------------------------------------------------------------------------
   def onPerformCalibrationButton(self):
     # Get flood field image node
     floodFieldImageVolumeNode = self.step1_floodFieldImageSelectorComboBox.currentNode()
     # Collect calibration doses and volumes
     calibrationDoseToVolumeNodeMap = self.collectCalibrationFilms()
+
+    # Check if the images are RGB and extract red channel if so
+    if self.containsRgbImage(calibrationDoseToVolumeNodeMap):
+      qt.QMessageBox.information(None, "RGB images detected" , "Loaded data contain RGB images, which are not yet supported.\n\nRed channel will be extracted from those images.")
+      # Extract red channel from all calibration images
+      calibrationDoseToVolumeNodeMap = self.logic.extractRedChannel(calibrationDoseToVolumeNodeMap)
+      # Re-populate comboboxes with new nodes
+      for currentCalibrationVolumeIndex in xrange(self.step1_numberOfCalibrationFilmsSpinBox.value):
+        currentCalibrationDose = self.step1_calibrationVolumeSelectorCGySpinBoxList[currentCalibrationVolumeIndex].value
+        newCurrentCalibrationVolumeNode = calibrationDoseToVolumeNodeMap[currentCalibrationDose]
+        self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationVolumeIndex].setCurrentNode(newCurrentCalibrationVolumeNode)
+
+      # Extract red channel from flood field image
+      floodFieldImageVolumeNode = self.step1_floodFieldImageSelectorComboBox.currentNode()
+      newFloodFieldImageVolumeNode = self.logic.extractRedChannel(floodFieldImageVolumeNode)
+      self.step1_floodFieldImageSelectorComboBox.setCurrentNode(newFloodFieldImageVolumeNode)
+      floodFieldImageVolumeNode = newFloodFieldImageVolumeNode
 
     # Show wait cursor while processing
     qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
@@ -1236,6 +1272,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   def onApplyCalibrationButton(self):
+    # Check if the experimental image is RGB and extract red channel if so
+    if self.containsRgbImage(self.logic.experimentalFloodFieldVolumeNode) or self.containsRgbImage(self.logic.experimentalFilmVolumeNode):
+      qt.QMessageBox.information(None, "RGB image detected" , "Experimental data contain RGB images, which are not yet supported.\n\nRed channel will be extracted from those images.")
+      self.logic.experimentalFloodFieldVolumeNode = self.logic.extractRedChannel(self.logic.experimentalFloodFieldVolumeNode)
+      self.logic.experimentalFilmVolumeNode = self.logic.extractRedChannel(self.logic.experimentalFilmVolumeNode)
+
     # Show wait cursor while processing
     qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
 

@@ -9,6 +9,7 @@ import SimpleITK as sitk
 import shutil
 import ntpath
 import math
+from collections import OrderedDict
 
 #
 # FilmDosimetryAnalysisLogic
@@ -98,6 +99,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     # Copy both image and SH to exported scene
     exportFloodFieldImageVolumeNode = calibrationBatchMrmlScene.CopyNode(floodFieldImageVolumeNode)
     exportFloodFieldVolumeShNode = calibrationBatchMrmlScene.CopyNode(floodFieldVolumeShNode)
+    exportFloodFieldVolumeShNode.SetAssociatedNodeID(exportFloodFieldImageVolumeNode.GetID())
     exportFloodFieldVolumeShNode.SetParentNodeID(exportFolderNode.GetID())
     # Storage node
     floodFieldStorageNode = floodFieldImageVolumeNode.GetStorageNode()
@@ -115,7 +117,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
     #
     # Calibration films
-    for currentCalibrationDose in calibrationDoseToVolumeNodeMap.keys():
+    for currentCalibrationDose in calibrationDoseToVolumeNodeMap:
       # Get current calibration image node
       currentCalibrationVolumeNode = calibrationDoseToVolumeNodeMap[currentCalibrationDose]
       # Create calibration image subject hierarchy node, add it under folder node
@@ -124,6 +126,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       # Copy both image and SH to exported scene
       exportCalibrationImageVolumeNode = calibrationBatchMrmlScene.CopyNode(currentCalibrationVolumeNode)
       exportCalibrationVolumeShNode = calibrationBatchMrmlScene.CopyNode(calibrationVolumeShNode)
+      exportCalibrationVolumeShNode.SetAssociatedNodeID(exportCalibrationImageVolumeNode.GetID())
       exportCalibrationVolumeShNode.SetParentNodeID(exportFolderNode.GetID())
       # Storage node
       calibrationStorageNode = currentCalibrationVolumeNode.GetStorageNode()
@@ -150,6 +153,45 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
     calibrationBatchMrmlScene.Clear(1)
     return ""
+
+  #------------------------------------------------------------------------------
+  def extractRedChannelScalarVolumeFromVectorVolume(self, vectorVolumeNode):
+    if vectorVolumeNode is None or not vectorVolumeNode.IsA('vtkMRMLVectorVolumeNode'):
+      return vectorVolumeNode
+
+    # Create single-channel volume
+    scalarVolumeNode = slicer.vtkMRMLScalarVolumeNode()
+    scalarVolumeNode.SetName(vectorVolumeNode.GetName() + "_Red")
+    slicer.mrmlScene.AddNode(scalarVolumeNode)
+
+    # Exchange RGB image for single-channel image in subject hierarchy
+    shNode = slicer.vtkMRMLSubjectHierarchyNode.GetAssociatedSubjectHierarchyNode(vectorVolumeNode)
+    if shNode:
+      shNode.SetAssociatedNodeID(scalarVolumeNode.GetID())
+
+    # Setup channel extraction
+    extract = vtk.vtkImageExtractComponents()
+    extract.SetComponents(0) # Red
+    extract.SetInputConnection(vectorVolumeNode.GetImageDataConnection())
+    # Set single channel image to volume node
+    extract.Update()
+    scalarVolumeNode.SetAndObserveImageData(extract.GetOutput())
+    # Remove RGB image from scene
+    slicer.mrmlScene.RemoveNode(vectorVolumeNode)
+
+    return scalarVolumeNode
+
+  #------------------------------------------------------------------------------
+  def extractRedChannel(self, input):
+    # Input can be dictionary or node
+    import types
+    if type(input) is OrderedDict:
+      newDictionary = {}
+      for dose in input:
+        newDictionary[dose] = self.extractRedChannelScalarVolumeFromVectorVolume(input[dose])
+      return newDictionary
+    else:
+      return self.extractRedChannelScalarVolumeFromVectorVolume(input)
 
   #------------------------------------------------------------------------------
   def findBestFittingCalibrationFunctionCoefficients(self):
@@ -236,7 +278,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
     #TODO check this OD calculation
 
-    for currentCalibrationDose in calibrationDoseToVolumeNodeMap.keys():
+    for currentCalibrationDose in calibrationDoseToVolumeNodeMap:
       # Get current calibration image node
       currentCalibrationVolumeNode = calibrationDoseToVolumeNodeMap[currentCalibrationDose]
 
