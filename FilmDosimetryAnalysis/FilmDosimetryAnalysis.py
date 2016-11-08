@@ -125,6 +125,14 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     for compositeNode in compositeNodes.values():
       compositeNode.SetSliceIntersectionVisibility(1)
 
+    # Make sure subject hierarchy auto-creation is on
+    try:
+      subjectHierarchyWidget = slicer.modules.subjecthierarchy.widgetRepresentation()
+      subjectHierarchyPluginLogic = subjectHierarchyWidget.pluginLogic()
+      subjectHierarchyPluginLogic.autoCreateSubjectHierarchy = True
+    except Exception, e:
+      logging.error('Failed to activate subject hierarchy')
+
     # Add layout widget
     self.layoutWidget = slicer.qMRMLLayoutWidget()
     self.layoutWidget.setMRMLScene(slicer.mrmlScene)
