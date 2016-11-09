@@ -65,6 +65,16 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
           currentVolumeNode.GetDisplayNode().AutoWindowLevelOn()
       currentVolumeNode = slicer.mrmlScene.GetNextNodeByClass("vtkMRMLScalarVolumeNode")
 
+  # ---------------------------------------------------------------------------
+  def setSliceOutlineOnlyForAllSegmentations(self):
+    slicer.mrmlScene.InitTraversal()
+    currentSegmentationNode = slicer.mrmlScene.GetNextNodeByClass("vtkMRMLSegmentationNode")
+    while currentSegmentationNode:
+      if currentSegmentationNode.GetDisplayNode() is not None:
+        currentSegmentationNode.GetDisplayNode().SetVisibility2DFill(False)
+        currentSegmentationNode.GetDisplayNode().SetVisibility2DOutline(True)
+      currentSegmentationNode = slicer.mrmlScene.GetNextNodeByClass("vtkMRMLSegmentationNode")
+      
   #------------------------------------------------------------------------------
   # Step 1
 
@@ -176,7 +186,12 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     extract.SetInputConnection(vectorVolumeNode.GetImageDataConnection())
     # Set single channel image to volume node
     extract.Update()
+
     scalarVolumeNode.SetAndObserveImageData(extract.GetOutput())
+    scalarVolumeNode.SetOrigin(vectorVolumeNode.GetOrigin())
+    scalarVolumeNode.SetSpacing(vectorVolumeNode.GetSpacing())
+    scalarVolumeNode.CopyOrientation(vectorVolumeNode)
+
     # Remove RGB image from scene
     slicer.mrmlScene.RemoveNode(vectorVolumeNode)
 
@@ -708,6 +723,10 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     experimentalFilmPreAlignmentTransformNode = slicer.vtkMRMLLinearTransformNode()
     experimentalFilmPreAlignmentTransformNode.SetName("ExperimentalFilmPreAlignmentTransform")
     slicer.mrmlScene.AddNode(experimentalFilmPreAlignmentTransformNode)
+
+    # Flip film image in LR direction.
+    #TODO: This may be an option in the future. Hard-coded now because the test data has this flip
+    experimentalFilmPreAlignmentTransform.Scale(-1, 1, 1)
 
     # Image orientation is 90 degrees rotated after loading
     if self.experimentalFilmSliceOrientation == AXIAL:

@@ -80,8 +80,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.selfTestButton = qt.QPushButton("Run self-test")
     self.sliceletPanelLayout.addWidget(self.selfTestButton)
     self.selfTestButton.connect('clicked()', self.onSelfTestButtonClicked)
-    if not developerMode:
-      self.selfTestButton.setVisible(False)
+    self.selfTestButton.setVisible(developerMode)
 
     # Initiate and group together all panels
     self.step0_layoutSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
@@ -153,6 +152,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.setup_Step5_GammaComparison()
     self.setup_StepT1_lineProfileCollapsibleButton()
 
+    # Set minimum width to the maximum of the size hints to prevent jumping of the left panel which causes a possibly lengthy update of the views layout
+    maximumSectionSizeHintWidth = max(self.step0_layoutSelectionCollapsibleButton.sizeHint.width(), self.step1_calibrationCollapsibleButton.sizeHint.width(), self.step2_loadExperimentalDataCollapsibleButton.sizeHint.width(), self.step3_applyCalibrationCollapsibleButton.sizeHint.width(), self.step4_registrationCollapsibleButton.sizeHint.width(), self.step5_doseComparisonCollapsibleButton.sizeHint.width())
+    self.sliceletPanel.setMinimumWidth(maximumSectionSizeHintWidth)
+
     if widgetClass:
       self.widget = widgetClass(self.parent)
     self.parent.show()
@@ -168,6 +171,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_loadCalibrationBatchButton.disconnect('clicked()', self.onLoadCalibrationBatchButton)
     self.step1_saveCalibrationFunctionToFileButton.disconnect('clicked()', self.onSaveCalibrationFunctionToFileButton)
     self.step1_addRoiButton.disconnect('clicked()', self.onAddRoiButton)
+    self.step1_calibrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep1_calibrationCollapsed)
+    self.step1_2_performCalibrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep1_2_performCalibrationCollapsed)
     self.step1_performCalibrationButton.disconnect('clicked()', self.onPerformCalibrationButton)
     self.step2_loadNonDicomDataButton.disconnect('clicked()', self.onLoadImageFilesButton)
     self.step2_showDicomBrowserButton.disconnect('clicked()', self.onDicomLoad)
@@ -183,13 +188,13 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_loadCalibrationButton.disconnect('clicked()', self.onLoadCalibrationFunctionFromFileButton)
     self.step3_applyCalibrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep3_ApplyCalibrationCollapsed)
     self.step4_performRegistrationButton.disconnect('clicked()', self.onPerformRegistrationButtonClicked)
-    self.step5_doseComparisonCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep5_DoseComparisonSelected)
+    self.step5_doseComparisonCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep5_DoseComparisonCollapsed)
     self.step5_maskSegmentationSelector.disconnect('currentNodeChanged(vtkMRMLNode*)', self.onStep5_MaskSegmentationSelectionChanged)
     self.step5_maskSegmentationSelector.disconnect('currentSegmentChanged(QString)', self.onStep5_MaskSegmentSelectionChanged)
     self.step5_referenceDoseUseMaximumDoseRadioButton.disconnect('toggled(bool)', self.onUseMaximumDoseRadioButtonToggled)
     self.step5_computeGammaButton.disconnect('clicked()', self.onGammaDoseComparison)
     self.step5_showGammaReportButton.disconnect('clicked()', self.onShowGammaReport)
-    self.stepT1_lineProfileCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStepT1_LineProfileSelected)
+    self.stepT1_lineProfileCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStepT1_LineProfileCollapsed)
     self.stepT1_createLineProfileButton.disconnect('clicked(bool)', self.onCreateLineProfileButton)
     self.stepT1_inputRulerSelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
     self.stepT1_exportLineProfilesToCSV.disconnect('clicked()', self.onExportLineProfiles)
@@ -421,6 +426,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_addRoiButton.connect('clicked()', self.onAddRoiButton)
     self.step1_performCalibrationButton.connect('clicked()', self.onPerformCalibrationButton)
     self.step1_saveCalibrationFunctionToFileButton.connect('clicked()', self.onSaveCalibrationFunctionToFileButton)
+    self.step1_calibrationCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep1_calibrationCollapsed)
+    self.step1_2_performCalibrationCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep1_2_performCalibrationCollapsed)
 
   #------------------------------------------------------------------------------
   def setup_Step2_LoadExperimentalData(self):
@@ -732,7 +739,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step5_referenceDoseUseMaximumDoseRadioButton.setChecked(True)
 
     # Connections
-    self.step5_doseComparisonCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep5_DoseComparisonSelected)
+    self.step5_doseComparisonCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep5_DoseComparisonCollapsed)
     self.step5_maskSegmentationSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.onStep5_MaskSegmentationSelectionChanged)
     self.step5_maskSegmentationSelector.connect('currentSegmentChanged(QString)', self.onStep5_MaskSegmentSelectionChanged)
     self.step5_referenceDoseUseMaximumDoseRadioButton.connect('toggled(bool)', self.onUseMaximumDoseRadioButtonToggled)
@@ -796,7 +803,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.stepT1_lineProfileCollapsibleButtonLayout.addRow(self.stepT1_lineProfileHintLabel)
 
     # Connections
-    self.stepT1_lineProfileCollapsibleButton.connect('contentsCollapsed(bool)', self.onStepT1_LineProfileSelected)
+    self.stepT1_lineProfileCollapsibleButton.connect('contentsCollapsed(bool)', self.onStepT1_LineProfileCollapsed)
     self.stepT1_createLineProfileButton.connect('clicked(bool)', self.onCreateLineProfileButton)
     self.stepT1_inputRulerSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
     self.stepT1_exportLineProfilesToCSV.connect('clicked()', self.onExportLineProfiles)
@@ -1022,6 +1029,18 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     interactionNode.SwitchToSinglePlaceMode()
 
   #------------------------------------------------------------------------------
+  def onStep1_calibrationCollapsed(self, collapsed):
+    if self.logic.lastAddedRoiNode is not None:
+      for index in xrange(self.logic.lastAddedRoiNode.GetNumberOfDisplayNodes()):
+        self.logic.lastAddedRoiNode.GetNthDisplayNode(index).SetVisibility(not collapsed)
+
+  #------------------------------------------------------------------------------
+  def onStep1_2_performCalibrationCollapsed(self, collapsed):
+    if not collapsed:
+      # Fit red slice to calibration film image so that ROI can be added more conveniently
+      self.layoutWidget.layoutManager().sliceWidget('Red').sliceController().fitSliceToBackground()
+  
+  #------------------------------------------------------------------------------
   # Step 2
 
   #------------------------------------------------------------------------------
@@ -1047,6 +1066,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
       # Set auto window/level for dose volume
       self.logic.setAutoWindowLevelToAllDoseVolumes()
+      
+      # Disable slice fill and only show outlines for the segmentations
+      self.logic.setSliceOutlineOnlyForAllSegmentations()
 
   #------------------------------------------------------------------------------
   def saveExperimentalDataSelection(self):
@@ -1328,7 +1350,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   # Step 5
 
   #------------------------------------------------------------------------------
-  def onStep5_DoseComparisonSelected(self, collapsed):
+  def onStep5_DoseComparisonCollapsed(self, collapsed):
     # Initialize mask segmentation selector to select plan structures
     # self.step5_maskSegmentationSelector.setCurrentNode(self.planStructuresNode)
     # self.onStep5_MaskSegmentationSelectionChanged(self.planStructuresNode)
@@ -1375,16 +1397,16 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       return
     # Set new mask segment
     self.logic.maskSegmentID = segmentID
-    # Show new mask segment
+
+    # Hide all segments before showing the selected one
+    import vtkSegmentationCorePython as vtkSegmentationCore
+    segmentIDs = vtk.vtkStringArray()
+    self.logic.maskSegmentationNode.GetSegmentation().GetSegmentIDs(segmentIDs)
+    for segmentIndex in xrange(0,segmentIDs.GetNumberOfValues()):
+      currentSegmentID = segmentIDs.GetValue(segmentIndex)
+      self.logic.maskSegmentationNode.GetDisplayNode().SetSegmentVisibility(currentSegmentID, False)
+    # Show only selected segment, make it semi-transparent
     if self.logic.maskSegmentID is not None and self.logic.maskSegmentID != '':
-      # Hide other segments
-      import vtkSegmentationCorePython as vtkSegmentationCore
-      segmentIDs = vtk.vtkStringArray()
-      self.logic.maskSegmentationNode.GetSegmentation().GetSegmentIDs(segmentIDs)
-      for segmentIndex in xrange(0,segmentIDs.GetNumberOfValues()):
-        currentSegmentID = segmentIDs.GetValue(segmentIndex)
-        self.logic.maskSegmentationNode.GetDisplayNode().SetSegmentVisibility(currentSegmentID, False)
-      # Show only selected segment, make it semi-transparent
       self.logic.maskSegmentationNode.GetDisplayNode().SetSegmentVisibility(self.logic.maskSegmentID, True)
       self.logic.maskSegmentationNode.GetDisplayNode().SetSegmentOpacity3D(self.logic.maskSegmentID, 0.5)
 
@@ -1518,7 +1540,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       qt.QMessageBox.information(None, 'Gamma computation report missing', 'No report available!')
     
   #------------------------------------------------------------------------------
-  def onStepT1_LineProfileSelected(self, collapsed):
+  def onStepT1_LineProfileCollapsed(self, collapsed):
     appLogic = slicer.app.applicationLogic()
     selectionNode = appLogic.GetSelectionNode()
 
