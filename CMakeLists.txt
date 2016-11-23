@@ -19,7 +19,6 @@ set(EXTENSION_SCREENSHOTURLS "https://www.slicer.org/slicerWiki/images/8/8c/Film
 set(EXTENSION_DEPENDS "SlicerRT")
 
 #-----------------------------------------------------------------------------
-find_package(Slicer COMPONENTS ConfigurePrerequisites REQUIRED)
 project(FilmDosimetryAnalysis)
 find_package(Slicer REQUIRED)
 include(${Slicer_USE_FILE})
