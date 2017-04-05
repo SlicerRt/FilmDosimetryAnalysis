@@ -109,13 +109,15 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.logic = FilmDosimetryAnalysisLogic()
 
     # Declare member variables (selected at certain steps and then from then on for the workflow)
-    self.batchFolderToParse = None
+    self.batchFolderToParse = 0
     self.opticalDensityCurve = None
 
     # Constants
     self.maxNumberOfCalibrationFilms = 10
 
     # Set observations
+    shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
+    self.addObserver(shNode, slicer.vtkMRMLSubjectHierarchyNode.SubjectHierarchyItemResolvedEvent, self.onSubjectHierarchyItemResolved)
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.EndImportEvent, self.onSceneEndImport)
 
@@ -123,14 +125,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     compositeNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
     for compositeNode in compositeNodes.values():
       compositeNode.SetSliceIntersectionVisibility(1)
-
-    # Make sure subject hierarchy auto-creation is on
-    try:
-      subjectHierarchyWidget = slicer.modules.subjecthierarchy.widgetRepresentation()
-      subjectHierarchyPluginLogic = subjectHierarchyWidget.pluginLogic()
-      subjectHierarchyPluginLogic.autoCreateSubjectHierarchy = True
-    except Exception, e:
-      logging.error('Failed to activate subject hierarchy')
 
     # Add layout widget
     self.layoutWidget = slicer.qMRMLLayoutWidget()
@@ -200,6 +194,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.stepT1_exportLineProfilesToCSV.disconnect('clicked()', self.onExportLineProfiles)
 
     # Remove scene observations
+    shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
+    self.removeObserver(shNode, slicer.vtkMRMLSubjectHierarchyNode.SubjectHierarchyItemResolvedEvent, self.onSubjectHierarchyItemResolved)
     self.removeObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
     self.removeObserver(slicer.mrmlScene, slicer.vtkMRMLScene.EndImportEvent, self.onSceneEndImport)
 
@@ -815,15 +811,21 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   #
 
   #------------------------------------------------------------------------------
+  @vtk.calldata_type(vtk.VTK_LONG)
+  def onSubjectHierarchyItemResolved(self, caller, event, calldata):
+    shNode = caller
+    shItemID = calldata
+    logging.info('ZZZ Added: ' + shNode.GetItemName(shItemID))
+
+    # If resolving unresolved items (after importing a batch), then save the calibration batch that needs to be parsed
+    if shNode.IsItemLevel(shItemID, slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder()):
+      self.batchFolderToParse = shItemID
+      logging.info('ZZZ Batch folder' + shNode.GetItemName(shItemID))
+
+  #------------------------------------------------------------------------------
   @vtk.calldata_type(vtk.VTK_OBJECT)
   def onNodeAdded(self, caller, event, calldata):
     addedNode = calldata
-
-    # If importing a scene then save the calibration batch that needs to be parsed
-    if slicer.mrmlScene.IsImporting() and addedNode.IsA("vtkMRMLSubjectHierarchyNode"):
-      nodeLevel = addedNode.GetLevel()
-      if nodeLevel == slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder():
-        self.batchFolderToParse = addedNode
 
     # When an ROI is added then save it as the ROI to use for calibration
     if addedNode.IsA('vtkMRMLAnnotationROINode'):
@@ -831,7 +833,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   def onSceneEndImport(self, caller, event):
-    self.parseImportedBatch()
+    # Make sure resolving the imported items finishes by the time parsing starts
+    qt.QTimer.singleShot(50, self.parseImportedBatch)
 
   #------------------------------------------------------------------------------
   def onViewSelect(self, layoutIndex):
@@ -951,53 +954,49 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       logging.error(message)
       return message
 
+    shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
+
     currentCalibrationFilmIndex = 0
     loadedFloodFieldScalarVolume = None
     lastLoadedCalibrationVolume = None
 
-    # Inspect nodes under batch folder node and assign them to roles and dose levels
-    slicer.mrmlScene.InitTraversal()
-    currentShNode = slicer.mrmlScene.GetNextNodeByClass("vtkMRMLSubjectHierarchyNode")
-    while currentShNode:
-      if currentShNode.GetParentNode() != self.batchFolderToParse:
-        # Skip if not under batch folder node
-        currentShNode = slicer.mrmlScene.GetNextNodeByClass("vtkMRMLSubjectHierarchyNode")
-        continue
-
+    # Inspect items under the batch folder item assign them to roles and dose levels
+    children = vtk.vtkIdList()
+    shNode.GetItemChildren(self.batchFolderToParse, children)
+    for i in xrange(children.GetNumberOfIds()):
+      childItemID = children.GetId(i)
+      
       # Flood film image
-      if currentShNode.GetAttribute(self.logic.calibrationVolumeDoseAttributeName) == self.logic.floodFieldAttributeValue:
+      if shNode.GetItemAttribute(childItemID, self.logic.calibrationVolumeDoseAttributeName) == self.logic.floodFieldAttributeValue:
         if loadedFloodFieldScalarVolume is None:
-          loadedFloodFieldScalarVolume = currentShNode.GetAssociatedNode()
+          loadedFloodFieldScalarVolume = shNode.GetItemDataNode(childItemID)
           self.step1_floodFieldImageSelectorComboBox.setCurrentNode(loadedFloodFieldScalarVolume)
         else:
           message = "More than one flood field image found"
           qt.QMessageBox.critical(None, 'Error', message)
           logging.error(message)
-          slicer.mrmlScene.Clear(0)
           return message
       # Calibration film
       else:
         try:
           # Set dose level
-          doseLevel_cGy = int( currentShNode.GetAttribute(self.logic.calibrationVolumeDoseAttributeName) )
+          doseLevel_cGy = int( shNode.GetItemAttribute(childItemID, self.logic.calibrationVolumeDoseAttributeName) )
           self.step1_calibrationVolumeSelectorCGySpinBoxList[currentCalibrationFilmIndex].value = doseLevel_cGy
 
           # Set calibration film for dose level
-          loadedCalibrationVolume = currentShNode.GetAssociatedNode()
+          loadedCalibrationVolume = shNode.GetItemDataNode(childItemID)
           self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationFilmIndex].setCurrentNode(loadedCalibrationVolume)
 
           lastLoadedCalibrationVolume = loadedCalibrationVolume
           currentCalibrationFilmIndex += 1
         except ValueError:
-          logging.warning('Invalid calibration film dose attribute "' + repr(currentShNode.GetAttribute(self.logic.calibrationVolumeDoseAttributeName)) + '" in inspected node named' + currentShNode.GetName())
-
-      currentShNode = slicer.mrmlScene.GetNextNodeByClass("vtkMRMLSubjectHierarchyNode")
+          logging.warning('Invalid calibration film dose attribute "' + repr(shNode.GetItemAttribute(childItemID, self.logic.calibrationVolumeDoseAttributeName)) + '" in inspected item named' + shNode.GetItemName(childItemID))
 
     # Update calibration films table to set row visibilities
     self.step1_numberOfCalibrationFilmsSpinBox.value = currentCalibrationFilmIndex
 
-    # Reset saved folder node
-    self.batchFolderToParse = None
+    # Reset saved folder item
+    self.batchFolderToParse = 0
 
     if loadedFloodFieldScalarVolume is None:
       message = 'Failed to find flood field image!'
@@ -1510,7 +1509,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       maximumGamma = self.step5_maximumGammaSpinBox.value
       gammaDisplayNode = self.logic.gammaVolumeNode.GetDisplayNode()
       gammaDisplayNode.AutoWindowLevelOff()
-      gammaDisplayNode.SetWindowLevel(maximumGamma/2, maximumGamma/2)
+      gammaDisplayNode.SetWindowLevelMinMax(0, maximumGamma)
       gammaDisplayNode.ApplyThresholdOn()
       gammaDisplayNode.AutoThresholdOff()
       gammaDisplayNode.SetLowerThreshold(0.001)

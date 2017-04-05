@@ -21,7 +21,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
   def __init__(self):
     # Define constants
-    self.saveCalibrationBatchFolderNodeNamePrefix = "Calibration batch"
+    self.saveCalibrationBatchFolderItemNamePrefix = "Calibration batch"
     self.calibrationVolumeDoseAttributeName = "Dose"
     self.floodFieldAttributeValue = "FloodField"
     self.calibrationBatchSceneFileNamePostfix = "CalibrationBatchScene"
@@ -93,25 +93,31 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
     # Create temporary scene for saving
     calibrationBatchMrmlScene = slicer.vtkMRMLScene()
+    calibrationBatchShNode = slicer.vtkMRMLSubjectHierarchyNode()
+    calibrationBatchMrmlScene.AddNode(calibrationBatchShNode)
 
-    # Get folder node (create if not exists)
-    exportFolderNode = None
-    folderNodeName = self.saveCalibrationBatchFolderNodeNamePrefix + strftime(" %Y.%m.%d. %H:%M", gmtime())
-    folderNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, None, slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder(), folderNodeName, None)
-    # Clone folder node to export scene
-    exportFolderNode = calibrationBatchMrmlScene.CopyNode(folderNode)
+    # Get folder item (create if not exists)
+    shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
+    exportFolderItem = 0
+    folderItemName = self.saveCalibrationBatchFolderItemNamePrefix + strftime(" %Y.%m.%d. %H:%M", gmtime())
+    folderItemID = shNode.CreateFolderItem(shNode.GetSceneItemID(), folderItemName)
+
+    # Create folder item in export scene
+    exportFolderItemID = calibrationBatchShNode.CreateFolderItem(calibrationBatchShNode.GetSceneItemID(), folderItemName)
+    calibrationBatchShNode.SetItemOwnerPluginName(exportFolderItemID, shNode.GetItemOwnerPluginName(folderItemID))
 
     #
     # Flood field image
 
-    # Create flood field image subject hierarchy node, add it under folder node
-    floodFieldVolumeShNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, folderNode, slicer.vtkMRMLSubjectHierarchyConstants.GetDICOMLevelSeries(), None, floodFieldImageVolumeNode)
-    floodFieldVolumeShNode.SetAttribute(self.calibrationVolumeDoseAttributeName, self.floodFieldAttributeValue)
-    # Copy both image and SH to exported scene
+    # Setup flood field image subject hierarchy item, add it under folder item
+    floodFieldVolumeItemID = shNode.CreateItem(folderItemID, floodFieldImageVolumeNode)
+    shNode.SetItemAttribute(floodFieldVolumeItemID, self.calibrationVolumeDoseAttributeName, self.floodFieldAttributeValue)
+    # Copy image to exported scene
     exportFloodFieldImageVolumeNode = calibrationBatchMrmlScene.CopyNode(floodFieldImageVolumeNode)
-    exportFloodFieldVolumeShNode = calibrationBatchMrmlScene.CopyNode(floodFieldVolumeShNode)
-    exportFloodFieldVolumeShNode.SetAssociatedNodeID(exportFloodFieldImageVolumeNode.GetID())
-    exportFloodFieldVolumeShNode.SetParentNodeID(exportFolderNode.GetID())
+    # Create flood field image item in exported scene
+    exportFloodFieldVolumeItemID = calibrationBatchShNode.CreateItem(exportFolderItemID, exportFloodFieldImageVolumeNode)
+    calibrationBatchShNode.SetItemAttribute(exportFloodFieldVolumeItemID, self.calibrationVolumeDoseAttributeName, self.floodFieldAttributeValue)
+    calibrationBatchShNode.SetItemOwnerPluginName(exportFloodFieldVolumeItemID, shNode.GetItemOwnerPluginName(floodFieldVolumeItemID))
     # Storage node
     floodFieldStorageNode = floodFieldImageVolumeNode.GetStorageNode()
     exportFloodFieldStorageNode = calibrationBatchMrmlScene.CopyNode(floodFieldStorageNode)
@@ -131,14 +137,15 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     for currentCalibrationDose in calibrationDoseToVolumeNodeMap:
       # Get current calibration image node
       currentCalibrationVolumeNode = calibrationDoseToVolumeNodeMap[currentCalibrationDose]
-      # Create calibration image subject hierarchy node, add it under folder node
-      calibrationVolumeShNode = slicer.vtkMRMLSubjectHierarchyNode.CreateSubjectHierarchyNode(slicer.mrmlScene, folderNode, slicer.vtkMRMLSubjectHierarchyConstants.GetDICOMLevelSeries(), None, currentCalibrationVolumeNode)
-      calibrationVolumeShNode.SetAttribute(self.calibrationVolumeDoseAttributeName, str(currentCalibrationDose))
-      # Copy both image and SH to exported scene
+      # Setup calibration image subject hierarchy item, add it under folder item
+      calibrationVolumeItemID = shNode.CreateItem(folderItemID, currentCalibrationVolumeNode)
+      shNode.SetItemAttribute(calibrationVolumeItemID, self.calibrationVolumeDoseAttributeName, str(currentCalibrationDose))
+      # Copy image to exported scene
       exportCalibrationImageVolumeNode = calibrationBatchMrmlScene.CopyNode(currentCalibrationVolumeNode)
-      exportCalibrationVolumeShNode = calibrationBatchMrmlScene.CopyNode(calibrationVolumeShNode)
-      exportCalibrationVolumeShNode.SetAssociatedNodeID(exportCalibrationImageVolumeNode.GetID())
-      exportCalibrationVolumeShNode.SetParentNodeID(exportFolderNode.GetID())
+      # Create calibration image item in exported scene
+      exportCalibrationVolumeItemID = calibrationBatchShNode.CreateItem(exportFolderItemID, exportCalibrationImageVolumeNode)
+      calibrationBatchShNode.SetItemAttribute(exportCalibrationVolumeItemID, self.calibrationVolumeDoseAttributeName, str(currentCalibrationDose))
+      calibrationBatchShNode.SetItemOwnerPluginName(exportCalibrationVolumeItemID, shNode.GetItemOwnerPluginName(calibrationVolumeItemID))
       # Storage node
       calibrationStorageNode = currentCalibrationVolumeNode.GetStorageNode()
       exportCalibrationStorageNode = calibrationBatchMrmlScene.CopyNode(calibrationStorageNode)
@@ -176,9 +183,14 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     slicer.mrmlScene.AddNode(scalarVolumeNode)
 
     # Exchange RGB image for single-channel image in subject hierarchy
-    shNode = slicer.vtkMRMLSubjectHierarchyNode.GetAssociatedSubjectHierarchyNode(vectorVolumeNode)
-    if shNode:
-      shNode.SetAssociatedNodeID(scalarVolumeNode.GetID())
+    shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
+    vectorVolumeItemID = shNode.GetItemByDataNode(vectorVolumeNode)
+    if vectorVolumeItemID:
+      # Move vector volume's item to top level, and add the scalar volume's item under its former parent
+      parentItemID = shNode.GetItemParent(vectorVolumeItemID)
+      scalarVolumeItemID = shNode.GetItemByDataNode(scalarVolumeNode)
+      shNode.SetItemParent(scalarVolumeItemID, parentItemID)
+      shNode.SetItemParent(vectorVolumeItemID, shNode.GetSceneItemID)
 
     # Setup channel extraction
     extract = vtk.vtkImageExtractComponents()
@@ -272,10 +284,11 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     cropVolumeLogic = slicer.modules.cropvolume.logic()
 
     # Crop flood field volume by defined ROI into a cloned volume node
-    floodFieldShNode = slicer.vtkMRMLSubjectHierarchyNode.GetAssociatedSubjectHierarchyNode(floodFieldImageVolumeNode)
+    shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
+    floodFieldItemID = shNode.GetItemByDataNode(floodFieldImageVolumeNode)
     floodFieldVolumeNodeNodeCloneName = floodFieldImageVolumeNode.GetName() + '_Cropped'
-    croppedFloodFieldShNode = slicer.vtkSlicerSubjectHierarchyModuleLogic.CloneSubjectHierarchyNode(floodFieldShNode, floodFieldVolumeNodeNodeCloneName)
-    croppedFloodFieldVolumeNode = croppedFloodFieldShNode.GetAssociatedNode()
+    croppedFloodFieldItemID = slicer.vtkSlicerSubjectHierarchyModuleLogic.CloneSubjectHierarchyItem(shNode, floodFieldItemID, floodFieldVolumeNodeNodeCloneName)
+    croppedFloodFieldVolumeNode = shNode.GetItemDataNode(croppedFloodFieldItemID)
     cropVolumeLogic.CropVoxelBased(self.lastAddedRoiNode, floodFieldImageVolumeNode, croppedFloodFieldVolumeNode)
 
     # Measure average pixel value of the cropped flood field image
@@ -285,7 +298,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     meanValueFloodField = imageStat.GetMean()[0]
     logging.info("Calibration: Mean value for flood field image in ROI = " + str(round(meanValueFloodField,4)))
     # Remove cropped volume
-    slicer.mrmlScene.RemoveNode(croppedFloodFieldShNode)
+    slicer.mrmlScene.RemoveNode(croppedFloodFieldVolumeNode)
     
     calibrationValues = [] # [entered dose, measured pixel value]   #TODO: Order is just reversed compared to measuredOpticalDensityToDoseMap
     calibrationValues.append([self.floodFieldAttributeValue, meanValueFloodField])
@@ -299,10 +312,10 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       currentCalibrationVolumeNode = calibrationDoseToVolumeNodeMap[currentCalibrationDose]
 
       # Crop calibration images by last defined ROI into a cloned volume node
-      calibrationShNode = slicer.vtkMRMLSubjectHierarchyNode.GetAssociatedSubjectHierarchyNode(currentCalibrationVolumeNode)
+      calibrationFilmItemID = shNode.GetItemByDataNode(currentCalibrationVolumeNode)
       calibrationVolumeNodeNodeCloneName = currentCalibrationVolumeNode.GetName() + '_Cropped'
-      croppedCalibrationFilmShNode = slicer.vtkSlicerSubjectHierarchyModuleLogic.CloneSubjectHierarchyNode(calibrationShNode, calibrationVolumeNodeNodeCloneName)    
-      croppedCalibrationFilmVolumeNode = croppedCalibrationFilmShNode.GetAssociatedNode()
+      croppedCalibrationFilmItemID = slicer.vtkSlicerSubjectHierarchyModuleLogic.CloneSubjectHierarchyItem(shNode, calibrationFilmItemID, calibrationVolumeNodeNodeCloneName)
+      croppedCalibrationFilmVolumeNode = shNode.GetItemDataNode(croppedCalibrationFilmItemID)
       cropVolumeLogic.CropVoxelBased(self.lastAddedRoiNode, currentCalibrationVolumeNode, croppedCalibrationFilmVolumeNode)
 
       # Measure average pixel value of the cropped calibration image
@@ -312,7 +325,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       meanValue = imageStat.GetMean()[0]
       calibrationValues.append([meanValue, currentCalibrationDose])
       # Remove cropped volume
-      slicer.mrmlScene.RemoveNode(croppedCalibrationFilmShNode)
+      slicer.mrmlScene.RemoveNode(croppedCalibrationFilmVolumeNode)
 
       # Optical density calculation
       opticalDensity = math.log10(float(meanValueFloodField)/meanValue) 
