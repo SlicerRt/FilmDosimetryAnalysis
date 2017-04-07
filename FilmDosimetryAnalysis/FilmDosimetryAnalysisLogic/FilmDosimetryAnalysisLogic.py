@@ -17,7 +17,7 @@ from collections import OrderedDict
 class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
   """ Film dosimetry logic.
       Contains functions for film batch load/save, calibration, registration, etc.
-  """ 
+  """
 
   def __init__(self):
     # Define constants
@@ -30,13 +30,16 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     self.croppedPlanDoseVolumeNamePostfix = "_Slice"
     self.paddedForRegistrationVolumeNamePostfix = "_ForRegistration"
     self.numberOfSlicesToPad = 5
+    self.experimentalFilmPreAlignmentTransformName = "ExperimentalFilmPreAlignmentTransform"
+    self.experimentalFilmScanSetupAligmentTransformName = "ExperimentalFilmScanSetupAligmentTransform"
+    self.experimentalFilmToDoseSliceInitializationTransformName = "ExperimentalFilmToDoseSliceInitializationTransform"
     self.experimentalFilmToDoseSliceTransformName = "ExperimentalFilmToDoseSliceTransform"
 
     # Declare member variables (mainly for documentation)
     self.lastAddedRoiNode = None
     self.calibrationCoefficients = [0,0,0,0] # Calibration coefficients [a,b,c,n] in calibration function dose = a + b*OD + c*OD^n
     self.experimentalFloodFieldVolumeNode = None
-    self.experimentalFilmVolumeNode = None 
+    self.experimentalFilmVolumeNode = None
     self.experimentalFilmPixelSpacing = None
     self.experimentalFilmSliceOrientation = ''
     self.experimentalFilmSlicePosition = 0
@@ -46,11 +49,14 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     self.planDoseVolumeNode = None
     self.croppedPlanDoseSliceVolumeNode = None
     self.paddedPlanDoseSliceVolumeNode = None
+    self.experimentalFilmPreAlignmentTransformNode = None
+    self.experimentalFilmScanSetupAligmentTransformNode = None
+    self.experimentalFilmToDoseSliceInitializationTransformNode = None
     self.experimentalFilmToDoseSliceTransformNode = None
     self.maskSegmentationNode = None
     self.maskSegmentID = None
     self.gammaVolumeNode = None
-    
+
     self.measuredOpticalDensityToDoseMap = [] #TODO: Make it a real map (need to sort by key where it is created)
 
   # ---------------------------------------------------------------------------
@@ -74,7 +80,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
         currentSegmentationNode.GetDisplayNode().SetVisibility2DFill(False)
         currentSegmentationNode.GetDisplayNode().SetVisibility2DOutline(True)
       currentSegmentationNode = slicer.mrmlScene.GetNextNodeByClass("vtkMRMLSegmentationNode")
-      
+
   #------------------------------------------------------------------------------
   # Step 1
 
@@ -231,7 +237,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       MSE = self.meanSquaredError(coeffs[0],coeffs[1],coeffs[2],n)
       bestN.append([MSE, n, coeffs])
 
-    bestN.sort(key=lambda bestNEntry: bestNEntry[0]) 
+    bestN.sort(key=lambda bestNEntry: bestNEntry[0])
     self.calibrationCoefficients = [ bestN[0][2][0], bestN[0][2][1], bestN[0][2][2], bestN[0][1] ]
     logging.info("Optimized calibration function coefficients: A=" + str(round(self.calibrationCoefficients[0],4)) + ", B=" + str(round(self.calibrationCoefficients[1],4)) + ", C=" + str(round(self.calibrationCoefficients[2],4)) + ", N=" + str(round(self.calibrationCoefficients[3],4)) + " (mean square error: "  + str(round(bestN[0][0],4)) + ")")
 
@@ -299,7 +305,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     logging.info("Calibration: Mean value for flood field image in ROI = " + str(round(meanValueFloodField,4)))
     # Remove cropped volume
     slicer.mrmlScene.RemoveNode(croppedFloodFieldVolumeNode)
-    
+
     calibrationValues = [] # [entered dose, measured pixel value]   #TODO: Order is just reversed compared to measuredOpticalDensityToDoseMap
     calibrationValues.append([self.floodFieldAttributeValue, meanValueFloodField])
 
@@ -328,7 +334,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       slicer.mrmlScene.RemoveNode(croppedCalibrationFilmVolumeNode)
 
       # Optical density calculation
-      opticalDensity = math.log10(float(meanValueFloodField)/meanValue) 
+      opticalDensity = math.log10(float(meanValueFloodField)/meanValue)
       if opticalDensity < 0.0:
         opticalDensity = 0.0
 
@@ -340,7 +346,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
     # Perform calibration of OD to dose
     self.findBestFittingCalibrationFunctionCoefficients()
-    
+
     return ""
 
   #------------------------------------------------------------------------------
@@ -417,23 +423,6 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     self.calibratedExperimentalFilmVolumeNode.SetSpacing(self.experimentalFilmVolumeNode.GetSpacing())
     self.calibratedExperimentalFilmVolumeNode.CopyOrientation(self.experimentalFilmVolumeNode)
 
-    # Show calibrated and original experimental images
-    appLogic = slicer.app.applicationLogic()
-    selectionNode = appLogic.GetSelectionNode()
-    selectionNode.SetActiveVolumeID(self.experimentalFilmVolumeNode.GetID())
-    selectionNode.SetSecondaryVolumeID(self.calibratedExperimentalFilmVolumeNode.GetID())
-    appLogic.PropagateVolumeSelection()
-
-    layoutManager = slicer.app.layoutManager()
-    sliceWidgetNames = ['Red', 'Green', 'Yellow']
-    for sliceWidgetName in sliceWidgetNames:
-      slice = layoutManager.sliceWidget(sliceWidgetName)
-      if slice is None:
-        continue
-      sliceLogic = slice.sliceLogic()
-      compositeNode = sliceLogic.GetSliceCompositeNode()
-      compositeNode.SetForegroundOpacity(0.5)
-
     return ""
 
   #------------------------------------------------------------------------------
@@ -477,7 +466,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
   # Step 4
 
   #------------------------------------------------------------------------------
-  def registerExperimentalFilmToPlanDose(self):
+  def initializeFilmToPlanDoseRegistration(self):
     if self.experimentalFilmPixelSpacing is None:
       return "Invalid mm/pixel resolution for the experimental film must be entered"
 
@@ -493,66 +482,36 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
     # Crop the dose volume to the specified slice in the specified orientation
     message = self.cropPlanDoseVolumeToSlice()
-    if message != "" or self.croppedPlanDoseSliceVolumeNode is None:
+    if message != '' or self.croppedPlanDoseSliceVolumeNode is None:
       logging.error("Failed to crop plan dose volume")
       return message
 
     # Prepare plan dose slice for registration by padding into 5 slices
     message = self.padPlanDoseSliceForRegistration()
-    if message != "" or self.paddedPlanDoseSliceVolumeNode is None:
+    if message != '' or self.paddedPlanDoseSliceVolumeNode is None:
       logging.error("Failed to prepare plan dose volume for registration")
       return message
 
     # Pre-align calibrated film to plan dose slice
     message = self.preAlignCalibratedFilmWithPlanDoseSlice()
-    if message != "":
+    if message != '':
       logging.error("Failed to pre-align calibrated film with plan dose volume")
       return message
 
-    # Create output transform node
-    self.experimentalFilmToDoseSliceTransformNode = slicer.vtkMRMLLinearTransformNode()
-    slicer.mrmlScene.AddNode(self.experimentalFilmToDoseSliceTransformNode)
-    self.experimentalFilmToDoseSliceTransformNode.SetName(self.experimentalFilmToDoseSliceTransformName)
+    # Initialize scan setup alignment transform
+    message = self.initializeScanSetupAlignmentTransform()
+    if message != '':
+      logging.error("Failed to initialize scan setup alignment transform for calibrated film")
+      return message
 
-    # Perform registration with BRAINS    
-    parametersRigid = {}
-    parametersRigid["fixedVolume"] = self.paddedPlanDoseSliceVolumeNode
-    parametersRigid["movingVolume"] = self.paddedCalibratedExperimentalFilmVolumeNode
-    parametersRigid["useRigid"] = True
-    parametersRigid["samplingPercentage"] = 0.05
-    parametersRigid["maximumStepLength"] = 15 # Start with long-range translations
-    parametersRigid["relaxationFactor"] = 0.8 # Relax quickly
-    parametersRigid["translationScale"] = 10000000 # Suppress rotation
-    parametersRigid["linearTransform"] = self.experimentalFilmToDoseSliceTransformNode.GetID()
-
-    # Runs the registration
-    cliBrainsFitRigidNode = slicer.cli.run(slicer.modules.brainsfit, None, parametersRigid)
-    waitCount = 0
-    while cliBrainsFitRigidNode.GetStatusString() != 'Completed' and waitCount < 20:
-      self.delayDisplay( "Register experimental film to dose using rigid registration... %d" % waitCount )
-      waitCount += 1
-    self.delayDisplay("Register experimental film to dose using rigid registration finished")
-
-    logging.info("Registration status: " + cliBrainsFitRigidNode.GetStatusString())
-    
-    # Set transform to calibrated experimental film
-    self.calibratedExperimentalFilmVolumeNode.SetAndObserveTransformNodeID(self.experimentalFilmToDoseSliceTransformNode.GetID())
-    
-    # Make sure calibrated film origin is at specified location (in case the pre-alignment transform took it out of plane due to different direction matrices)
-    origin = self.calibratedExperimentalFilmVolumeNode.GetOrigin()
-    if self.experimentalFilmSliceOrientation == AXIAL:
-      self.calibratedExperimentalFilmVolumeNode.SetOrigin(origin[0], origin[1], self.experimentalFilmSlicePosition)
-    elif self.experimentalFilmSliceOrientation == CORONAL:
-      self.calibratedExperimentalFilmVolumeNode.SetOrigin(origin[0], self.experimentalFilmSlicePosition, origin[2])
-    elif self.experimentalFilmSliceOrientation == SAGITTAL:
-      self.calibratedExperimentalFilmVolumeNode.SetOrigin(self.experimentalFilmSlicePosition, origin[1], origin[2])
-
-    #TODO: Check AP translation and rotation parameters, warn if transform takes slice off-plane
-
-    return ""
+    return ''
 
   #------------------------------------------------------------------------------
   def cropPlanDoseVolumeToSlice(self):
+    if self.croppedPlanDoseSliceVolumeNode is not None:
+      # Cropping already took place
+      return ""
+
     if self.planDoseVolumeNode is None:
       message = "No plan dose volume is selected!"
       logging.error(message)
@@ -565,7 +524,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
     #TODO: Support non-axis-aligned volumes too
     bounds = [0]*6
-    self.planDoseVolumeNode.GetRASBounds(bounds)  
+    self.planDoseVolumeNode.GetRASBounds(bounds)
     cropCenter = [(bounds[0]+bounds[1])/2, (bounds[2]+bounds[3])/2, (bounds[4]+bounds[5])/2]
     cropRadius = [abs(bounds[1]-bounds[0])/2, abs(bounds[3]-bounds[2])/2, abs(bounds[5]-bounds[4])/2]
     if self.experimentalFilmSliceOrientation == AXIAL:
@@ -585,14 +544,14 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     slicer.mrmlScene.AddNode(cropVolumeParameterNode)
     cropVolumeParameterNode.SetInputVolumeNodeID(self.planDoseVolumeNode.GetID())
     cropVolumeParameterNode.SetROINodeID(roiNode.GetID())
-    cropVolumeParameterNode.SetVoxelBased(False) 
+    cropVolumeParameterNode.SetVoxelBased(False)
     cropLogic = slicer.modules.cropvolume.logic()
 
     cropLogic.Apply(cropVolumeParameterNode)
     self.croppedPlanDoseSliceVolumeNode = slicer.mrmlScene.GetNodeByID(cropVolumeParameterNode.GetOutputVolumeNodeID())
     croppedPlanDoseVolumeName = slicer.mrmlScene.GenerateUniqueName(self.planDoseVolumeNode.GetName() + self.croppedPlanDoseVolumeNamePostfix)
     self.croppedPlanDoseSliceVolumeNode.SetName(croppedPlanDoseVolumeName)
-    
+
     # Delete ROI and parameter nodes (comment out only for debugging)
     slicer.mrmlScene.RemoveNode(roiNode)
     slicer.mrmlScene.RemoveNode(cropVolumeParameterNode)
@@ -601,6 +560,10 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
   #------------------------------------------------------------------------------
   def padPlanDoseSliceForRegistration(self):
+    if self.paddedPlanDoseSliceVolumeNode is not None and self.paddedCalibratedExperimentalFilmVolumeNode is not None:
+      # Padding already took place
+      return ""
+
     if self.planDoseVolumeNode is None or self.croppedPlanDoseSliceVolumeNode is None:
       message = "No plan dose volume is selected or cropping to slice failed"
       logging.error(message)
@@ -729,38 +692,20 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
   #------------------------------------------------------------------------------
   def preAlignCalibratedFilmWithPlanDoseSlice(self):
-    # Create pre-alignment transform
-    experimentalFilmPreAlignmentTransform = vtk.vtkTransform()
+    if self.experimentalFilmPreAlignmentTransformNode is None:
+      # Create node for pre-alignment transform if does not exist
+      self.experimentalFilmPreAlignmentTransformNode = slicer.vtkMRMLLinearTransformNode()
+      self.experimentalFilmPreAlignmentTransformNode.SetName(self.experimentalFilmPreAlignmentTransformName)
+      slicer.mrmlScene.AddNode(self.experimentalFilmPreAlignmentTransformNode)
+      # Create pre-alignment transform
+      experimentalFilmPreAlignmentTransform = vtk.vtkTransform()
+    else:
+      # Get transform object and if transform node exists
+      experimentalFilmPreAlignmentTransform = self.experimentalFilmPreAlignmentTransformNode.GetTransformToParent()
+
+    # Reset transform
     experimentalFilmPreAlignmentTransform.PostMultiply()
-    # Create node for pre-alignment transform
-    experimentalFilmPreAlignmentTransformNode = slicer.vtkMRMLLinearTransformNode()
-    experimentalFilmPreAlignmentTransformNode.SetName("ExperimentalFilmPreAlignmentTransform")
-    slicer.mrmlScene.AddNode(experimentalFilmPreAlignmentTransformNode)
-
-    # Flip film image in LR direction.
-    #TODO: This may be an option in the future. Hard-coded now because the test data has this flip
-    experimentalFilmPreAlignmentTransform.Scale(-1, 1, 1)
-
-    # Image orientation is 90 degrees rotated after loading
-    if self.experimentalFilmSliceOrientation == AXIAL:
-      # Rotate around the IS axis
-      #TODO: this may be a 90 or -90 rotation, it is unclear what orientation the films should be in 
-      experimentalFilmPreAlignmentTransform.RotateWXYZ(90,[0,0,1])
-    elif self.experimentalFilmSliceOrientation == CORONAL:
-      # Rotate around the AP axis
-      #TODO: this may be a 90 or -90 rotation, it is unclear what orientation the films should be in 
-      experimentalFilmPreAlignmentTransform.RotateWXYZ(90,[0,1,0])
-    elif self.experimentalFilmSliceOrientation == SAGITTAL:
-      # Rotate around the LR axis
-      #TODO: this may be a 90 or -90 rotation, it is unclear what orientation the films should be in 
-      experimentalFilmPreAlignmentTransform.RotateWXYZ(90,[1,0,0])
-
-    # Transform calibrated and padded experimental films
-    experimentalFilmPreAlignmentTransformNode.SetMatrixTransformToParent(experimentalFilmPreAlignmentTransform.GetMatrix())
-    self.calibratedExperimentalFilmVolumeNode.SetAndObserveTransformNodeID(experimentalFilmPreAlignmentTransformNode.GetID())
-    self.paddedCalibratedExperimentalFilmVolumeNode.SetAndObserveTransformNodeID(experimentalFilmPreAlignmentTransformNode.GetID())
-    slicer.vtkSlicerTransformLogic.hardenTransform(self.calibratedExperimentalFilmVolumeNode)
-    slicer.vtkSlicerTransformLogic.hardenTransform(self.paddedCalibratedExperimentalFilmVolumeNode)
+    experimentalFilmPreAlignmentTransform.Identity()
 
     # Align film image center to dose slice center
     expBounds = [0]*6
@@ -770,17 +715,149 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     doseCenter = [(doseBounds[0]+doseBounds[1])/2, (doseBounds[2]+doseBounds[3])/2, (doseBounds[4]+doseBounds[5])/2]
     expCenter = [(expBounds[0]+expBounds[1])/2, (expBounds[2]+expBounds[3])/2, (expBounds[4]+expBounds[5])/2]
     exp2DoseTranslation = [doseCenter[x] - expCenter[x] for x in xrange(len(doseCenter))]
-    experimentalFilmPreAlignmentTransform.Identity()
     experimentalFilmPreAlignmentTransform.Translate(exp2DoseTranslation)
 
     # Transform calibrated and padded experimental films
-    experimentalFilmPreAlignmentTransformNode.SetMatrixTransformToParent(experimentalFilmPreAlignmentTransform.GetMatrix())
-    self.paddedCalibratedExperimentalFilmVolumeNode.SetAndObserveTransformNodeID(experimentalFilmPreAlignmentTransformNode.GetID())
+    self.experimentalFilmPreAlignmentTransformNode.SetMatrixTransformToParent(experimentalFilmPreAlignmentTransform.GetMatrix())
+    self.paddedCalibratedExperimentalFilmVolumeNode.SetAndObserveTransformNodeID(self.experimentalFilmPreAlignmentTransformNode.GetID())
+    self.calibratedExperimentalFilmVolumeNode.SetAndObserveTransformNodeID(self.experimentalFilmPreAlignmentTransformNode.GetID())
+
+    return ""
+
+  #------------------------------------------------------------------------------
+  def initializeScanSetupAlignmentTransform(self):
+    if self.experimentalFilmPreAlignmentTransformNode is None:
+      message = "Experimental film pre-alignment transform has not been created"
+      logging.error(message)
+      return message
+
+    # Create scan setup alignment transform if needed
+    if self.experimentalFilmScanSetupAligmentTransformNode is None:
+      self.experimentalFilmScanSetupAligmentTransformNode = slicer.vtkMRMLLinearTransformNode()
+      self.experimentalFilmScanSetupAligmentTransformNode.SetName(self.experimentalFilmScanSetupAligmentTransformName)
+      slicer.mrmlScene.AddNode(self.experimentalFilmScanSetupAligmentTransformNode)
+
+    # Build transform hierarchy
+    self.experimentalFilmPreAlignmentTransformNode.SetAndObserveTransformNodeID(self.experimentalFilmScanSetupAligmentTransformNode.GetID())
+
+    # Set pre-alignment and scan setup alignment transform to volumes
+    # (in case registration already took place, but needed to be performed again)
+    self.paddedCalibratedExperimentalFilmVolumeNode.SetAndObserveTransformNodeID(self.experimentalFilmPreAlignmentTransformNode.GetID())
+    self.calibratedExperimentalFilmVolumeNode.SetAndObserveTransformNodeID(self.experimentalFilmPreAlignmentTransformNode.GetID())
+
+    return ""
+
+  #------------------------------------------------------------------------------
+  def rotateCalibratedExperimentalFilm(self, clockwise, angleDegrees):
+    if self.experimentalFilmScanSetupAligmentTransformNode is None:
+      logging.error('Scan setup alignment transform has not been initialized')
+      return
+
+    if not clockwise:
+      angleDegrees = -1.0 * angleDegrees
+
+    experimentalFilmScanSetupAligmentTransform = self.experimentalFilmScanSetupAligmentTransformNode.GetTransformToParent()
+    experimentalFilmScanSetupAligmentTransform.PostMultiply()
+
+    if self.experimentalFilmSliceOrientation == AXIAL:
+      # Rotate around the IS axis
+      experimentalFilmScanSetupAligmentTransform.RotateWXYZ(angleDegrees,[0,0,1])
+    elif self.experimentalFilmSliceOrientation == CORONAL:
+      # Rotate around the AP axis
+      experimentalFilmScanSetupAligmentTransform.RotateWXYZ(angleDegrees,[0,1,0])
+    elif self.experimentalFilmSliceOrientation == SAGITTAL:
+      # Rotate around the LR axis
+      experimentalFilmScanSetupAligmentTransform.RotateWXYZ(angleDegrees,[1,0,0])
+
+    self.experimentalFilmScanSetupAligmentTransformNode.Modified()
+
+  #------------------------------------------------------------------------------
+  def flipCalibratedExperimentalFilm(self, horizontal):
+    experimentalFilmScanSetupAligmentTransform = self.experimentalFilmScanSetupAligmentTransformNode.GetTransformToParent()
+    experimentalFilmScanSetupAligmentTransform.PostMultiply()
+
+    if self.experimentalFilmSliceOrientation == AXIAL:
+      if horizontal:
+        # Flip film image in LR direction.
+        experimentalFilmScanSetupAligmentTransform.Scale(-1, 1, 1)
+      else:
+        # Flip film image in AP direction.
+        experimentalFilmScanSetupAligmentTransform.Scale(1, -1, 1)
+    elif self.experimentalFilmSliceOrientation == CORONAL:
+      if horizontal:
+        # Flip film image in LR direction.
+        experimentalFilmScanSetupAligmentTransform.Scale(-1, 1, 1)
+      else:
+        # Flip film image in IS direction.
+        experimentalFilmScanSetupAligmentTransform.Scale(1, 1, -1)
+    elif self.experimentalFilmSliceOrientation == SAGITTAL:
+      if horizontal:
+        # Flip film image in AP direction.
+        experimentalFilmScanSetupAligmentTransform.Scale(1, -1, 1)
+      else:
+        # Flip film image in IS direction.
+        experimentalFilmScanSetupAligmentTransform.Scale(1, 1, -1)
+
+    self.experimentalFilmScanSetupAligmentTransformNode.Modified()
+
+  #------------------------------------------------------------------------------
+  def registerExperimentalFilmToPlanDose(self):
+    # Setup initialization transform
+    if self.experimentalFilmToDoseSliceInitializationTransformNode is None:
+      self.experimentalFilmToDoseSliceInitializationTransformNode = slicer.vtkMRMLLinearTransformNode()
+      self.experimentalFilmToDoseSliceInitializationTransformNode.SetName(self.experimentalFilmToDoseSliceInitializationTransformName)
+      slicer.mrmlScene.AddNode(self.experimentalFilmToDoseSliceInitializationTransformNode)
+    preAlignmentInitializationTransformMatrix = vtk.vtkMatrix4x4()
+    self.experimentalFilmPreAlignmentTransformNode.GetMatrixTransformToWorld(preAlignmentInitializationTransformMatrix)
+    self.experimentalFilmToDoseSliceInitializationTransformNode.SetAndObserveMatrixTransformToParent(preAlignmentInitializationTransformMatrix)
+
+    # Harden initialization transform on the film images. It is necessary to harden, and not
+    # simply use the "initialTransform" registration parameter, because it is not taken into account
+    # correctly (rotation takes place).
+    self.paddedCalibratedExperimentalFilmVolumeNode.SetAndObserveTransformNodeID(self.experimentalFilmToDoseSliceInitializationTransformNode.GetID())
     slicer.vtkSlicerTransformLogic.hardenTransform(self.paddedCalibratedExperimentalFilmVolumeNode)
-    self.calibratedExperimentalFilmVolumeNode.SetAndObserveTransformNodeID(experimentalFilmPreAlignmentTransformNode.GetID())
+    self.calibratedExperimentalFilmVolumeNode.SetAndObserveTransformNodeID(self.experimentalFilmToDoseSliceInitializationTransformNode.GetID())
     slicer.vtkSlicerTransformLogic.hardenTransform(self.calibratedExperimentalFilmVolumeNode)
 
-    slicer.mrmlScene.RemoveNode(experimentalFilmPreAlignmentTransformNode)
+    # Create output transform node
+    self.experimentalFilmToDoseSliceTransformNode = slicer.vtkMRMLLinearTransformNode()
+    slicer.mrmlScene.AddNode(self.experimentalFilmToDoseSliceTransformNode)
+    self.experimentalFilmToDoseSliceTransformNode.SetName(self.experimentalFilmToDoseSliceTransformName)
+
+    # Perform registration with BRAINS
+    parametersRigid = {}
+    parametersRigid["fixedVolume"] = self.paddedPlanDoseSliceVolumeNode
+    parametersRigid["movingVolume"] = self.paddedCalibratedExperimentalFilmVolumeNode
+    parametersRigid["useRigid"] = True
+    parametersRigid["samplingPercentage"] = 0.05
+    parametersRigid["maximumStepLength"] = 15 # Start with long-range translations
+    parametersRigid["relaxationFactor"] = 0.8 # Relax quickly
+    parametersRigid["translationScale"] = 10000000 # Suppress rotation
+    parametersRigid["linearTransform"] = self.experimentalFilmToDoseSliceTransformNode.GetID()
+
+    # Runs the registration
+    cliBrainsFitRigidNode = slicer.cli.run(slicer.modules.brainsfit, None, parametersRigid)
+    waitCount = 0
+    while cliBrainsFitRigidNode.GetStatusString() != 'Completed' and waitCount < 20:
+      self.delayDisplay( "Register experimental film to dose using rigid registration... %d" % waitCount )
+      waitCount += 1
+    self.delayDisplay("Register experimental film to dose using rigid registration finished")
+
+    logging.info("Registration status: " + cliBrainsFitRigidNode.GetStatusString())
+
+    # Set transform to calibrated experimental film
+    self.calibratedExperimentalFilmVolumeNode.SetAndObserveTransformNodeID(self.experimentalFilmToDoseSliceTransformNode.GetID())
+
+    # Make sure calibrated film origin is at specified location (in case the pre-alignment transform took it out of plane due to different direction matrices)
+    origin = self.calibratedExperimentalFilmVolumeNode.GetOrigin()
+    if self.experimentalFilmSliceOrientation == AXIAL:
+      self.calibratedExperimentalFilmVolumeNode.SetOrigin(origin[0], origin[1], self.experimentalFilmSlicePosition)
+    elif self.experimentalFilmSliceOrientation == CORONAL:
+      self.calibratedExperimentalFilmVolumeNode.SetOrigin(origin[0], self.experimentalFilmSlicePosition, origin[2])
+    elif self.experimentalFilmSliceOrientation == SAGITTAL:
+      self.calibratedExperimentalFilmVolumeNode.SetOrigin(self.experimentalFilmSlicePosition, origin[1], origin[2])
+
+    #TODO: Check AP translation and rotation parameters, warn if transform takes slice off-plane
 
     return ""
 

@@ -1,3 +1,4 @@
+# This Python file uses the following encoding: utf-8
 import os
 import unittest
 import vtk, qt, ctk, slicer
@@ -32,7 +33,7 @@ class FilmDosimetryAnalysisSliceletWidget:
     except Exception, e:
       import traceback
       traceback.print_exc()
-      logging.error("There is no parent to FilmDosimetryAnalysisSliceletWidget!")
+      logging.error("There is no parent to FilmDosimetryAnalysisSliceletWidget")
 
 #
 # SliceletMainFrame
@@ -98,7 +99,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.collapsibleButtonsGroup.addButton(self.step2_loadExperimentalDataCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step3_applyCalibrationCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.step4_registrationCollapsibleButton)
-    self.collapsibleButtonsGroup.addButton(self.step5_doseComparisonCollapsibleButton)   
+    self.collapsibleButtonsGroup.addButton(self.step5_doseComparisonCollapsibleButton)
     self.collapsibleButtonsGroup.addButton(self.stepT1_lineProfileCollapsibleButton)
 
     self.collapsibleButtonsGroup.addButton(self.testButton)
@@ -182,6 +183,14 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_loadCalibrationButton.disconnect('clicked()', self.onLoadCalibrationFunctionFromFileButton)
     self.step3_applyCalibrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep3_ApplyCalibrationCollapsed)
     self.step4_performRegistrationButton.disconnect('clicked()', self.onPerformRegistrationButtonClicked)
+    self.step4_registrationCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep4_RegistrationCollapsed)
+    self.step4_rotateCcwButton.disconnect('clicked()', self.onStep4_RotateCcw90)
+    self.step4_rotateCcwAction_5Degrees.disconnect('triggered()', self.onStep4_RotateCcw5)
+    self.step4_rotateCwButton.disconnect('clicked()', self.onStep4_RotateCw90)
+    self.step4_rotateCwAction_5Degrees.disconnect('triggered()', self.onStep4_RotateCw5)
+    self.step4_flipHorizontalButton.disconnect('clicked()', self.onStep4_FlipHorizontal)
+    self.step4_flipVerticalButton.disconnect('clicked()', self.onStep4_FlipVertical)
+    self.step4_translationSliders.disconnect('valuesChanged()', self.step4_rotationSliders.resetUnactiveSliders)
     self.step5_doseComparisonCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStep5_DoseComparisonCollapsed)
     self.step5_maskSegmentationSelector.disconnect('currentNodeChanged(vtkMRMLNode*)', self.onStep5_MaskSegmentationSelectionChanged)
     self.step5_maskSegmentationSelector.disconnect('currentSegmentChanged(QString)', self.onStep5_MaskSegmentSelectionChanged)
@@ -233,7 +242,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   def setup_Step1_Calibration(self):
-    # Step 1: Load data panel
+    # Step 1: Calibration
     self.step1_calibrationCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step1_calibrationCollapsibleButton.text = "1. Calibration (optional)"
     self.sliceletPanelLayout.addWidget(self.step1_calibrationCollapsibleButton)
@@ -427,7 +436,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   def setup_Step2_LoadExperimentalData(self):
-  # Step 2: Load data panel
+    # Step 2: Load experimental data
     self.step2_loadExperimentalDataCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step2_loadExperimentalDataCollapsibleButton.text = "2. Load experimental data"
     self.sliceletPanelLayout.addWidget(self.step2_loadExperimentalDataCollapsibleButton)
@@ -533,7 +542,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   def setup_Step3_ApplyCalibration(self):
-  # Step 2: Load data panel
+    # Step 3: Apply calibration
     self.step3_applyCalibrationCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step3_applyCalibrationCollapsibleButton.text = "3. Apply calibration"
     self.sliceletPanelLayout.addWidget(self.step3_applyCalibrationCollapsibleButton)
@@ -580,6 +589,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step3_applyCalibrationButton.toolTip = "Apply calibration to experimental film."
     self.step3_applyCalibrationCollapsibleButtonLayout.addWidget(self.step3_applyCalibrationButton)
 
+    # Add empty row
+    self.step3_applyCalibrationCollapsibleButtonLayout.addWidget(qt.QLabel(''))
+    # Add message label
+    self.step3_calibrationMessageLabel = qt.QLabel('')
+    self.step3_applyCalibrationCollapsibleButtonLayout.addWidget(self.step3_calibrationMessageLabel)
+
     self.step3_applyCalibrationCollapsibleButtonLayout.addStretch(1)
 
     # Connections
@@ -593,7 +608,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   def setup_Step4_Registration(self):
-    # Step 2: Load data panel
+    # Step 4: Registration
     self.step4_registrationCollapsibleButton.setProperty('collapsedHeight', 4)
     self.step4_registrationCollapsibleButton.text = "4. Register film to plan"
     self.sliceletPanelLayout.addWidget(self.step4_registrationCollapsibleButton)
@@ -601,24 +616,116 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step4_registrationCollapsibleButtonLayout = qt.QVBoxLayout(self.step4_registrationCollapsibleButton)
     self.step4_registrationCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
     self.step4_registrationCollapsibleButtonLayout.setSpacing(4)
-    
+
     # Registration label
-    self.step4_registrationLabel = qt.QLabel("Register film to plan dose slice.\nSlice at specified position will be extracted and registered to experimental film")
-    self.step4_registrationLabel.wordWrap = True
-    self.step4_registrationCollapsibleButtonLayout.addWidget(self.step4_registrationLabel)
+    self.step4_registrationLabel1 = qt.QLabel(
+      "1. Slice at specified position is extracted and prepared for registration\n"
+      "2. Film and plan dose slice are presented in the slice view for pre-alignment\n"
+      "3. Scan setup alignment of film and plan dose slice\n"
+      "   (Hint: Change opacity of dose slice in slice view controls or Ctrl + Left button drag)\n")
+    self.step4_registrationLabel1.wordWrap = True
+    self.step4_registrationCollapsibleButtonLayout.addWidget(self.step4_registrationLabel1)
+
+    #
+    # Manual coarse pre-alignment controls
+    self.step4_scanSetupAlignmentLayout = qt.QGridLayout()
+    
+    # Rotation
+    self.step4_rotationLabel = qt.QLabel('Rotation: ')
+    self.step4_rotateCcwButton = qt.QToolButton(self.step4_registrationCollapsibleButton)
+    self.step4_rotateCcwButton.icon = qt.QIcon(':Icons/Small/SlicerUndo.png')
+    self.step4_rotateCcwButton.toolTip = u'Rotate counter-clockwise by 90°'
+    self.step4_rotateCcwButton.popupMode = qt.QToolButton.MenuButtonPopup
+    self.step4_rotateCcwButton.maximumWidth = 48
+    self.step4_rotateCcwButton.minimumWidth = 48
+    self.step4_rotateCcwAction_5Degrees = qt.QAction(u'Rotate by 5°', self.step4_rotateCcwButton)
+    self.step4_rotateCcwButton.addAction(self.step4_rotateCcwAction_5Degrees)
+    self.step4_rotateCwButton = qt.QToolButton(self.step4_registrationCollapsibleButton)
+    self.step4_rotateCwButton.icon = qt.QIcon(':Icons/Small/SlicerRedo.png')
+    self.step4_rotateCwButton.toolTip = u'Rotate clockwise by 90°'
+    self.step4_rotateCwButton.popupMode = qt.QToolButton.MenuButtonPopup
+    self.step4_rotateCwButton.maximumWidth = 48
+    self.step4_rotateCwButton.minimumWidth = 48
+    self.step4_rotateCwAction_5Degrees = qt.QAction(u'Rotate by 5°', self.step4_rotateCwButton)
+    self.step4_rotateCwButton.addAction(self.step4_rotateCwAction_5Degrees)
+    self.step4_scanSetupAlignmentLayout.addWidget(qt.QLabel(''),0,0)
+    self.step4_scanSetupAlignmentLayout.addWidget(self.step4_rotationLabel,0,1)
+    self.step4_scanSetupAlignmentLayout.addWidget(self.step4_rotateCcwButton,0,2)
+    self.step4_scanSetupAlignmentLayout.addWidget(self.step4_rotateCwButton,0,3)
+    self.step4_scanSetupAlignmentLayout.addWidget(qt.QLabel(''),0,4)
+    self.step4_scanSetupAlignmentLayout.setColumnStretch(4,2)
+
+    # Flip
+    self.step4_flipLabel = qt.QLabel('Flip: ')
+    self.step4_flipHorizontalButton = qt.QPushButton(self.step4_registrationCollapsibleButton)
+    self.step4_flipHorizontalButton.text = u'↔'
+    self.step4_flipHorizontalButton.toolTip = 'Flip film horizontally'
+    self.step4_flipHorizontalButton.maximumWidth = 48
+    self.step4_flipHorizontalButton.minimumWidth = 48
+    self.arrowFont = self.step4_flipHorizontalButton.font
+    self.arrowFont.setPointSize(14)
+    self.arrowFont.setBold(True)
+    self.step4_flipHorizontalButton.font = self.arrowFont
+    self.step4_flipVerticalButton = qt.QPushButton(self.step4_registrationCollapsibleButton)
+    self.step4_flipVerticalButton.text = u'↕'
+    self.step4_flipVerticalButton.toolTip = 'Flip film vertically'
+    self.step4_flipVerticalButton.maximumWidth = 48
+    self.step4_flipVerticalButton.minimumWidth = 48
+    self.step4_flipVerticalButton.font = self.arrowFont
+    self.step4_scanSetupAlignmentLayout.addWidget(self.step4_flipLabel,1,1)
+    self.step4_scanSetupAlignmentLayout.addWidget(self.step4_flipHorizontalButton,1,2)
+    self.step4_scanSetupAlignmentLayout.addWidget(self.step4_flipVerticalButton,1,3)
+
+    self.step4_registrationCollapsibleButtonLayout.addLayout(self.step4_scanSetupAlignmentLayout)
 
     # Add empty row
     self.step4_registrationCollapsibleButtonLayout.addWidget(qt.QLabel(''))
 
+    self.step4_registrationLabel2 = qt.QLabel(
+      "4. Automatic image-based registration to fine-tune the registration\n")
+    self.step4_registrationLabel2.wordWrap = True
+    self.step4_registrationCollapsibleButtonLayout.addWidget(self.step4_registrationLabel2)
+
     # Perform registration button
     self.step4_performRegistrationButton = qt.QPushButton("Perform registration")
-    self.step4_performRegistrationButton.toolTip = "Registers dose volume to the experimental output \n "
+    self.step4_performRegistrationButton.toolTip = "Fine-tune film to plan dose slice registration after manual coarse alignment\n "
     self.step4_registrationCollapsibleButtonLayout.addWidget(self.step4_performRegistrationButton)
-    
+
+    # Add empty row
+    self.step4_registrationCollapsibleButtonLayout.addWidget(qt.QLabel(''))
+
+    # Transform fine-tune controls
+    self.step4_transformSlidersInfoLabel = qt.QLabel("If registration result is not satisfactory adjust result registration transform:")
+    self.step4_transformSlidersInfoLabel.wordWrap = True
+    self.step4_translationSliders = slicer.qMRMLTransformSliders()
+    #self.step4_translationSliders.CoordinateReference = slicer.qMRMLTransformSliders.LOCAL # This would make the sliders always start form 0 (then min/max would also not be needed)
+    translationGroupBox = slicer.util.findChildren(widget=self.step4_translationSliders, className='ctkCollapsibleGroupBox')[0]
+    translationGroupBox.collapsed  = True # Collapse by default
+    self.step4_translationSliders.setMRMLScene(slicer.mrmlScene)
+    self.step4_rotationSliders = slicer.qMRMLTransformSliders()
+    self.step4_rotationSliders.minMaxVisible = False
+    self.step4_rotationSliders.TypeOfTransform = slicer.qMRMLTransformSliders.ROTATION
+    self.step4_rotationSliders.Title = "Rotation"
+    self.step4_rotationSliders.CoordinateReference = slicer.qMRMLTransformSliders.LOCAL
+    rotationGroupBox = slicer.util.findChildren(widget=self.step4_rotationSliders, className='ctkCollapsibleGroupBox')[0]
+    rotationGroupBox.collapsed  = True # Collapse by default
+    # self.step4_rotationSliders.setMRMLScene(slicer.mrmlScene) # If scene is set, then mm appears instead of degrees
+    self.step4_registrationCollapsibleButtonLayout.addWidget(self.step4_transformSlidersInfoLabel)
+    self.step4_registrationCollapsibleButtonLayout.addWidget(self.step4_translationSliders)
+    self.step4_registrationCollapsibleButtonLayout.addWidget(self.step4_rotationSliders)
+
     self.step4_registrationCollapsibleButtonLayout.addStretch(1)
 
-    # Connections 
+    # Connections
     self.step4_performRegistrationButton.connect('clicked()', self.onPerformRegistrationButtonClicked)
+    self.step4_registrationCollapsibleButton.connect('contentsCollapsed(bool)', self.onStep4_RegistrationCollapsed)
+    self.step4_rotateCcwButton.connect('clicked()', self.onStep4_RotateCcw90)
+    self.step4_rotateCcwAction_5Degrees.connect('triggered()', self.onStep4_RotateCcw5)
+    self.step4_rotateCwButton.connect('clicked()', self.onStep4_RotateCw90)
+    self.step4_rotateCwAction_5Degrees.connect('triggered()', self.onStep4_RotateCw5)
+    self.step4_flipHorizontalButton.connect('clicked()', self.onStep4_FlipHorizontal)
+    self.step4_flipVerticalButton.connect('clicked()', self.onStep4_FlipVertical)
+    self.step4_translationSliders.connect('valuesChanged()', self.step4_rotationSliders.resetUnactiveSliders)
 
   #------------------------------------------------------------------------------
   def setup_Step5_GammaComparison(self):
@@ -671,7 +778,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step5_referenceDoseCustomValueCGySpinBox.enabled = False
     self.step5_referenceDoseUseCustomValueLayout.addWidget(self.step5_referenceDoseUseCustomValueGyRadioButton)
     self.step5_referenceDoseUseCustomValueLayout.addWidget(self.step5_referenceDoseCustomValueCGySpinBox)
-    self.step5_referenceDoseUseCustomValueLayout.addStretch(1) 
+    self.step5_referenceDoseUseCustomValueLayout.addStretch(1)
     self.step5_referenceDoseLayout.addWidget(self.step5_referenceDoseUseMaximumDoseRadioButton)
     self.step5_referenceDoseLayout.addLayout(self.step5_referenceDoseUseCustomValueLayout)
     self.step5_doseDifferenceToleranceLayout.addLayout(self.step5_referenceDoseLayout)
@@ -741,7 +848,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step5_referenceDoseUseMaximumDoseRadioButton.connect('toggled(bool)', self.onUseMaximumDoseRadioButtonToggled)
     self.step5_computeGammaButton.connect('clicked()', self.onGammaDoseComparison)
     self.step5_showGammaReportButton.connect('clicked()', self.onShowGammaReport)
-    
+
+  #------------------------------------------------------------------------------
   def setup_StepT1_lineProfileCollapsibleButton(self):
     # Step T1: Line profile tool
     self.stepT1_lineProfileCollapsibleButton.setProperty('collapsedHeight', 4)
@@ -750,7 +858,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.stepT1_lineProfileCollapsibleButtonLayout = qt.QFormLayout(self.stepT1_lineProfileCollapsibleButton)
     self.stepT1_lineProfileCollapsibleButtonLayout.setContentsMargins(12,4,4,4)
     self.stepT1_lineProfileCollapsibleButtonLayout.setSpacing(4)
-    
+
     # Ruler creator
     self.stepT1_rulerCreationButton = slicer.qSlicerMouseModeToolBar()
     self.stepT1_rulerCreationButton.setApplicationLogic(slicer.app.applicationLogic())
@@ -815,12 +923,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   def onSubjectHierarchyItemResolved(self, caller, event, calldata):
     shNode = caller
     shItemID = calldata
-    logging.info('ZZZ Added: ' + shNode.GetItemName(shItemID))
 
     # If resolving unresolved items (after importing a batch), then save the calibration batch that needs to be parsed
     if shNode.IsItemLevel(shItemID, slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder()):
       self.batchFolderToParse = shItemID
-      logging.info('ZZZ Batch folder' + shNode.GetItemName(shItemID))
 
   #------------------------------------------------------------------------------
   @vtk.calldata_type(vtk.VTK_OBJECT)
@@ -864,6 +970,12 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   # Step 1
+
+  #------------------------------------------------------------------------------
+  def onStep1_calibrationCollapsed(self, collapsed):
+    if self.logic.lastAddedRoiNode is not None:
+      for index in xrange(self.logic.lastAddedRoiNode.GetNumberOfDisplayNodes()):
+        self.logic.lastAddedRoiNode.GetNthDisplayNode(index).SetVisibility(not collapsed)
 
   #------------------------------------------------------------------------------
   def setNumberOfCalibrationFilmsInTable(self, numberOfCalibrationFilms):
@@ -949,7 +1061,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   #------------------------------------------------------------------------------
   def parseImportedBatch(self):
     if self.batchFolderToParse is None:
-      message = "Invalid saved directory, no subject hierarchy folder is selected to parse!"
+      message = "Invalid saved directory, no subject hierarchy folder is selected to parse"
       qt.QMessageBox.critical(None, 'Error when loading calibration batch', message)
       logging.error(message)
       return message
@@ -965,7 +1077,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     shNode.GetItemChildren(self.batchFolderToParse, children)
     for i in xrange(children.GetNumberOfIds()):
       childItemID = children.GetId(i)
-      
+
       # Flood film image
       if shNode.GetItemAttribute(childItemID, self.logic.calibrationVolumeDoseAttributeName) == self.logic.floodFieldAttributeValue:
         if loadedFloodFieldScalarVolume is None:
@@ -1028,168 +1140,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     interactionNode.SwitchToSinglePlaceMode()
 
   #------------------------------------------------------------------------------
-  def onStep1_calibrationCollapsed(self, collapsed):
-    if self.logic.lastAddedRoiNode is not None:
-      for index in xrange(self.logic.lastAddedRoiNode.GetNumberOfDisplayNodes()):
-        self.logic.lastAddedRoiNode.GetNthDisplayNode(index).SetVisibility(not collapsed)
-
-  #------------------------------------------------------------------------------
   def onStep1_2_performCalibrationCollapsed(self, collapsed):
     if not collapsed:
       # Fit red slice to calibration film image so that ROI can be added more conveniently
       self.layoutWidget.layoutManager().sliceWidget('Red').sliceController().fitSliceToBackground()
-  
-  #------------------------------------------------------------------------------
-  # Step 2
-
-  #------------------------------------------------------------------------------
-  def onExperimentalFilmSpacingChanged(self):
-    try:
-      self.logic.experimentalFilmPixelSpacing = float(self.step2_experimentalFilmSpacingLineEdit.text)
-    except ValueError:
-      return
-
-  #------------------------------------------------------------------------------
-  def onExperimentalFilmSliceOrientationChanged(self, text):
-    self.logic.experimentalFilmSliceOrientation = text
-
-  #------------------------------------------------------------------------------
-  def onExperimentalFilmSlicePositionChanged(self, position):
-    self.logic.experimentalFilmSlicePosition = position
-
-  #------------------------------------------------------------------------------
-  def onStep2_loadExperimentalDataCollapsed(self, collapsed):
-    if collapsed:
-      # Save experimental data selection
-      self.saveExperimentalDataSelection()
-
-      # Set auto window/level for dose volume
-      self.logic.setAutoWindowLevelToAllDoseVolumes()
-      
-      # Disable slice fill and only show outlines for the segmentations
-      self.logic.setSliceOutlineOnlyForAllSegmentations()
-
-  #------------------------------------------------------------------------------
-  def saveExperimentalDataSelection(self):
-    self.logic.experimentalFloodFieldVolumeNode = self.step2_floodFieldImageSelectorComboBox.currentNode()
-    self.logic.experimentalFilmVolumeNode = self.step2_experimentalFilmSelectorComboBox.currentNode()
-    self.logic.planDoseVolumeNode = self.step2_planDoseVolumeSelector.currentNode()
-    
-    return self.logic.experimentalFloodFieldVolumeNode is not None and self.logic.experimentalFilmVolumeNode is not None and self.logic.planDoseVolumeNode is not None
-
-  #------------------------------------------------------------------------------
-  # Step 3
-
-  #------------------------------------------------------------------------------
-  def onStep3_ApplyCalibrationCollapsed(self, collapsed):
-    if not collapsed:
-      appLogic = slicer.app.applicationLogic()
-      selectionNode = appLogic.GetSelectionNode()
-      if self.logic.experimentalFilmVolumeNode is not None:
-        selectionNode.SetActiveVolumeID(self.logic.experimentalFilmVolumeNode.GetID())
-      else:
-        selectionNode.SetActiveVolumeID(None)
-      selectionNode.SetSecondaryVolumeID(None)
-      appLogic.PropagateVolumeSelection()
-
-  #------------------------------------------------------------------------------
-  def containsRgbImage(self, input):
-    # Input can be dictionary or node
-    import types
-    if type(input) is OrderedDict:
-      for node in input.values():
-        if node.IsA('vtkMRMLVectorVolumeNode'):
-          return True
-      return False
-    else:
-      try:
-        return input.IsA('vtkMRMLVectorVolumeNode')
-      except (AttributeError, TypeError) as e:
-        return False
-  
-  #------------------------------------------------------------------------------
-  def onPerformCalibrationButton(self):
-    # Get flood field image node
-    floodFieldImageVolumeNode = self.step1_floodFieldImageSelectorComboBox.currentNode()
-    # Collect calibration doses and volumes
-    calibrationDoseToVolumeNodeMap = self.collectCalibrationFilms()
-
-    # Check if the images are RGB and extract red channel if so
-    if self.containsRgbImage(calibrationDoseToVolumeNodeMap):
-      qt.QMessageBox.information(None, "RGB images detected" , "Loaded data contain RGB images, which are not yet supported.\n\nRed channel will be extracted from those images.")
-      # Extract red channel from all calibration images
-      calibrationDoseToVolumeNodeMap = self.logic.extractRedChannel(calibrationDoseToVolumeNodeMap)
-      # Re-populate comboboxes with new nodes
-      for currentCalibrationVolumeIndex in xrange(self.step1_numberOfCalibrationFilmsSpinBox.value):
-        currentCalibrationDose = self.step1_calibrationVolumeSelectorCGySpinBoxList[currentCalibrationVolumeIndex].value
-        newCurrentCalibrationVolumeNode = calibrationDoseToVolumeNodeMap[currentCalibrationDose]
-        self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationVolumeIndex].setCurrentNode(newCurrentCalibrationVolumeNode)
-
-      # Extract red channel from flood field image
-      floodFieldImageVolumeNode = self.step1_floodFieldImageSelectorComboBox.currentNode()
-      newFloodFieldImageVolumeNode = self.logic.extractRedChannel(floodFieldImageVolumeNode)
-      self.step1_floodFieldImageSelectorComboBox.setCurrentNode(newFloodFieldImageVolumeNode)
-      floodFieldImageVolumeNode = newFloodFieldImageVolumeNode
-
-    # Show wait cursor while processing
-    qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
-
-    # Perform calibration
-    message = self.logic.performCalibration(floodFieldImageVolumeNode, calibrationDoseToVolumeNodeMap)
-    if message != "":
-      qt.QMessageBox.critical(None, 'Error when performing calibration', message)
-      logging.error(message)
-
-    # Restore cursor
-    qt.QApplication.restoreOverrideCursor()
-
-    # Show calibration plot
-    self.createCalibrationCurvesWindow()
-    self.showCalibrationCurves()
-
-    # Fill calibration entry line edits (so that the rounded values are not written back to the member variable storing the coefficients)
-    aText = str(round(self.logic.calibrationCoefficients[0],5))
-    bText = str(round(self.logic.calibrationCoefficients[1],5))
-    cText = str(round(self.logic.calibrationCoefficients[2],5))
-    nText = str(round(self.logic.calibrationCoefficients[3],5))
-    self.step3_calibrationFunctionOrder0LineEdit.blockSignals(True)
-    self.step3_calibrationFunctionOrder0LineEdit.text = aText
-    self.step3_calibrationFunctionOrder0LineEdit.blockSignals(False)
-    self.step3_calibrationFunctionOrder1LineEdit.blockSignals(True)
-    self.step3_calibrationFunctionOrder1LineEdit.text = bText
-    self.step3_calibrationFunctionOrder1LineEdit.blockSignals(False)
-    self.step3_calibrationFunctionOrder2LineEdit.blockSignals(True)
-    self.step3_calibrationFunctionOrder2LineEdit.text = cText
-    self.step3_calibrationFunctionOrder2LineEdit.blockSignals(False)
-    self.step3_calibrationFunctionExponentLineEdit.blockSignals(True)
-    self.step3_calibrationFunctionExponentLineEdit.text = nText
-    self.step3_calibrationFunctionExponentLineEdit.blockSignals(False)
-
-    # Calibration function label
-    self.step1_2_performCalibrationFunctionLabel.text = "Dose (cGy) = " + aText + " + " + bText + " * OD + " + cText + " * OD^" + nText
-
-  #------------------------------------------------------------------------------
-  def onCalibrationFunctionLineEditChanged(self):
-    if self.step3_calibrationFunctionOrder0LineEdit.text != '':
-      try:
-        self.logic.calibrationCoefficients[0] = float(self.step3_calibrationFunctionOrder0LineEdit.text)
-      except ValueError:
-        logging.error("Invalid numeric value for calibration function coefficient 'A' " + self.step3_calibrationFunctionOrder0LineEdit.text)
-    if self.step3_calibrationFunctionOrder1LineEdit.text != '':
-      try:
-        self.logic.calibrationCoefficients[1] = float(self.step3_calibrationFunctionOrder1LineEdit.text)
-      except ValueError:
-        logging.error("Invalid numeric value for calibration function coefficient 'B' " + self.step3_calibrationFunctionOrder1LineEdit.text)
-    if self.step3_calibrationFunctionOrder2LineEdit.text != '':
-      try:
-        self.logic.calibrationCoefficients[2] = float(self.step3_calibrationFunctionOrder2LineEdit.text)
-      except ValueError:
-        logging.error("Invalid numeric value for calibration function coefficient 'C' " + self.step3_calibrationFunctionOrder2LineEdit.text)
-    if self.step3_calibrationFunctionExponentLineEdit.text != '':
-      try:
-        self.logic.calibrationCoefficients[3] = float(self.step3_calibrationFunctionExponentLineEdit.text)
-      except ValueError:
-        logging.error("Invalid numeric value for calibration function coefficient 'N' " + self.step3_calibrationFunctionExponentLineEdit.text)
 
   #------------------------------------------------------------------------------
   def createCalibrationCurvesWindow(self):
@@ -1260,21 +1214,180 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calibrationCurveChart.SetShowLegend(True)
     self.calibrationCurveChart.SetTitle('Dose (cGy) vs. Optical Density')
     self.calibrationCurveChartView.GetInteractor().Initialize()
-    self.renderWindow = self.calibrationCurveChartView.GetRenderWindow()
-    self.renderWindow.SetSize(800,550)
-    self.renderWindow.SetWindowName('Dose (cGy) vs. Optical Density')
-    self.renderWindow.Start()
+    self.calibrationCurveChartRenderWindow = self.calibrationCurveChartView.GetRenderWindow()
+    self.calibrationCurveChartRenderWindow.SetSize(800,550)
+    self.calibrationCurveChartRenderWindow.SetWindowName('Dose (cGy) vs. Optical Density')
+    self.calibrationCurveChartRenderWindow.Start()
+
+  #------------------------------------------------------------------------------
+  def containsRgbImage(self, input):
+    # Input can be dictionary or node
+    import types
+    if type(input) is OrderedDict:
+      for node in input.values():
+        if node.IsA('vtkMRMLVectorVolumeNode'):
+          return True
+      return False
+    else:
+      try:
+        return input.IsA('vtkMRMLVectorVolumeNode')
+      except (AttributeError, TypeError) as e:
+        return False
+
+  #------------------------------------------------------------------------------
+  def onPerformCalibrationButton(self):
+    # Get flood field image node
+    floodFieldImageVolumeNode = self.step1_floodFieldImageSelectorComboBox.currentNode()
+    # Collect calibration doses and volumes
+    calibrationDoseToVolumeNodeMap = self.collectCalibrationFilms()
+
+    # Check if the images are RGB and extract red channel if so
+    if self.containsRgbImage(calibrationDoseToVolumeNodeMap):
+      qt.QMessageBox.information(None, "RGB images detected" , "Loaded data contain RGB images, which are not yet supported.\n\nRed channel will be extracted from those images.")
+      # Extract red channel from all calibration images
+      calibrationDoseToVolumeNodeMap = self.logic.extractRedChannel(calibrationDoseToVolumeNodeMap)
+      # Re-populate comboboxes with new nodes
+      for currentCalibrationVolumeIndex in xrange(self.step1_numberOfCalibrationFilmsSpinBox.value):
+        currentCalibrationDose = self.step1_calibrationVolumeSelectorCGySpinBoxList[currentCalibrationVolumeIndex].value
+        newCurrentCalibrationVolumeNode = calibrationDoseToVolumeNodeMap[currentCalibrationDose]
+        self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationVolumeIndex].setCurrentNode(newCurrentCalibrationVolumeNode)
+
+      # Extract red channel from flood field image
+      floodFieldImageVolumeNode = self.step1_floodFieldImageSelectorComboBox.currentNode()
+      newFloodFieldImageVolumeNode = self.logic.extractRedChannel(floodFieldImageVolumeNode)
+      self.step1_floodFieldImageSelectorComboBox.setCurrentNode(newFloodFieldImageVolumeNode)
+      floodFieldImageVolumeNode = newFloodFieldImageVolumeNode
+
+    # Show wait cursor while processing
+    qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
+
+    # Perform calibration
+    message = self.logic.performCalibration(floodFieldImageVolumeNode, calibrationDoseToVolumeNodeMap)
+    if message != "":
+      qt.QMessageBox.critical(None, 'Error when performing calibration', message)
+      logging.error(message)
+
+    # Restore cursor
+    qt.QApplication.restoreOverrideCursor()
+
+    # Show calibration plot
+    self.createCalibrationCurvesWindow()
+    self.showCalibrationCurves()
+
+    # Fill calibration entry line edits (so that the rounded values are not written back to the member variable storing the coefficients)
+    aText = str(round(self.logic.calibrationCoefficients[0],5))
+    bText = str(round(self.logic.calibrationCoefficients[1],5))
+    cText = str(round(self.logic.calibrationCoefficients[2],5))
+    nText = str(round(self.logic.calibrationCoefficients[3],5))
+    self.step3_calibrationFunctionOrder0LineEdit.blockSignals(True)
+    self.step3_calibrationFunctionOrder0LineEdit.text = aText
+    self.step3_calibrationFunctionOrder0LineEdit.blockSignals(False)
+    self.step3_calibrationFunctionOrder1LineEdit.blockSignals(True)
+    self.step3_calibrationFunctionOrder1LineEdit.text = bText
+    self.step3_calibrationFunctionOrder1LineEdit.blockSignals(False)
+    self.step3_calibrationFunctionOrder2LineEdit.blockSignals(True)
+    self.step3_calibrationFunctionOrder2LineEdit.text = cText
+    self.step3_calibrationFunctionOrder2LineEdit.blockSignals(False)
+    self.step3_calibrationFunctionExponentLineEdit.blockSignals(True)
+    self.step3_calibrationFunctionExponentLineEdit.text = nText
+    self.step3_calibrationFunctionExponentLineEdit.blockSignals(False)
+
+    # Calibration function label
+    self.step1_2_performCalibrationFunctionLabel.text = "Dose (cGy) = " + aText + " + " + bText + " * OD + " + cText + " * OD^" + nText
 
   #------------------------------------------------------------------------------
   def onSaveCalibrationFunctionToFileButton(self):
     outputDir = qt.QFileDialog.getExistingDirectory(0, 'Select directory for saving calibration results')
-
     self.logic.saveCalibrationFunctionToFile(outputDir)
+
+  #------------------------------------------------------------------------------
+  # Step 2
+
+  #------------------------------------------------------------------------------
+  def onExperimentalFilmSpacingChanged(self):
+    try:
+      self.logic.experimentalFilmPixelSpacing = float(self.step2_experimentalFilmSpacingLineEdit.text)
+    except ValueError:
+      return
+
+  #------------------------------------------------------------------------------
+  def onExperimentalFilmSliceOrientationChanged(self, text):
+    self.logic.experimentalFilmSliceOrientation = text
+
+  #------------------------------------------------------------------------------
+  def onExperimentalFilmSlicePositionChanged(self, position):
+    self.logic.experimentalFilmSlicePosition = position
+
+  #------------------------------------------------------------------------------
+  def onStep2_loadExperimentalDataCollapsed(self, collapsed):
+    if collapsed:
+      # Save experimental data selection
+      self.saveExperimentalDataSelection()
+
+      # Set auto window/level for dose volume
+      self.logic.setAutoWindowLevelToAllDoseVolumes()
+
+      # Disable slice fill and only show outlines for the segmentations
+      self.logic.setSliceOutlineOnlyForAllSegmentations()
+
+  #------------------------------------------------------------------------------
+  def saveExperimentalDataSelection(self):
+    self.logic.experimentalFloodFieldVolumeNode = self.step2_floodFieldImageSelectorComboBox.currentNode()
+    self.logic.experimentalFilmVolumeNode = self.step2_experimentalFilmSelectorComboBox.currentNode()
+    self.logic.planDoseVolumeNode = self.step2_planDoseVolumeSelector.currentNode()
+
+    return self.logic.experimentalFloodFieldVolumeNode is not None and self.logic.experimentalFilmVolumeNode is not None and self.logic.planDoseVolumeNode is not None
+
+  #------------------------------------------------------------------------------
+  # Step 3
+
+  #------------------------------------------------------------------------------
+  def onStep3_ApplyCalibrationCollapsed(self, collapsed):
+    if not collapsed:
+      # Reset calibration message label
+      self.step3_calibrationMessageLabel.text = ''
+
+      # Show film and plan dose in the slice views
+      appLogic = slicer.app.applicationLogic()
+      selectionNode = appLogic.GetSelectionNode()
+      if self.logic.experimentalFilmVolumeNode is not None:
+        selectionNode.SetActiveVolumeID(self.logic.experimentalFilmVolumeNode.GetID())
+      else:
+        selectionNode.SetActiveVolumeID(None)
+      selectionNode.SetSecondaryVolumeID(None)
+      appLogic.PropagateVolumeSelection()
+
+      # Hide segmentations (large structure sets may slow down the application)
+      segmentationDisplayNodes = slicer.util.getNodes('vtkMRMLSegmentationDisplayNode*')
+      for displayNode in segmentationDisplayNodes.values():
+        displayNode.SetVisibility(0)
+
+  #------------------------------------------------------------------------------
+  def onCalibrationFunctionLineEditChanged(self):
+    if self.step3_calibrationFunctionOrder0LineEdit.text != '':
+      try:
+        self.logic.calibrationCoefficients[0] = float(self.step3_calibrationFunctionOrder0LineEdit.text)
+      except ValueError:
+        logging.error("Invalid numeric value for calibration function coefficient 'A' " + self.step3_calibrationFunctionOrder0LineEdit.text)
+    if self.step3_calibrationFunctionOrder1LineEdit.text != '':
+      try:
+        self.logic.calibrationCoefficients[1] = float(self.step3_calibrationFunctionOrder1LineEdit.text)
+      except ValueError:
+        logging.error("Invalid numeric value for calibration function coefficient 'B' " + self.step3_calibrationFunctionOrder1LineEdit.text)
+    if self.step3_calibrationFunctionOrder2LineEdit.text != '':
+      try:
+        self.logic.calibrationCoefficients[2] = float(self.step3_calibrationFunctionOrder2LineEdit.text)
+      except ValueError:
+        logging.error("Invalid numeric value for calibration function coefficient 'C' " + self.step3_calibrationFunctionOrder2LineEdit.text)
+    if self.step3_calibrationFunctionExponentLineEdit.text != '':
+      try:
+        self.logic.calibrationCoefficients[3] = float(self.step3_calibrationFunctionExponentLineEdit.text)
+      except ValueError:
+        logging.error("Invalid numeric value for calibration function coefficient 'N' " + self.step3_calibrationFunctionExponentLineEdit.text)
 
   #------------------------------------------------------------------------------
   def onLoadCalibrationFunctionFromFileButton(self):
     filePath = qt.QFileDialog.getOpenFileName(0, 'Open file')
-
     self.loadCalibrationFunctionFromFile(filePath)
 
   #------------------------------------------------------------------------------
@@ -1312,22 +1425,84 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Apply calibration function on experimental image
     message = self.logic.applyCalibrationOnExperimentalFilm()
-    if message != "":
+    if message != '':
       qt.QMessageBox.critical(None, 'Error when applying calibration', message)
       logging.error(message)
+      self.step3_calibrationMessageLabel.text = message
+    else:
+      self.step3_calibrationMessageLabel.text = 'Calibration successfully finished'
 
     # Restore cursor
     qt.QApplication.restoreOverrideCursor()
 
-    qt.QMessageBox.information(None, "Calibration" , "Calibration successfully finished!")
+    # Show calibrated experimental image
+    # (not together with the original film, because the fused image looks strange due to them being inverse of each other)
+    appLogic = slicer.app.applicationLogic()
+    selectionNode = appLogic.GetSelectionNode()
+    selectionNode.SetActiveVolumeID(self.logic.calibratedExperimentalFilmVolumeNode.GetID())
+    selectionNode.SetSecondaryVolumeID(None)
+    appLogic.PropagateVolumeSelection()
 
   #------------------------------------------------------------------------------
   # Step 4
 
   #------------------------------------------------------------------------------
-  def onPerformRegistrationButtonClicked(self):
-    # TODO merge step 2 and step 4?
+  def onStep4_RegistrationCollapsed(self, collapsed):
+    if not collapsed:
+      # Pre-process volumes for registration (cropping, padding), 
+      # pre-align film and plan dose slice for scan setup alignment
+      message = self.logic.initializeFilmToPlanDoseRegistration()
 
+      if self.logic.paddedCalibratedExperimentalFilmVolumeNode is None or self.logic.paddedPlanDoseSliceVolumeNode is None:
+        message = 'Failed to prepare calibrated experimental film and/or plan dose slice for registration\n\n' + message
+      if message != '':
+        qt.QMessageBox.critical(None, 'Error when initializing registration', message)
+        logging.error(message)
+        return
+
+      # Show film and plan dose slice
+      appLogic = slicer.app.applicationLogic()
+      selectionNode = appLogic.GetSelectionNode()
+      selectionNode.SetActiveVolumeID(self.logic.paddedCalibratedExperimentalFilmVolumeNode.GetID())
+      selectionNode.SetSecondaryVolumeID(self.logic.paddedPlanDoseSliceVolumeNode.GetID())
+      appLogic.PropagateVolumeSelection()
+      # Make foreground volume semi-transparent
+      layoutManager = slicer.app.layoutManager()
+      sliceWidgetNames = ['Red', 'Green', 'Yellow']
+      for sliceWidgetName in sliceWidgetNames:
+        slice = layoutManager.sliceWidget(sliceWidgetName)
+        if slice is None:
+          continue
+        sliceLogic = slice.sliceLogic()
+        compositeNode = sliceLogic.GetSliceCompositeNode()
+        compositeNode.SetForegroundOpacity(0.5)
+
+  #------------------------------------------------------------------------------
+  def onStep4_RotateCcw90(self):
+    self.logic.rotateCalibratedExperimentalFilm(False, 90)
+
+  #------------------------------------------------------------------------------
+  def onStep4_RotateCcw5(self):
+    self.logic.rotateCalibratedExperimentalFilm(False, 5)
+
+  #------------------------------------------------------------------------------
+  def onStep4_RotateCw90(self):
+    self.logic.rotateCalibratedExperimentalFilm(True, 90)
+
+  #------------------------------------------------------------------------------
+  def onStep4_RotateCw5(self):
+    self.logic.rotateCalibratedExperimentalFilm(True, 5)
+
+  #------------------------------------------------------------------------------
+  def onStep4_FlipHorizontal(self):
+    self.logic.flipCalibratedExperimentalFilm(True)
+
+  #------------------------------------------------------------------------------
+  def onStep4_FlipVertical(self):
+    self.logic.flipCalibratedExperimentalFilm(False)
+
+  #------------------------------------------------------------------------------
+  def onPerformRegistrationButtonClicked(self):
     qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
 
     # Perform registration
@@ -1344,6 +1519,21 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     selectionNode.SetActiveVolumeID(self.logic.paddedCalibratedExperimentalFilmVolumeNode.GetID())
     selectionNode.SetSecondaryVolumeID(self.logic.paddedPlanDoseSliceVolumeNode.GetID())
     appLogic.PropagateVolumeSelection()
+
+    # Disable pre-alignment controls, because they cannot be used after registration
+    self.step4_rotateCcwButton.enabled = False
+    self.step4_rotateCwButton.enabled = False
+    self.step4_flipHorizontalButton.enabled = False
+    self.step4_flipVerticalButton.enabled = False
+
+    # Set transforms to slider widgets
+    self.step4_translationSliders.setMRMLTransformNode(self.logic.experimentalFilmToDoseSliceTransformNode)
+    self.step4_rotationSliders.setMRMLTransformNode(self.logic.experimentalFilmToDoseSliceTransformNode)
+
+    # Change single step size to 0.5mm in the translation controls
+    sliders = slicer.util.findChildren(widget=self.step4_translationSliders, className='qMRMLLinearTransformSlider')
+    for slider in sliders:
+      slider.singleStep = 0.5
 
   #------------------------------------------------------------------------------
   # Step 5
@@ -1465,11 +1655,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.gammaProgressDialog.labelText = "Computing gamma dose difference..."
       self.gammaProgressDialog.show()
       slicer.app.processEvents()
-      
+
       # Perform gamma comparison
       qt.QApplication.setOverrideCursor(qt.QCursor(qt.Qt.BusyCursor))
       errorMessage = doseComparisonLogic.ComputeGammaDoseDifference(gammaParameterSetNode)
-      
+
       self.gammaProgressDialog.hide()
       self.gammaProgressDialog = None
       self.removeObserver(doseComparisonLogic, SlicerRtCommon.ProgressUpdated, self.onGammaProgressUpdated)
@@ -1519,7 +1709,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       threeDWidget = layoutManager.threeDWidget(0)
       if threeDWidget is not None and threeDWidget.threeDView() is not None:
         threeDWidget.threeDView().resetFocalPoint()
-      
+
     except Exception, e:
       import traceback
       traceback.print_exc()
@@ -1537,7 +1727,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       qt.QMessageBox.information(None, 'Gamma computation report', self.gammaReport)
     else:
       qt.QMessageBox.information(None, 'Gamma computation report missing', 'No report available!')
-    
+
+  #------------------------------------------------------------------------------
+  # Step T1
+
   #------------------------------------------------------------------------------
   def onStepT1_LineProfileCollapsed(self, collapsed):
     appLogic = slicer.app.applicationLogic()
@@ -1657,9 +1850,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Load calibration batch
     success = slicer.util.loadScene(calibrationBatchMrmlSceneFilePath)
     print("Batch loaded successfully: " + str(success))
-    
+
     #TODO: Test perform calibration too
-    
+
     # Step 2
     #
     # Load experimental film and set spacing
@@ -1673,21 +1866,21 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     dicomRtPluginInstance.load(loadables[0])
     self.logic.setAutoWindowLevelToAllDoseVolumes()
     print("DICOM loaded")
-    
+
     # Assign roles
     self.step2_floodFieldImageSelectorComboBox.setCurrentNode(slicer.util.getNode(floodFieldImageNodeName))
     self.step2_experimentalFilmSelectorComboBox.setCurrentNode(slicer.util.getNode(experimentalFilmNodeName))
     self.step2_planDoseVolumeSelector.setCurrentNode(slicer.util.getNode(planDoseVolumeNodeName))
-    
+
     if not self.saveExperimentalDataSelection():
-      logging.error("Experimental data selection invalid!")
+      logging.error("Experimental data selection invalid")
       return
 
     # Step 3
     #
     # Load calibration from file
     self.loadCalibrationFunctionFromFile(calibrationFunctionFilePath)
-    
+
     # Apply calibration
     self.logic.applyCalibrationOnExperimentalFilm()
 
