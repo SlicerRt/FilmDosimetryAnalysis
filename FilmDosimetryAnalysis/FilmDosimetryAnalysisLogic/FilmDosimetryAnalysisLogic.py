@@ -63,9 +63,10 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
   def setAutoWindowLevelToAllDoseVolumes(self):
     import vtkSlicerRtCommonPython as vtkSlicerRtCommon
 
-    slicer.mrmlScene.InitTraversal()
-    currentVolumeNode = slicer.mrmlScene.GetNextNodeByClass("vtkMRMLScalarVolumeNode")
-    while currentVolumeNode:
+    nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLScalarVolumeNode")
+    nodes.UnRegister(slicer.mrmlScene)
+    for index in range(nodes.GetNumberOfItems()):
+      currentVolumeNode = nodes.GetItemAsObject(index)
       if vtkSlicerRtCommon.SlicerRtCommon.IsDoseVolumeNode(currentVolumeNode):
         if currentVolumeNode.GetDisplayNode() is not None:
           currentVolumeNode.GetDisplayNode().AutoWindowLevelOn()
@@ -73,9 +74,10 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
   # ---------------------------------------------------------------------------
   def setSliceOutlineOnlyForAllSegmentations(self):
-    slicer.mrmlScene.InitTraversal()
-    currentSegmentationNode = slicer.mrmlScene.GetNextNodeByClass("vtkMRMLSegmentationNode")
-    while currentSegmentationNode:
+    nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLSegmentationNode")
+    nodes.UnRegister(slicer.mrmlScene)
+    for index in range(nodes.GetNumberOfItems()):
+      currentSegmentationNode = nodes.GetItemAsObject(index)
       if currentSegmentationNode.GetDisplayNode() is not None:
         currentSegmentationNode.GetDisplayNode().SetVisibility2DFill(False)
         currentSegmentationNode.GetDisplayNode().SetVisibility2DOutline(True)

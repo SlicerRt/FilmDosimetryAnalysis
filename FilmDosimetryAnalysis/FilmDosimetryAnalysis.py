@@ -110,7 +110,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.logic = FilmDosimetryAnalysisLogic()
 
     # Declare member variables (selected at certain steps and then from then on for the workflow)
-    self.batchFolderToParse = 0
+    self.lastAddedFolder = 0
     self.opticalDensityCurve = None
 
     # Constants
@@ -118,9 +118,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Set observations
     shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
-    self.addObserver(shNode, slicer.vtkMRMLSubjectHierarchyNode.SubjectHierarchyItemResolvedEvent, self.onSubjectHierarchyItemResolved)
+    self.addObserver(shNode, slicer.vtkMRMLSubjectHierarchyNode.SubjectHierarchyItemAddedEvent, self.onSubjectHierarchyItemAdded)
+    self.addObserver(shNode, slicer.vtkMRMLSubjectHierarchyNode.SubjectHierarchyEndResolveEvent, self.onSubjectHierarchyResolveEnded)
     self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
-    self.addObserver(slicer.mrmlScene, slicer.vtkMRMLScene.EndImportEvent, self.onSceneEndImport)
 
     # Turn on slice intersections in 2D viewers
     compositeNodes = slicer.util.getNodes("vtkMRMLSliceCompositeNode*")
@@ -204,9 +204,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Remove scene observations
     shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
-    self.removeObserver(shNode, slicer.vtkMRMLSubjectHierarchyNode.SubjectHierarchyItemResolvedEvent, self.onSubjectHierarchyItemResolved)
+    self.removeObserver(shNode, slicer.vtkMRMLSubjectHierarchyNode.SubjectHierarchyItemAddedEvent, self.onSubjectHierarchyItemAdded)
+    self.removeObserver(shNode, slicer.vtkMRMLSubjectHierarchyNode.SubjectHierarchyEndResolveEvent, self.onSubjectHierarchyResolveEnded)
     self.removeObserver(slicer.mrmlScene, slicer.vtkMRMLScene.NodeAddedEvent, self.onNodeAdded)
-    self.removeObserver(slicer.mrmlScene, slicer.vtkMRMLScene.EndImportEvent, self.onSceneEndImport)
 
   #------------------------------------------------------------------------------
   def setup_Step0_LayoutSelection(self):
@@ -920,13 +920,13 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   @vtk.calldata_type(vtk.VTK_LONG)
-  def onSubjectHierarchyItemResolved(self, caller, event, calldata):
+  def onSubjectHierarchyItemAdded(self, caller, event, calldata):
     shNode = caller
     shItemID = calldata
 
     # If resolving unresolved items (after importing a batch), then save the calibration batch that needs to be parsed
     if shNode.IsItemLevel(shItemID, slicer.vtkMRMLSubjectHierarchyConstants.GetSubjectHierarchyLevelFolder()):
-      self.batchFolderToParse = shItemID
+      self.lastAddedFolder = shItemID
 
   #------------------------------------------------------------------------------
   @vtk.calldata_type(vtk.VTK_OBJECT)
@@ -936,11 +936,6 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # When an ROI is added then save it as the ROI to use for calibration
     if addedNode.IsA('vtkMRMLAnnotationROINode'):
       self.logic.lastAddedRoiNode = addedNode
-
-  #------------------------------------------------------------------------------
-  def onSceneEndImport(self, caller, event):
-    # Make sure resolving the imported items finishes by the time parsing starts
-    qt.QTimer.singleShot(50, self.parseImportedBatch)
 
   #------------------------------------------------------------------------------
   def onViewSelect(self, layoutIndex):
@@ -1059,8 +1054,8 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     qt.QApplication.restoreOverrideCursor()
 
   #------------------------------------------------------------------------------
-  def parseImportedBatch(self):
-    if self.batchFolderToParse is None:
+  def onSubjectHierarchyResolveEnded(self, caller, event):
+    if self.lastAddedFolder is None:
       message = "Invalid saved directory, no subject hierarchy folder is selected to parse"
       qt.QMessageBox.critical(None, 'Error when loading calibration batch', message)
       logging.error(message)
@@ -1074,7 +1069,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Inspect items under the batch folder item assign them to roles and dose levels
     children = vtk.vtkIdList()
-    shNode.GetItemChildren(self.batchFolderToParse, children)
+    shNode.GetItemChildren(self.lastAddedFolder, children)
     for i in xrange(children.GetNumberOfIds()):
       childItemID = children.GetId(i)
 
@@ -1108,7 +1103,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_numberOfCalibrationFilmsSpinBox.value = currentCalibrationFilmIndex
 
     # Reset saved folder item
-    self.batchFolderToParse = 0
+    self.lastAddedFolder = 0
 
     if loadedFloodFieldScalarVolume is None:
       message = 'Failed to find flood field image!'
