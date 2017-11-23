@@ -27,4 +27,5 @@ include(${Slicer_USE_FILE})
 add_subdirectory(FilmDosimetryAnalysis)
 
 #-----------------------------------------------------------------------------
+include(${Slicer_EXTENSION_GENERATE_CONFIG})
 include(${Slicer_EXTENSION_CPACK})
