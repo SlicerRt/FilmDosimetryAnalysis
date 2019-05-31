@@ -61,13 +61,13 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
 
   # ---------------------------------------------------------------------------
   def setAutoWindowLevelToAllDoseVolumes(self):
-    import vtkSlicerRtCommonPython as vtkSlicerRtCommon
+    from vtkSlicerRtCommonPython import vtkSlicerRtCommon
 
     nodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLScalarVolumeNode")
     nodes.UnRegister(slicer.mrmlScene)
     for index in range(nodes.GetNumberOfItems()):
       currentVolumeNode = nodes.GetItemAsObject(index)
-      if vtkSlicerRtCommon.SlicerRtCommon.IsDoseVolumeNode(currentVolumeNode):
+      if vtkSlicerRtCommon.IsDoseVolumeNode(currentVolumeNode):
         if currentVolumeNode.GetDisplayNode() is not None:
           currentVolumeNode.GetDisplayNode().AutoWindowLevelOn()
       currentVolumeNode = slicer.mrmlScene.GetNextNodeByClass("vtkMRMLScalarVolumeNode")
@@ -233,7 +233,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
   def findBestFittingCalibrationFunctionCoefficients(self):
     bestN = [] # Entries are [MSE, n, coefficients]
 
-    for n in xrange(1000,4001):
+    for n in range(1000,4001):
       n/=1000.0
       coeffs = self.findCoefficientsForExponent(n)
       MSE = self.meanSquaredError(coeffs[0],coeffs[1],coeffs[2],n)
@@ -249,19 +249,19 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     functionTermsMatrix = []
 
     # Optical density
-    for row in xrange(len(self.measuredOpticalDensityToDoseMap)):
+    for row in range(len(self.measuredOpticalDensityToDoseMap)):
       opticalDensity = self.measuredOpticalDensityToDoseMap[row][0]
       functionTermsMatrix.append([1,opticalDensity,opticalDensity**n])
     functionTermsMatrix = numpy.asmatrix(functionTermsMatrix)
 
     # Calculate constant term coefficient vector
     functionDoseTerms = []
-    for row in xrange(len(self.measuredOpticalDensityToDoseMap)):
+    for row in range(len(self.measuredOpticalDensityToDoseMap)):
       functionDoseTerms += [self.measuredOpticalDensityToDoseMap[row][1]]
     functionConstantTerms = numpy.linalg.lstsq(functionTermsMatrix,functionDoseTerms)
     coefficients = functionConstantTerms[0].tolist()
 
-    for coefficientIndex in xrange(len(coefficients)):
+    for coefficientIndex in range(len(coefficients)):
       coefficients[coefficientIndex] = coefficients[coefficientIndex]
 
     return coefficients
@@ -269,7 +269,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
   #------------------------------------------------------------------------------
   def meanSquaredError(self, a, b, c, n):
     sumMeanSquaredError = 0.0
-    for i in xrange(len(self.measuredOpticalDensityToDoseMap)):
+    for i in range(len(self.measuredOpticalDensityToDoseMap)):
       calculatedDose = self.applyCalibrationFunctionOnSingleOpticalDensityValue(self.measuredOpticalDensityToDoseMap[i][0], a, b, c, n)
       sumMeanSquaredError += ((self.measuredOpticalDensityToDoseMap[i][1] - calculatedDose)**2)
     return sumMeanSquaredError / float(len(self.measuredOpticalDensityToDoseMap))
@@ -440,7 +440,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
       return
 
     doseArray_cGy = numpy.zeros(len(floodFieldArray))
-    for index in xrange(len(experimentalFilmArray)):
+    for index in range(len(experimentalFilmArray)):
       opticalDensity = 0.0
       try:
         opticalDensity = math.log10(float(floodFieldArray[index])/experimentalFilmArray[index])
@@ -716,7 +716,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     self.paddedPlanDoseSliceVolumeNode.GetRASBounds(doseBounds)
     doseCenter = [(doseBounds[0]+doseBounds[1])/2, (doseBounds[2]+doseBounds[3])/2, (doseBounds[4]+doseBounds[5])/2]
     expCenter = [(expBounds[0]+expBounds[1])/2, (expBounds[2]+expBounds[3])/2, (expBounds[4]+expBounds[5])/2]
-    exp2DoseTranslation = [doseCenter[x] - expCenter[x] for x in xrange(len(doseCenter))]
+    exp2DoseTranslation = [doseCenter[x] - expCenter[x] for x in range(len(doseCenter))]
     experimentalFilmPreAlignmentTransform.Translate(exp2DoseTranslation)
 
     # Transform calibrated and padded experimental films

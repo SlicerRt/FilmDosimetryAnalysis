@@ -5,8 +5,8 @@ import math
 # LineProfileLogic
 #
 class LineProfileLogic:
-  """This class should implement all the actual 
-  computation done by your module.  The interface 
+  """This class should implement all the actual
+  computation done by your module.  The interface
   should be such that other python code can import
   this class and make use of the functionality without
   requiring an instance of the Widget
@@ -33,7 +33,7 @@ class LineProfileLogic:
     inputRuler.GetPosition2(rulerEndPoint_Ruler)
     rulerStartPoint_Ruler1 = [rulerStartPoint_Ruler[0], rulerStartPoint_Ruler[1], rulerStartPoint_Ruler[2], 1.0]
     rulerEndPoint_Ruler1 = [rulerEndPoint_Ruler[0], rulerEndPoint_Ruler[1], rulerEndPoint_Ruler[2], 1.0]
-    
+
     rulerToRAS = vtk.vtkMatrix4x4()
     rulerTransformNode = inputRuler.GetParentTransformNode()
     if rulerTransformNode:
@@ -45,12 +45,12 @@ class LineProfileLogic:
     rulerStartPoint_RAS1 = [0,0,0,1]
     rulerEndPoint_RAS1 = [0,0,0,1]
     rulerToRAS.MultiplyPoint(rulerStartPoint_Ruler1,rulerStartPoint_RAS1)
-    rulerToRAS.MultiplyPoint(rulerEndPoint_Ruler1,rulerEndPoint_RAS1)        
-    
+    rulerToRAS.MultiplyPoint(rulerEndPoint_Ruler1,rulerEndPoint_RAS1)
+
     rulerLengthMm = math.sqrt(vtk.vtkMath.Distance2BetweenPoints(rulerStartPoint_RAS1[0:3],rulerEndPoint_RAS1[0:3]))
 
     # Need to get the start/end point of the line in the IJK coordinate system
-    # as VTK filters cannot take into account direction cosines        
+    # as VTK filters cannot take into account direction cosines
     rasToIJK = vtk.vtkMatrix4x4()
     parentToIJK = vtk.vtkMatrix4x4()
     rasToParent = vtk.vtkMatrix4x4()
@@ -63,12 +63,12 @@ class LineProfileLogic:
       else:
         print ("Cannot handle non-linear transforms - ignoring transform of the input volume")
     vtk.vtkMatrix4x4.Multiply4x4(parentToIJK, rasToParent, rasToIJK)
-    
+
     rulerStartPoint_IJK1 = [0,0,0,1]
     rulerEndPoint_IJK1 = [0,0,0,1]
     rasToIJK.MultiplyPoint(rulerStartPoint_RAS1,rulerStartPoint_IJK1)
-    rasToIJK.MultiplyPoint(rulerEndPoint_RAS1,rulerEndPoint_IJK1) 
-    
+    rasToIJK.MultiplyPoint(rulerEndPoint_RAS1,rulerEndPoint_IJK1)
+
     lineSource = vtk.vtkLineSource()
     lineSource.SetPoint1(rulerStartPoint_IJK1[0],rulerStartPoint_IJK1[1],rulerStartPoint_IJK1[2])
     lineSource.SetPoint2(rulerEndPoint_IJK1[0], rulerEndPoint_IJK1[1], rulerEndPoint_IJK1[2])
@@ -84,17 +84,17 @@ class LineProfileLogic:
 
     probedPoints=probeFilter.GetOutput()
 
-    # Create arrays of data  
+    # Create arrays of data
     a = outputArray.GetArray()
     a.SetNumberOfTuples(probedPoints.GetNumberOfPoints())
-    x = xrange(0, probedPoints.GetNumberOfPoints())
+    x = range(0, probedPoints.GetNumberOfPoints())
     xStep=rulerLengthMm/(probedPoints.GetNumberOfPoints()-1)
     probedPointScalars=probedPoints.GetPointData().GetScalars()
     for i in range(len(x)):
       a.SetComponent(i, 0, x[i]*xStep)
       a.SetComponent(i, 1, probedPointScalars.GetTuple(i)[0])
       a.SetComponent(i, 2, 0)
-      
+
     probedPoints.GetPointData().GetScalars().Modified()
 
   def updateChart(self,outputArray,name):
@@ -111,10 +111,10 @@ class LineProfileLogic:
       # Configure properties of the Chart
       cn.SetProperty('default', 'title', 'Line profile')
       cn.SetProperty('default', 'xAxisLabel', 'Distance (mm)')
-      cn.SetProperty('default', 'yAxisLabel', 'Intensity')  
-    
+      cn.SetProperty('default', 'yAxisLabel', 'Intensity')
+
     cn.AddArray(name, outputArray.GetID())
-    
+
     # Set the chart to display
     cvn.SetChartNodeID(cn.GetID())
     cvn.Modified()
@@ -126,7 +126,7 @@ class LineProfileLogic:
     inputRuler.GetPosition2(rulerEndPoint_Ruler)
     rulerStartPoint_Ruler1 = [rulerStartPoint_Ruler[0], rulerStartPoint_Ruler[1], rulerStartPoint_Ruler[2], 1.0]
     rulerEndPoint_Ruler1 = [rulerEndPoint_Ruler[0], rulerEndPoint_Ruler[1], rulerEndPoint_Ruler[2], 1.0]
-    
+
     rulerToRAS = vtk.vtkMatrix4x4()
     rulerTransformNode = inputRuler.GetParentTransformNode()
     if rulerTransformNode:
@@ -138,6 +138,6 @@ class LineProfileLogic:
     rulerStartPoint_RAS1 = [0,0,0,1]
     rulerEndPoint_RAS1 = [0,0,0,1]
     rulerToRAS.MultiplyPoint(rulerStartPoint_Ruler1,rulerStartPoint_RAS1)
-    rulerToRAS.MultiplyPoint(rulerEndPoint_Ruler1,rulerEndPoint_RAS1)        
-    
+    rulerToRAS.MultiplyPoint(rulerEndPoint_Ruler1,rulerEndPoint_RAS1)
+
     return math.sqrt(vtk.vtkMath.Distance2BetweenPoints(rulerStartPoint_RAS1[0:3],rulerEndPoint_RAS1[0:3]))

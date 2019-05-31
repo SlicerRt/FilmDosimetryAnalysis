@@ -30,7 +30,7 @@ class FilmDosimetryAnalysisSliceletWidget:
       parent
       self.parent = parent
 
-    except Exception, e:
+    except Exception as e:
       import traceback
       traceback.print_exc()
       logging.error("There is no parent to FilmDosimetryAnalysisSliceletWidget")
@@ -331,7 +331,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step1_calibrationVolumeSelectorComboBoxList = []
 
     # Create calibration films table
-    for doseToImageLayoutNumber in xrange(self.maxNumberOfCalibrationFilms):
+    for doseToImageLayoutNumber in range(self.maxNumberOfCalibrationFilms):
       self.step1_doseToImageSelectorRowLayout = qt.QHBoxLayout()
       self.step1_mainCalibrationVolumeSelectorLabelBefore = qt.QLabel('Calibration ')
       self.step1_calibrationVolumeSelectorLabelBeforeList.append(self.step1_mainCalibrationVolumeSelectorLabelBefore)
@@ -629,7 +629,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     #
     # Manual coarse pre-alignment controls
     self.step4_scanSetupAlignmentLayout = qt.QGridLayout()
-    
+
     # Rotation
     self.step4_rotationLabel = qt.QLabel('Rotation: ')
     self.step4_rotateCcwButton = qt.QToolButton(self.step4_registrationCollapsibleButton)
@@ -969,8 +969,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   #------------------------------------------------------------------------------
   def onStep1_calibrationCollapsed(self, collapsed):
     if self.logic.lastAddedRoiNode is not None:
-      for index in xrange(self.logic.lastAddedRoiNode.GetNumberOfDisplayNodes()):
-        self.logic.lastAddedRoiNode.GetNthDisplayNode(index).SetVisibility(not collapsed)
+      for index in range(self.logic.lastAddedRoiNode.GetNumberOfDisplayNodes()):
+        currentDisplayNode = self.logic.lastAddedRoiNode.GetNthDisplayNode(index)
+        if currentDisplayNode:
+          currentDisplayNode.SetVisibility(not collapsed)
 
   #------------------------------------------------------------------------------
   def setNumberOfCalibrationFilmsInTable(self, numberOfCalibrationFilms):
@@ -980,13 +982,13 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       logging.error(message)
       return
 
-    for row in xrange(numberOfCalibrationFilms):
+    for row in range(numberOfCalibrationFilms):
       self.step1_calibrationVolumeSelectorLabelBeforeList[row].visible = True
       self.step1_calibrationVolumeSelectorCGySpinBoxList[row].visible = True
       self.step1_calibrationVolumeSelectorCGyLabelList[row].visible = True
       self.step1_calibrationVolumeSelectorComboBoxList[row].visible = True
 
-    for row in xrange(numberOfCalibrationFilms, self.maxNumberOfCalibrationFilms):
+    for row in range(numberOfCalibrationFilms, self.maxNumberOfCalibrationFilms):
       self.step1_calibrationVolumeSelectorLabelBeforeList[row].visible = False
       self.step1_calibrationVolumeSelectorCGySpinBoxList[row].visible = False
       self.step1_calibrationVolumeSelectorCGyLabelList[row].visible = False
@@ -999,7 +1001,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   #------------------------------------------------------------------------------
   def collectCalibrationFilms(self):
     calibrationDoseToVolumeNodeMap = OrderedDict()
-    for currentCalibrationVolumeIndex in xrange(self.step1_numberOfCalibrationFilmsSpinBox.value):
+    for currentCalibrationVolumeIndex in range(self.step1_numberOfCalibrationFilmsSpinBox.value):
       currentCalibrationVolumeNode = self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationVolumeIndex].currentNode()
       currentCalibrationDose = self.step1_calibrationVolumeSelectorCGySpinBoxList[currentCalibrationVolumeIndex].value
       calibrationDoseToVolumeNodeMap[currentCalibrationDose] = currentCalibrationVolumeNode
@@ -1070,7 +1072,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Inspect items under the batch folder item assign them to roles and dose levels
     children = vtk.vtkIdList()
     shNode.GetItemChildren(self.lastAddedFolder, children)
-    for i in xrange(children.GetNumberOfIds()):
+    for i in range(children.GetNumberOfIds()):
       childItemID = children.GetId(i)
 
       # Flood film image
@@ -1162,7 +1164,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calibrationCurveDataTable.AddColumn(dose_cGyCalibrationCurveArray)
     self.calibrationCurveDataTable.SetNumberOfRows(calibrationNumberOfRows)
 
-    for rowIndex in xrange(calibrationNumberOfRows):
+    for rowIndex in range(calibrationNumberOfRows):
       self.calibrationCurveDataTable.SetValue(rowIndex, 0, self.logic.measuredOpticalDensityToDoseMap[rowIndex][0])
       self.calibrationCurveDataTable.SetValue(rowIndex, 1, self.logic.measuredOpticalDensityToDoseMap[rowIndex][1])
 
@@ -1174,10 +1176,10 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.calibrationMeanOpticalAttenuationLine.SetWidth(2.0)
 
     # Create and populate the calculated dose/OD curve with function
-    opticalDensityList = [round(0 + 0.01*opticalDensityIncrement,2) for opticalDensityIncrement in xrange(120)] #TODO: Magic number 120? Rounding?
+    opticalDensityList = [round(0 + 0.01*opticalDensityIncrement,2) for opticalDensityIncrement in range(120)] #TODO: Magic number 120? Rounding?
     opticalDensities = []
 
-    for calculatedEntryIndex in xrange(120):
+    for calculatedEntryIndex in range(120):
       newEntry = [opticalDensityList[calculatedEntryIndex], self.logic.applyCalibrationFunctionOnSingleOpticalDensityValue(opticalDensityList[calculatedEntryIndex], self.logic.calibrationCoefficients[0], self.logic.calibrationCoefficients[1], self.logic.calibrationCoefficients[2], self.logic.calibrationCoefficients[3])]
       opticalDensities.append(newEntry)
 
@@ -1192,7 +1194,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.opticalDensityToDoseFunctionTable.AddColumn(dose_cGyCalculatedArray)
 
     self.opticalDensityToDoseFunctionTable.SetNumberOfRows(opticalDensityNumberOfRows)
-    for opticalDensityIncrement in xrange(opticalDensityNumberOfRows):
+    for opticalDensityIncrement in range(opticalDensityNumberOfRows):
       self.opticalDensityToDoseFunctionTable.SetValue(opticalDensityIncrement, 0, opticalDensities[opticalDensityIncrement][0])
       self.opticalDensityToDoseFunctionTable.SetValue(opticalDensityIncrement, 1, opticalDensities[opticalDensityIncrement][1])
 
@@ -1242,7 +1244,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       # Extract red channel from all calibration images
       calibrationDoseToVolumeNodeMap = self.logic.extractRedChannel(calibrationDoseToVolumeNodeMap)
       # Re-populate comboboxes with new nodes
-      for currentCalibrationVolumeIndex in xrange(self.step1_numberOfCalibrationFilmsSpinBox.value):
+      for currentCalibrationVolumeIndex in range(self.step1_numberOfCalibrationFilmsSpinBox.value):
         currentCalibrationDose = self.step1_calibrationVolumeSelectorCGySpinBoxList[currentCalibrationVolumeIndex].value
         newCurrentCalibrationVolumeNode = calibrationDoseToVolumeNodeMap[currentCalibrationDose]
         self.step1_calibrationVolumeSelectorComboBoxList[currentCalibrationVolumeIndex].setCurrentNode(newCurrentCalibrationVolumeNode)
@@ -1444,7 +1446,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   #------------------------------------------------------------------------------
   def onStep4_RegistrationCollapsed(self, collapsed):
     if not collapsed:
-      # Pre-process volumes for registration (cropping, padding), 
+      # Pre-process volumes for registration (cropping, padding),
       # pre-align film and plan dose slice for scan setup alignment
       message = self.logic.initializeFilmToPlanDoseRegistration()
 
@@ -1586,7 +1588,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     import vtkSegmentationCorePython as vtkSegmentationCore
     segmentIDs = vtk.vtkStringArray()
     self.logic.maskSegmentationNode.GetSegmentation().GetSegmentIDs(segmentIDs)
-    for segmentIndex in xrange(0,segmentIDs.GetNumberOfValues()):
+    for segmentIndex in range(0,segmentIDs.GetNumberOfValues()):
       currentSegmentID = segmentIDs.GetValue(segmentIndex)
       self.logic.maskSegmentationNode.GetDisplayNode().SetSegmentVisibility(currentSegmentID, False)
     # Show only selected segment, make it semi-transparent
@@ -1641,9 +1643,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       gammaParameterSetNode.SetMaximumGamma(self.step5_maximumGammaSpinBox.value)
 
       # Create progress bar
-      from vtkSlicerRtCommonPython import SlicerRtCommon
+      from vtkSlicerRtCommonPython import vtkSlicerRtCommon
       doseComparisonLogic = slicer.modules.dosecomparison.logic()
-      self.addObserver(doseComparisonLogic, SlicerRtCommon.ProgressUpdated, self.onGammaProgressUpdated)
+      self.addObserver(doseComparisonLogic, vtkSlicerRtCommon.ProgressUpdated, self.onGammaProgressUpdated)
       self.gammaProgressDialog = qt.QProgressDialog(self.parent)
       self.gammaProgressDialog.setModal(True)
       self.gammaProgressDialog.setMinimumDuration(150)
@@ -1657,7 +1659,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
       self.gammaProgressDialog.hide()
       self.gammaProgressDialog = None
-      self.removeObserver(doseComparisonLogic, SlicerRtCommon.ProgressUpdated, self.onGammaProgressUpdated)
+      self.removeObserver(doseComparisonLogic, vtkSlicerRtCommon.ProgressUpdated, self.onGammaProgressUpdated)
       qt.QApplication.restoreOverrideCursor()
 
       if gammaParameterSetNode.GetResultsValid():
@@ -1705,7 +1707,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       if threeDWidget is not None and threeDWidget.threeDView() is not None:
         threeDWidget.threeDView().resetFocalPoint()
 
-    except Exception, e:
+    except Exception as e:
       import traceback
       traceback.print_exc()
       logging.error('Failed to perform gamma dose comparison!')
@@ -1809,7 +1811,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
         data = [['PlanDose','CalibratedExperimentalFilmDose']]
 
       numOfSamples = planDoseLineProfileArray.GetNumberOfTuples()
-      for index in xrange(numOfSamples):
+      for index in range(numOfSamples):
         planDoseSample = planDoseLineProfileArray.GetTuple(index)[1]
         calibratedDoseSample = calibratedDoseLineProfileArray.GetTuple(index)[1]
         if gammaLineProfileArray:
@@ -1831,14 +1833,14 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
   #
   def onSelfTestButtonClicked(self):
     # Test data
-    calibrationBatchMrmlSceneFilePath = "d:/images/RT/20160624_FilmDosimetry_TestDataset/Batch/20160804_221203_CalibrationBatchScene.mrml"
-    experimentalFilmFilePath = 'd:/images/RT/20160624_FilmDosimetry_TestDataset/20160624_FSRTFilms/experiment.png'
+    calibrationBatchMrmlSceneFilePath = "d:/data/RT_Dosimetry/20160624_FilmDosimetry_TestDataset/Batch/20161108_153010_CalibrationBatchScene.mrml"
+    experimentalFilmFilePath = 'd:/data/RT_Dosimetry/20160624_FilmDosimetry_TestDataset/20160624_FSRTFilms/experiment.png'
     experimentalFilmSpacing = 0.426
-    planDoseVolumeFilePath = "d:/images/RT/20160624_FilmDosimetry_TestDataset/RD.PYPHANTOMTEST_.dcm"
+    planDoseVolumeFilePath = "d:/data/RT_Dosimetry/20160624_FilmDosimetry_TestDataset/RD.PYPHANTOMTEST_.dcm"
     floodFieldImageNodeName = 'blank'
     experimentalFilmNodeName = 'experiment'
-    planDoseVolumeNodeName = '184: RTDOSE: Eclipse Doses: 4PTVs:3-6mm2'
-    calibrationFunctionFilePath = "d:/images/RT/20160624_FilmDosimetry_TestDataset/20160804_231433_FilmDosimetryCalibrationFunctionCoefficients.txt"
+    planDoseVolumeNodeName = '184: RTDOSE: Eclipse Doses'
+    calibrationFunctionFilePath = "d:/data/RT_Dosimetry/20160624_FilmDosimetry_TestDataset/20160804_231433_FilmDosimetryCalibrationFunctionCoefficients.txt"
 
     # Step 1
     #
@@ -1882,6 +1884,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     # Step 4
     #
     # Perform registration
+    self.logic.initializeFilmToPlanDoseRegistration()
     self.logic.registerExperimentalFilmToPlanDose()
 
     # Show registered images

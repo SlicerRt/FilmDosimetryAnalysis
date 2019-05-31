@@ -1,2 +1,2 @@
-from FilmDosimetryAnalysisLogic import *
-from LineProfileLogic import *
+from .FilmDosimetryAnalysisLogic import *
+from .LineProfileLogic import *
