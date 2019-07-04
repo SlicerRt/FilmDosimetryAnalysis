@@ -201,6 +201,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step5_computeGammaButton.disconnect('clicked()', self.onGammaDoseComparison)
     self.step5_showGammaReportButton.disconnect('clicked()', self.onShowGammaReport)
     self.stepT1_lineProfileCollapsibleButton.disconnect('contentsCollapsed(bool)', self.onStepT1_LineProfileCollapsed)
+    self.stepT1_lineProfileLegendVisibilityCheckbox.disconnect('toggled(bool)', self.onLegendVisibilityToggled)
     self.stepT1_createLineProfileButton.disconnect('clicked(bool)', self.onCreateLineProfileButton)
     self.stepT1_inputRulerSelector.disconnect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
     self.stepT1_exportLineProfilesToCSV.disconnect('clicked()', self.onExportLineProfiles)
@@ -892,6 +893,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.stepT1_lineResolutionMmSliderWidget.setToolTip("Sampling density along the line in mm")
     self.stepT1_lineProfileCollapsibleButtonLayout.addRow("Line resolution (mm): ", self.stepT1_lineResolutionMmSliderWidget)
 
+    # Show/hide legend checkbox
+    self.stepT1_lineProfileLegendVisibilityCheckbox = qt.QCheckBox()
+    self.stepT1_lineProfileLegendVisibilityCheckbox.checked = True
+    self.stepT1_lineProfileCollapsibleButtonLayout.addRow('Show legend: ', self.stepT1_lineProfileLegendVisibilityCheckbox)
+
     # Create line profile button
     self.stepT1_createLineProfileButton = qt.QPushButton("Create line profile")
     self.stepT1_createLineProfileButton.toolTip = "Compute and show line profile"
@@ -911,6 +917,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
     # Connections
     self.stepT1_lineProfileCollapsibleButton.connect('contentsCollapsed(bool)', self.onStepT1_LineProfileCollapsed)
+    self.stepT1_lineProfileLegendVisibilityCheckbox.connect('toggled(bool)', self.onLegendVisibilityToggled)
     self.stepT1_createLineProfileButton.connect('clicked(bool)', self.onCreateLineProfileButton)
     self.stepT1_inputRulerSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectLineProfileParameters)
     self.stepT1_exportLineProfilesToCSV.connect('clicked()', self.onExportLineProfiles)
@@ -1789,6 +1796,16 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       self.lineProfileLogic.outputPlotSeriesNodes[self.logic.gammaVolumeNode.GetID()] = self.gammaPlotSeriesNode
 
     self.lineProfileLogic.update()
+
+  #------------------------------------------------------------------------------
+  def onLegendVisibilityToggled(self, on):
+    if self.lineProfileLogic.plotChartNode is None:
+      message = 'Need to create line profile first'
+      logging.error(message)
+      qt.QMessageBox.critical(None, 'Error', message)
+      return
+
+    self.lineProfileLogic.plotChartNode.SetLegendVisibility(on)
 
   #------------------------------------------------------------------------------
   def onSelectLineProfileParameters(self):
