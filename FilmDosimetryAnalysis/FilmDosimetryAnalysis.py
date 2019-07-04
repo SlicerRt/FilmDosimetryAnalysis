@@ -138,6 +138,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.sliceAnnotations.scalarBarEnabled = 0
     self.sliceAnnotations.updateSliceViewFromGUI()
 
+    # Create line profile logic
+    self.lineProfileLogic = LineProfileLogic()
+
     # Set up step panels
     self.setup_Step0_LayoutSelection()
     self.setup_Step1_Calibration()
@@ -950,9 +953,9 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     elif layoutIndex == 4:
        self.layoutWidget.setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutDual3DView)
     elif layoutIndex == 5:
-       self.layoutWidget.setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpQuantitativeView)
+       self.layoutWidget.setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpPlotView)
     elif layoutIndex == 6:
-       self.layoutWidget.setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutOneUpQuantitativeView)
+       self.layoutWidget.setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutOneUpPlotView)
 
   #------------------------------------------------------------------------------
   def onLoadImageFilesButton(self):
@@ -1753,30 +1756,39 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   def onCreateLineProfileButton(self):
-    # Create array nodes for the results
-    if not hasattr(self, 'planDoseLineProfileArrayNode'):
-      self.planDoseLineProfileArrayNode = slicer.vtkMRMLDoubleArrayNode()
-      slicer.mrmlScene.AddNode(self.planDoseLineProfileArrayNode)
-    if not hasattr(self, 'calibratedExperimentalFilmLineProfileArrayNode'):
-      self.calibratedExperimentalFilmLineProfileArrayNode = slicer.vtkMRMLDoubleArrayNode()
-      slicer.mrmlScene.AddNode(self.calibratedExperimentalFilmLineProfileArrayNode)
-    if self.logic.gammaVolumeNode and not hasattr(self, 'gammaLineProfileArrayNode'):
-      self.gammaLineProfileArrayNode = slicer.vtkMRMLDoubleArrayNode()
-      slicer.mrmlScene.AddNode(self.gammaLineProfileArrayNode)
+    # Create table nodes for the results
+    if not hasattr(self, 'lineProfileTableNode'):
+      self.lineProfileTableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode")
 
-    lineProfileLogic = LineProfileLogic()
+    # Set up line profile logic
+    self.lineProfileLogic.outputPlotSeriesNodes = {}
+    self.lineProfileLogic.outputTableNode = self.lineProfileTableNode
+    self.lineProfileLogic.inputRulerNode = self.stepT1_inputRulerSelector.currentNode()
+    self.lineProfileLogic.enableAutoUpdate(True)
+
+    rulerLengthMm = self.lineProfileLogic.computeRulerLength(self.lineProfileLogic.inputRulerNode)
     lineResolutionMm = float(self.stepT1_lineResolutionMmSliderWidget.value)
-    selectedRuler = self.stepT1_inputRulerSelector.currentNode()
-    rulerLengthMm = lineProfileLogic.computeRulerLength(selectedRuler)
-    numberOfLineSamples = int( (rulerLengthMm / lineResolutionMm) + 0.5 )
+    self.lineProfileLogic.lineResolution = int( (rulerLengthMm / lineResolutionMm) + 0.5 )
 
     # Get number of samples based on selected sampling density
+    self.lineProfileLogic.inputVolumeNodes = []
     if self.logic.croppedPlanDoseSliceVolumeNode:
-      lineProfileLogic.run(self.logic.croppedPlanDoseSliceVolumeNode, selectedRuler, self.planDoseLineProfileArrayNode, numberOfLineSamples)
+      self.lineProfileLogic.inputVolumeNodes.append(self.logic.croppedPlanDoseSliceVolumeNode)
+      if not hasattr(self, 'croppedPlanDoseSlicePlotSeriesNode'):
+        self.croppedPlanDoseSlicePlotSeriesNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLPlotSeriesNode")
+      self.lineProfileLogic.outputPlotSeriesNodes[self.logic.croppedPlanDoseSliceVolumeNode.GetID()] = self.croppedPlanDoseSlicePlotSeriesNode
     if self.logic.calibratedExperimentalFilmVolumeNode:
-      lineProfileLogic.run(self.logic.calibratedExperimentalFilmVolumeNode, selectedRuler, self.calibratedExperimentalFilmLineProfileArrayNode, numberOfLineSamples)
+      self.lineProfileLogic.inputVolumeNodes.append(self.logic.calibratedExperimentalFilmVolumeNode)
+      if not hasattr(self, 'calibratedExperimentalFilmPlotSeriesNode'):
+        self.calibratedExperimentalFilmPlotSeriesNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLPlotSeriesNode")
+      self.lineProfileLogic.outputPlotSeriesNodes[self.logic.calibratedExperimentalFilmVolumeNode.GetID()] = self.calibratedExperimentalFilmPlotSeriesNode
     if self.logic.gammaVolumeNode:
-      lineProfileLogic.run(self.logic.gammaVolumeNode, selectedRuler, self.gammaLineProfileArrayNode, numberOfLineSamples)
+      self.lineProfileLogic.inputVolumeNodes.append(self.logic.gammaVolumeNode)
+      if not hasattr(self, 'gammaPlotSeriesNode'):
+        self.gammaPlotSeriesNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLPlotSeriesNode")
+      self.lineProfileLogic.outputPlotSeriesNodes[self.logic.gammaVolumeNode.GetID()] = self.gammaPlotSeriesNode
+
+    self.lineProfileLogic.update()
 
   #------------------------------------------------------------------------------
   def onSelectLineProfileParameters(self):
@@ -1784,46 +1796,34 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
 
   #------------------------------------------------------------------------------
   def onExportLineProfiles(self):
-    import csv
     import os
+
+    if not hasattr(self, 'lineProfileTableNode'):
+      message = 'Need to create line profile first'
+      logging.error(message)
+      qt.QMessageBox.critical(None, 'Line profiles values cannot be exported', message)
+      return
 
     self.outputDir = slicer.app.temporaryPath + '/FilmDosimetry'
     if not os.access(self.outputDir, os.F_OK):
       os.mkdir(self.outputDir)
-    if not hasattr(self, 'planDoseLineProfileArrayNode') and not hasattr(self, 'calibratedExperimentalFilmLineProfileArrayNode'):
-      return 'Dose line profiles not computed yet!\nClick Create line profile\n'
 
     # Assemble file name for calibration curve points file
     from time import gmtime, strftime
     fileName = self.outputDir + '/' + strftime("%Y%m%d_%H%M%S_", gmtime()) + 'LineProfiles.csv'
 
-    # Write calibration curve points CSV file
-    with open(fileName, 'w') as fp:
-      csvWriter = csv.writer(fp, delimiter=',', lineterminator='\n')
+    storageNode = self.lineProfileTableNode.CreateDefaultStorageNode()
+    storageNode.SetFileName(fileName)
+    success = storageNode.WriteData(self.lineProfileTableNode)
 
-      planDoseLineProfileArray = self.planDoseLineProfileArrayNode.GetArray()
-      calibratedDoseLineProfileArray = self.calibratedExperimentalFilmLineProfileArrayNode.GetArray()
-      gammaLineProfileArray = None
-      if hasattr(self, 'gammaLineProfileArrayNode'):
-        data = [['PlanDose','CalibratedExperimentalFilmDose','Gamma']]
-        gammaLineProfileArray = self.gammaLineProfileArrayNode.GetArray()
-      else:
-        data = [['PlanDose','CalibratedExperimentalFilmDose']]
+    if success == 1:
+      message = 'Dose line profiles saved in file\n' + fileName + '\n\n'
+      qt.QMessageBox.information(None, 'Line profiles values exported', message)
+    else:
+      message = 'Failed to save line profile'
+      logging.error(message)
+      qt.QMessageBox.critical(None, 'Failed to save line profile', message)
 
-      numOfSamples = planDoseLineProfileArray.GetNumberOfTuples()
-      for index in range(numOfSamples):
-        planDoseSample = planDoseLineProfileArray.GetTuple(index)[1]
-        calibratedDoseSample = calibratedDoseLineProfileArray.GetTuple(index)[1]
-        if gammaLineProfileArray:
-          gammaSample = gammaLineProfileArray.GetTuple(index)[1]
-          samples = [planDoseSample, calibratedDoseSample, gammaSample]
-        else:
-          samples = [planDoseSample, calibratedDoseSample]
-        data.append(samples)
-      csvWriter.writerows(data)
-
-    message = 'Dose line profiles saved in file\n' + fileName + '\n\n'
-    qt.QMessageBox.information(None, 'Line profiles values exported', message)
 
 
   #

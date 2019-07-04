@@ -258,7 +258,7 @@ class FilmDosimetryAnalysisLogic(ScriptedLoadableModuleLogic):
     functionDoseTerms = []
     for row in range(len(self.measuredOpticalDensityToDoseMap)):
       functionDoseTerms += [self.measuredOpticalDensityToDoseMap[row][1]]
-    functionConstantTerms = numpy.linalg.lstsq(functionTermsMatrix,functionDoseTerms)
+    functionConstantTerms = numpy.linalg.lstsq(functionTermsMatrix,functionDoseTerms,rcond=None)
     coefficients = functionConstantTerms[0].tolist()
 
     for coefficientIndex in range(len(coefficients)):
