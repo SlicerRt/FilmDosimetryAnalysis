@@ -803,11 +803,11 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
     self.step5_doseComparisonCollapsibleButtonLayout.addRow(self.step5_analysisThresholdLayout)
     self.step5_doseComparisonCollapsibleButtonLayout.addRow(qt.QLabel('                                            or the custom dose value (depending on selection above).'))
 
-    # Use linear interpolation
-    self.step5_useLinearInterpolationCheckBox = qt.QCheckBox()
-    self.step5_useLinearInterpolationCheckBox.checked = True
-    self.step5_useLinearInterpolationCheckBox.setToolTip('Flag determining whether linear interpolation is used when resampling the compare dose volume to reference grid. Nearest neighbour is used if unchecked.')
-    self.step5_doseComparisonCollapsibleButtonLayout.addRow('Use linear interpolation: ', self.step5_useLinearInterpolationCheckBox)
+    # Use geometric gamma calculation
+    self.step5_useGeometricGammaCalculation = qt.QCheckBox()
+    self.step5_useGeometricGammaCalculation.checked = True
+    self.step5_useGeometricGammaCalculation.setToolTip('By checking this box, gamma will be calculated according to Ju et al 2008, which finds the point with the minimum gamma value by using the normal vector between the two candidate points.')
+    self.step5_doseComparisonCollapsibleButtonLayout.addRow('Use geometric gamma calculation: ', self.step5_useGeometricGammaCalculation)
 
     # Maximum gamma
     self.step5_maximumGammaSpinBox = qt.QDoubleSpinBox()
@@ -1646,7 +1646,7 @@ class FilmDosimetryAnalysisSlicelet(VTKObservationMixin):
       gammaParameterSetNode.SetDtaDistanceToleranceMm(self.step5_dtaDistanceToleranceMmSpinBox.value)
       gammaParameterSetNode.SetDoseDifferenceTolerancePercent(self.step5_doseDifferenceTolerancePercentSpinBox.value)
       gammaParameterSetNode.SetUseMaximumDose(self.step5_referenceDoseUseMaximumDoseRadioButton.isChecked())
-      gammaParameterSetNode.SetUseLinearInterpolation(self.step5_useLinearInterpolationCheckBox.isChecked())
+      gammaParameterSetNode.SetUseGeometricGammaCalculation(self.step5_useGeometricGammaCalculation.isChecked())
       gammaParameterSetNode.SetReferenceDoseGy(self.step5_referenceDoseCustomValueCGySpinBox.value / 100.0)
       gammaParameterSetNode.SetAnalysisThresholdPercent(self.step5_analysisThresholdPercentSpinBox.value)
       gammaParameterSetNode.SetDoseThresholdOnReferenceOnly(True)
